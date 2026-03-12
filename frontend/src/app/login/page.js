@@ -26,19 +26,9 @@ export default function LoginPage() {
     if (method === 'email') {
       result = await login(email, password);
     } else {
-      try {
-        const { loginPhone } = await import('@/lib/api');
-        const data = await loginPhone(phone, name);
-        result = { success: true, user: data.user };
-        // We set it in AuthContext but we also need to trigger navigation
-        loginWithPhone(phone); // Will update context state
-      } catch (err) {
-        if (err.message.includes('informe seu nome')) {
-          setRequireName(true);
-          result = { success: false, error: err.message };
-        } else {
-          result = { success: false, error: err.message };
-        }
+      result = await loginWithPhone(phone, name);
+      if (result.requireName) {
+        setRequireName(true);
       }
     }
     

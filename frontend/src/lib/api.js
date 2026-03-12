@@ -3,8 +3,7 @@
    Replaces localStorage db.js with HTTP calls to backend
    ============================================ */
 
-const API_BASE = 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
-// const API_BASE = 'http://localhost:8787/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
 
 // ============================================
 // Token Management
@@ -86,10 +85,10 @@ export async function login(email, password) {
   return data;
 }
 
-export async function loginPhone(phone) {
+export async function loginPhone(phone, name) {
   const data = await request('/auth/phone', {
     method: 'POST',
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ phone, name }),
   });
   setToken(data.token);
   return data;

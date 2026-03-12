@@ -30,9 +30,16 @@ export default function LojaPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
     getCatalog()
-      .then(data => { setCatalogData(data); if (data.categories.length > 0) setActiveCategory(data.categories[0].name); })
-      .catch(console.error)
+      .then(data => { 
+        setCatalogData(data); 
+        if (data.categories?.length > 0) setActiveCategory(data.categories[0].name); 
+      })
+      .catch(err => {
+        console.error(err);
+        setError('Não foi possível carregar o catálogo. Verifique sua conexão ou as configurações de segurança do backend.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -245,8 +252,20 @@ export default function LojaPage() {
             );
           })}
         </div>
-        {filteredProducts.length === 0 && (
-          <div className="loja-empty"><FiSearch style={{ fontSize: '2rem' }} /><p>Nenhum produto encontrado</p></div>
+        {filteredProducts.length === 0 && !loading && (
+          <div className="loja-empty">
+            {error ? (
+              <>
+                <FiX style={{ fontSize: '2rem', color: 'var(--danger-500)' }} />
+                <p style={{ color: 'var(--danger-600)', maxWidth: '300px' }}>{error}</p>
+              </>
+            ) : (
+              <>
+                <FiSearch style={{ fontSize: '2rem' }} />
+                <p>Nenhum produto encontrado</p>
+              </>
+            )}
+          </div>
         )}
       </main>
 

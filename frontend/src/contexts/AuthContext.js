@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { login as apiLogin, logout as apiLogout, getMe, isLoggedIn } from '@/lib/api';
+import { login as apiLogin, loginPhone as apiLoginPhone, logout as apiLogout, getMe, isLoggedIn } from '@/lib/api';
 
 const AuthContext = createContext(null);
 
@@ -34,10 +34,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithPhone = async (phone) => {
+  const loginWithPhone = async (phone, name) => {
     try {
-      const { loginPhone } = await import('@/lib/api');
-      const data = await loginPhone(phone);
+      const data = await apiLoginPhone(phone, name);
       setUser(data.user);
       return { success: true, user: data.user };
     } catch (err) {
