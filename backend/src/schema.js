@@ -1,5 +1,24 @@
 import pool from './db.js';
 import bcrypt from 'bcryptjs';
+import 'dotenv/config';
+
+// Load .dev.vars for local execution if present
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const devVarsPath = join(__dirname, '..', '.dev.vars');
+
+if (existsSync(devVarsPath)) {
+  const content = readFileSync(devVarsPath, 'utf8');
+  content.split('\n').forEach(line => {
+    const [key, ...value] = line.split('=');
+    if (key && value.length) {
+      process.env[key.trim()] = value.join('=').trim().replace(/^["']|["']$/g, '');
+    }
+  });
+}
 
 async function createTables() {
   console.log('📦 Criando tabelas...');
@@ -20,6 +39,8 @@ async function createTables() {
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_temporary_password BOOLEAN DEFAULT false;
 
     CREATE TABLE IF NOT EXISTS products (
       id SERIAL PRIMARY KEY,
@@ -54,6 +75,8 @@ async function createTables() {
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
 
     CREATE TABLE IF NOT EXISTS transactions (
       id SERIAL PRIMARY KEY,
@@ -129,18 +152,18 @@ async function seedData() {
     ('Fernanda Costa', 'fernanda@email.com', $5, true, 'customer', '(41) 99123-4567', '654.321.987-00', 'Av. Paraná, 654 - Curitiba/PR', 'FC')
   `, [c1Pass, c2Pass, c3Pass, c4Pass, c5Pass]);
 
-  // --- Products (Marmitaria) ---
+  // --- Products (Fitoterápicos e Naturais) ---
   await pool.query(`
     INSERT INTO products (code, name, category, quantity, min_stock, cost_price, sale_price, supplier) VALUES
-    ('MAR-001', 'Marmita Tradicional Média', 'Marmitas', 50, 10, 8.00, 18.00, 'Cozinha'),
-    ('MAR-002', 'Marmita Tradicional Grande', 'Marmitas', 50, 10, 10.00, 22.00, 'Cozinha'),
-    ('MAR-003', 'Marmita Fitness Frango', 'Marmitas Fitness', 30, 10, 12.00, 25.00, 'Cozinha'),
-    ('MAR-004', 'Marmita Executiva Bife a Cavalo', 'Marmitas Premium', 20, 5, 15.00, 35.00, 'Cozinha'),
-    ('BEB-001', 'Coca-Cola Latinha 350ml', 'Bebidas', 100, 20, 2.50, 6.00, 'Distribuidora'),
-    ('BEB-002', 'Guaraná Antarctica 350ml', 'Bebidas', 100, 20, 2.50, 6.00, 'Distribuidora'),
-    ('BEB-003', 'Suco Natural Laranja 500ml', 'Bebidas', 40, 10, 3.00, 8.00, 'Cozinha'),
-    ('SOB-001', 'Pudim de Leite', 'Sobremesas', 30, 5, 2.00, 8.00, 'Cozinha'),
-    ('SOB-002', 'Mousse de Maracujá', 'Sobremesas', 30, 5, 2.00, 7.00, 'Cozinha')
+    ('FIT-001', 'Óleo Essencial de Lavanda (10ml)', 'Óleos Essenciais', 20, 5, 15.00, 45.00, 'Natureza Viva'),
+    ('FIT-002', 'Óleo Essencial de Melaleuca (10ml)', 'Óleos Essenciais', 15, 5, 18.00, 52.00, 'Natureza Viva'),
+    ('CHA-001', 'Chá Relaxante de Camomila', 'Chás e Infusões', 50, 10, 5.00, 12.00, 'Ervas do Monte'),
+    ('CHA-002', 'Chá de Hibisco Premium', 'Chás e Infusões', 40, 10, 6.00, 15.00, 'Ervas do Monte'),
+    ('NAT-001', 'Mel Silvestre Orgânico (500g)', 'Naturais', 30, 8, 12.00, 35.00, 'Apicultura Real'),
+    ('NAT-002', 'Própolis Verde em Gotas', 'Naturais', 25, 5, 10.00, 28.00, 'Apicultura Real'),
+    ('COS-001', 'Sabonete de Argila Verde', 'Cosméticos Naturais', 60, 15, 4.00, 15.00, 'BioAroma'),
+    ('COS-002', 'Creme Facial de Calêndula', 'Cosméticos Naturais', 20, 5, 25.00, 68.00, 'BioAroma'),
+    ('SUP-001', 'Cloreto de Magnésio P.A.', 'Suplementos', 100, 20, 8.00, 22.00, 'Vittalis')
   `);
 
   // --- Transactions ---
@@ -154,8 +177,8 @@ async function seedData() {
   // --- Inventory Log ---
   await pool.query(`
     INSERT INTO inventory_log (product_id, product_name, type, quantity, reason, date) VALUES
-    (1, 'Marmita Tradicional Média', 'entrada', 50, 'Estoque inicial', NOW()),
-    (5, 'Coca-Cola Latinha 350ml', 'entrada', 100, 'Compra fornecedor', NOW())
+    (1, 'Óleo Essencial de Lavanda (10ml)', 'entrada', 20, 'Estoque inicial', NOW()),
+    (5, 'Mel Silvestre Orgânico (500g)', 'entrada', 30, 'Estoque inicial', NOW())
   `);
 
   console.log('✅ Dados de exemplo inseridos com sucesso!');
@@ -163,6 +186,7 @@ async function seedData() {
 
 async function run() {
   try {
+    pool.init(process.env.DATABASE_URL);
     await createTables();
     await seedData();
     console.log('\n🎉 Banco de dados pronto!');
@@ -174,9 +198,6 @@ async function run() {
 }
 
 // Run if called directly
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   run();
 }

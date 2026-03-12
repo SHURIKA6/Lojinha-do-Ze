@@ -48,15 +48,15 @@ router.get('/:type', async (c) => {
         break;
 
       case 'inadimplencia':
-        // Pedidos pendentes e recebidos que não foram pagos ainda ou com pagamentos em aberto
+        // Pedidos em andamento / não concluídos
         const { rows: pending } = await pool.query(
-          "SELECT * FROM orders WHERE status IN ('recebido', 'pendente') ORDER BY created_at DESC"
+          "SELECT * FROM orders WHERE status IN ('recebido', 'em_preparo', 'saiu_entrega') ORDER BY created_at DESC"
         );
         const { rows: totalRow } = await pool.query(
-          "SELECT COALESCE(SUM(total),0) as total FROM orders WHERE status IN ('recebido', 'pendente')"
+          "SELECT COALESCE(SUM(total),0) as total FROM orders WHERE status IN ('recebido', 'em_preparo', 'saiu_entrega')"
         );
         data = {
-          payments: pending,
+          orders: pending,
           total_pending: parseFloat(totalRow[0].total),
         };
         break;

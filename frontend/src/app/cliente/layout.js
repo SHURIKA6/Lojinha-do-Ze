@@ -38,8 +38,8 @@ export default function ClienteLayout({ children }) {
     <div>
       <div className="customer-topbar">
         <div className="customer-topbar__brand">
-          <div className="customer-topbar__logo">ZÉ</div>
-          <span className="customer-topbar__name">Marmitas do Zé</span>
+          <div className="customer-topbar__logo">LZ</div>
+          <span className="customer-topbar__name">Lojinha do Zé</span>
         </div>
         <nav className="customer-topbar__nav">
           {navLinks.map(link => (
