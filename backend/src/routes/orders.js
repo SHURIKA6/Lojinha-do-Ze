@@ -3,12 +3,18 @@ import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 const router = new Hono();
 
-router.use('*', authMiddleware, adminOnly);
-
-// GET /api/orders — list all orders (admin)
-router.get('/', async (c) => {
+// GET /api/orders — list all orders (adm) or user orders (customer)
+router.get('/', authMiddleware, async (c) => {
   try {
+    const user = c.get('user');
     const status = c.req.query('status');
+    
+    if (user.role === 'customer') {
+      const { rows } = await pool.query('SELECT * FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC', [user.phone]);
+      return c.json(rows);
+    }
+
+    // Admin logic
     let query = 'SELECT * FROM orders';
     let params = [];
     if (status) {
@@ -25,7 +31,7 @@ router.get('/', async (c) => {
 });
 
 // PATCH /api/orders/:id/status — update order status
-router.patch('/:id/status', async (c) => {
+router.patch('/:id/status', authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param('id');
     const { status } = await c.req.json();
@@ -42,7 +48,7 @@ router.patch('/:id/status', async (c) => {
 });
 
 // DELETE /api/orders/:id
-router.delete('/:id', async (c) => {
+router.delete('/:id', authMiddleware, adminOnly, async (c) => {
   try {
     const id = c.req.param('id');
     const { rowCount } = await pool.query('DELETE FROM orders WHERE id = $1', [id]);

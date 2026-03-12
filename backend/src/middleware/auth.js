@@ -8,7 +8,12 @@ async function authMiddleware(c, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('CRITICAL ERROR: JWT_SECRET is not defined in environment variables.');
+      return c.json({ error: 'Erro interno no Servidor' }, 500);
+    }
+    const decoded = jwt.verify(token, secret);
     c.set('user', decoded);
     await next();
   } catch (err) {

@@ -1,6 +1,25 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import pool from '../db.js';
+import { orderLimiter } from '../middleware/rateLimit.js';
+
 const router = new Hono();
+
+const orderItemSchema = z.object({
+  productId: z.coerce.number().int().positive('ID de produto inválido'),
+  quantity: z.coerce.number().int().positive('Quantidade deve ser maior que zero')
+});
+
+const orderSchema = z.object({
+  customer_name: z.string().min(2, 'Nome é obrigatório'),
+  customer_phone: z.string().min(8, 'Telefone inválido'),
+  notes: z.string().optional(),
+  delivery_type: z.enum(['entrega', 'retirada']).default('entrega'),
+  address: z.string().optional(),
+  payment_method: z.string().optional(),
+  items: z.array(orderItemSchema).min(1, 'Pedido deve conter ao menos 1 item')
+});
 
 // GET /api/catalog — Public, no auth required
 router.get('/', async (c) => {
@@ -29,29 +48,23 @@ router.get('/', async (c) => {
 });
 
 // POST /api/orders — Public, create order (guest checkout)
-router.post('/orders', async (c) => {
+router.post('/orders', orderLimiter, zValidator('json', orderSchema, (result, c) => {
+  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
+}), async (c) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const { customer_name, customer_phone, items, notes } = await c.req.json();
-
-    if (!customer_name || !customer_phone || !items || items.length === 0) {
-      await client.query('ROLLBACK');
-      return c.json({ error: 'Nome, telefone e itens são obrigatórios' }, 400);
-    }
+    const { customer_name, customer_phone, items, notes, delivery_type, address, payment_method } = c.req.valid('json');
 
     // Calculate total and validate stock
-    let total = 0;
+    let subtotal = 0;
+    const delivery_fee = delivery_type === 'entrega' ? 5.00 : 0; // Taxa fixa simbólica de 5 reais por enquanto
     const enrichedItems = [];
     
     // First loop: check product existence and calculate totals, without updating.
     for (const item of items) {
-      const parsedQtd = parseInt(item.quantity, 10);
-      if (isNaN(parsedQtd) || parsedQtd <= 0) {
-        await client.query('ROLLBACK');
-        return c.json({ error: `Quantidade inválida para um dos itens` }, 400);
-      }
+      const parsedQtd = item.quantity;
 
       const { rows } = await client.query('SELECT id, name, sale_price, quantity FROM products WHERE id = $1', [item.productId]);
       if (rows.length === 0) {
@@ -60,22 +73,24 @@ router.post('/orders', async (c) => {
       }
       const product = rows[0];
       
-      const subtotal = parseFloat(product.sale_price) * parsedQtd;
-      total += subtotal;
+      const itemSubtotal = parseFloat(product.sale_price) * parsedQtd;
+      subtotal += itemSubtotal;
       enrichedItems.push({
         productId: product.id,
         name: product.name,
         price: parseFloat(product.sale_price),
         quantity: parsedQtd,
-        subtotal,
+        subtotal: itemSubtotal,
       });
     }
 
+    const total = subtotal + delivery_fee;
+
     // Create order
     const { rows: orderRows } = await client.query(
-      `INSERT INTO orders (customer_name, customer_phone, items, total, notes)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [customer_name, customer_phone, JSON.stringify(enrichedItems), total, notes || '']
+      `INSERT INTO orders (customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [customer_name, customer_phone, JSON.stringify(enrichedItems), subtotal, delivery_fee, total, delivery_type, address || '', payment_method || '', notes || '']
     );
 
     // Deduct stock for each item using atomic operations to prevent Race Conditions

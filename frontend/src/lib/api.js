@@ -8,7 +8,7 @@ const API_BASE = 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.worke
 // ============================================
 // Token Management
 // ============================================
-function getToken() {
+export function getToken() {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('lojinha_token');
 }
@@ -19,6 +19,27 @@ function setToken(token) {
 
 function removeToken() {
   localStorage.removeItem('lojinha_token');
+}
+
+// ============================================
+// Upload API
+// ============================================
+export async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Erro ao fazer upload da imagem');
+  return data;
 }
 
 // ============================================
@@ -122,54 +143,7 @@ export async function deleteCustomer(id) {
 }
 
 // ============================================
-// Services API
-// ============================================
-export async function getServices(customerId) {
-  const query = customerId ? `?customer_id=${customerId}` : '';
-  return request(`/services${query}`);
-}
-
-export async function createService(service) {
-  return request('/services', { method: 'POST', body: JSON.stringify(service) });
-}
-
-export async function updateService(id, service) {
-  return request(`/services/${id}`, { method: 'PUT', body: JSON.stringify(service) });
-}
-
-export async function updateServiceStatus(id, status) {
-  return request(`/services/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
-}
-
-export async function deleteService(id) {
-  return request(`/services/${id}`, { method: 'DELETE' });
-}
-
-// ============================================
-// Payments API
-// ============================================
-export async function getPayments(customerId) {
-  const query = customerId ? `?customer_id=${customerId}` : '';
-  return request(`/payments${query}`);
-}
-
-export async function createPayment(payment) {
-  return request('/payments', { method: 'POST', body: JSON.stringify(payment) });
-}
-
-export async function registerPayment(id, amount, method) {
-  return request(`/payments/${id}/pay`, {
-    method: 'POST',
-    body: JSON.stringify({ amount, method }),
-  });
-}
-
-export async function deletePayment(id) {
-  return request(`/payments/${id}`, { method: 'DELETE' });
-}
-
-// ============================================
-// Transactions API
+// Transactions API (Admin)
 // ============================================
 export async function getTransactions(type) {
   const query = type ? `?type=${type}` : '';
@@ -220,7 +194,7 @@ export async function createOrder(orderData) {
 }
 
 // ============================================
-// Orders API (Admin)
+// Orders API 
 // ============================================
 export async function getOrders(status) {
   const query = status ? `?status=${status}` : '';
@@ -256,16 +230,16 @@ export function formatDateTime(dateStr) {
 
 export function getStatusLabel(status) {
   const labels = {
-    pendente: 'Pendente', em_andamento: 'Em Andamento', concluido: 'Concluído',
-    entregue: 'Entregue', cancelado: 'Cancelado', pago: 'Pago', parcial: 'Parcial', atrasado: 'Atrasado',
+    recebido: 'Recebido', em_preparo: 'Em Preparo', saiu_entrega: 'Saiu para Entrega',
+    concluido: 'Concluído', cancelado: 'Cancelado',
   };
   return labels[status] || status;
 }
 
 export function getStatusVariant(status) {
   const variants = {
-    pendente: 'warning', em_andamento: 'info', concluido: 'success',
-    entregue: 'primary', cancelado: 'danger', pago: 'success', parcial: 'warning', atrasado: 'danger',
+    recebido: 'neutral', em_preparo: 'info', saiu_entrega: 'warning',
+    concluido: 'success', cancelado: 'danger',
   };
   return variants[status] || 'neutral';
 }

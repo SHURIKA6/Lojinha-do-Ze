@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  FiGrid, FiPackage, FiDollarSign, FiUsers, FiTool,
-  FiCreditCard, FiFileText, FiUser, FiLogOut, FiMenu, FiX, FiShoppingBag
+  FiGrid, FiPackage, FiDollarSign, FiUsers,
+  FiFileText, FiUser, FiLogOut, FiMenu, FiX, FiShoppingBag
 } from 'react-icons/fi';
 
 const navItems = [
@@ -17,8 +17,6 @@ const navItems = [
     { href: '/admin/estoque', icon: FiPackage, label: 'Estoque' },
     { href: '/admin/financeiro', icon: FiDollarSign, label: 'Financeiro' },
     { href: '/admin/clientes', icon: FiUsers, label: 'Clientes' },
-    { href: '/admin/servicos', icon: FiTool, label: 'Serviços' },
-    { href: '/admin/pagamentos', icon: FiCreditCard, label: 'Pagamentos' },
   ]},
   { section: 'Outros', items: [
     { href: '/admin/relatorios', icon: FiFileText, label: 'Relatórios' },
@@ -50,9 +48,9 @@ export default function Sidebar() {
 
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar__brand">
-          <div className="sidebar__logo">LZ</div>
+          <div className="sidebar__logo">ZÉ</div>
           <div className="sidebar__brand-text">
-            <div className="sidebar__brand-name">Lojinha do Zé</div>
+            <div className="sidebar__brand-name">Marmitas do Zé</div>
             <div className="sidebar__brand-sub">Sistema de Gestão</div>
           </div>
         </div>

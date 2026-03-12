@@ -5,7 +5,7 @@ import { getDashboard, formatCurrency, formatDate, getStatusLabel, getStatusVari
 import { FiDollarSign, FiShoppingBag, FiTool, FiAlertCircle, FiTrendingUp, FiTrendingDown, FiPackage } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['#ea580c', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']; // orange as first color
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
@@ -27,7 +27,7 @@ export default function DashboardPage() {
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p className="page-header__subtitle">Visão geral do seu negócio</p>
+          <p className="page-header__subtitle">Visão geral do seu negócio e pedidos</p>
         </div>
       </div>
 
@@ -48,17 +48,17 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' }}>
-          <div className="metric-card__icon" style={{ background: 'var(--info-50)', color: 'var(--info-600)' }}><FiTool /></div>
+          <div className="metric-card__icon" style={{ background: 'var(--info-50)', color: 'var(--info-600)' }}><FiPackage /></div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Serviços Ativos</div>
-            <div className="metric-card__value">{data.activeServices}</div>
+            <div className="metric-card__label">Pedidos Ativos</div>
+            <div className="metric-card__value">{data.activeOrders}</div>
           </div>
         </div>
         <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' }}>
-          <div className="metric-card__icon" style={{ background: 'var(--warning-50)', color: 'var(--warning-600)' }}><FiAlertCircle /></div>
+          <div className="metric-card__icon" style={{ background: 'var(--warning-50)', color: 'var(--warning-600)' }}><FiTrendingUp /></div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Pagamentos Pendentes</div>
-            <div className="metric-card__value">{formatCurrency(data.pendingTotal)}</div>
+            <div className="metric-card__label">Lucro no Mês</div>
+            <div className="metric-card__value">{formatCurrency(data.profit)}</div>
           </div>
         </div>
       </div>
@@ -66,9 +66,9 @@ export default function DashboardPage() {
       {/* Charts */}
       <div className="grid grid-2" style={{ marginBottom: 'var(--space-8)' }}>
         <div className="table-container">
-          <div className="table-header"><h3 className="table-header__title">Receitas vs Despesas</h3></div>
+          <div className="table-header"><h3 className="table-header__title">Transações Financeiras</h3></div>
           <div style={{ padding: 'var(--space-4)' }}>
-            {data.chartData.length > 0 ? (
+            {data.chartData && data.chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={data.chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
@@ -86,19 +86,19 @@ export default function DashboardPage() {
         </div>
 
         <div className="table-container">
-          <div className="table-header"><h3 className="table-header__title">Receita por Categoria</h3></div>
+          <div className="table-header"><h3 className="table-header__title">Produtos por Categoria</h3></div>
           <div style={{ padding: 'var(--space-4)' }}>
-            {data.categoryChart.length > 0 ? (
+            {data.categoryChart && data.categoryChart.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={data.categoryChart} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${formatCurrency(value)}`}>
+                  <Pie data={data.categoryChart} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                     {data.categoryChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(val) => formatCurrency(val)} />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Sem dados para o mês</div>
+              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Sem dados de catálogo</div>
             )}
           </div>
         </div>
@@ -107,19 +107,22 @@ export default function DashboardPage() {
       {/* Recent & Alerts */}
       <div className="grid grid-2">
         <div className="table-container">
-          <div className="table-header"><h3 className="table-header__title">Serviços Recentes</h3></div>
+          <div className="table-header"><h3 className="table-header__title">Pedidos Recentes</h3></div>
           <div className="table-responsive">
             <table>
-              <thead><tr><th>Cliente</th><th>Serviço</th><th>Status</th><th>Valor</th></tr></thead>
+              <thead><tr><th>Cliente</th><th>Tipo</th><th>Status</th><th>Valor</th></tr></thead>
               <tbody>
-                {data.recentServices.map(s => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.customer_name}</td>
-                    <td style={{ fontSize: 'var(--font-sm)' }}>{s.description}</td>
-                    <td><span className={`badge badge--${getStatusVariant(s.status)}`}>{getStatusLabel(s.status)}</span></td>
-                    <td style={{ fontWeight: 600 }}>{formatCurrency(s.value)}</td>
+                {data.recentOrders && data.recentOrders.map(o => (
+                  <tr key={o.id}>
+                    <td style={{ fontWeight: 600 }}>{o.customer_name || 'Marmita Avulsa'}</td>
+                    <td style={{ fontSize: 'var(--font-sm)' }}>{o.delivery_type === 'retirada' ? '🏪 Retirada' : '🛵 Entrega'}</td>
+                    <td><span className={`badge badge--${getStatusVariant(o.status)}`}>{getStatusLabel(o.status)}</span></td>
+                    <td style={{ fontWeight: 600 }}>{formatCurrency(o.total)}</td>
                   </tr>
                 ))}
+                {(!data.recentOrders || data.recentOrders.length === 0) && (
+                  <tr><td colSpan={4} className="table-empty">Nenhum pedido recente.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -128,20 +131,20 @@ export default function DashboardPage() {
         <div className="table-container">
           <div className="table-header">
             <h3 className="table-header__title">Estoque Baixo</h3>
-            <span className="badge badge--danger">{data.lowStock.length} itens</span>
+            <span className="badge badge--danger">{(data.lowStock || []).length} itens</span>
           </div>
           <div className="table-responsive">
             <table>
               <thead><tr><th>Produto</th><th>Atual</th><th>Mínimo</th></tr></thead>
               <tbody>
-                {data.lowStock.map(p => (
+                {data.lowStock && data.lowStock.map(p => (
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                     <td style={{ fontWeight: 700, color: p.quantity === 0 ? 'var(--danger-500)' : 'var(--warning-600)' }}>{p.quantity}</td>
                     <td>{p.min_stock}</td>
                   </tr>
                 ))}
-                {data.lowStock.length === 0 && (
+                {(!data.lowStock || data.lowStock.length === 0) && (
                   <tr><td colSpan={3} className="table-empty">Estoque em dia! ✅</td></tr>
                 )}
               </tbody>

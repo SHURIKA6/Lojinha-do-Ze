@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getProducts, createProduct, updateProduct, deleteProduct, formatCurrency } from '@/lib/api';
+import { getProducts, createProduct, updateProduct, deleteProduct, formatCurrency, uploadImage } from '@/lib/api';
 import Modal from '@/components/Modal';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPackage, FiAlertTriangle } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPackage, FiAlertTriangle, FiUpload, FiImage } from 'react-icons/fi';
 
-const categories = ['Telas', 'Baterias', 'Conectores', 'Acessórios', 'Flexíveis', 'Câmeras', 'Áudio', 'Ferramentas', 'Outros'];
+const categories = ['Marmitas', 'Bebidas', 'Sobremesas', 'Porções', 'Outros'];
 
 export default function EstoquePage() {
   const [products, setProducts] = useState([]);
@@ -14,8 +14,9 @@ export default function EstoquePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
-    code: '', name: '', description: '', photo: '', category: 'Outros', quantity: 0, min_stock: 5,
+    code: '', name: '', description: '', photo: '', category: 'Marmitas', quantity: 999, min_stock: 0,
     cost_price: 0, sale_price: 0, supplier: ''
   });
 
@@ -42,7 +43,7 @@ export default function EstoquePage() {
 
   const openNew = () => {
     setEditingProduct(null);
-    setForm({ code: '', name: '', description: '', photo: '', category: 'Outros', quantity: 0, min_stock: 5, cost_price: 0, sale_price: 0, supplier: '' });
+    setForm({ code: '', name: '', description: '', photo: '', category: 'Marmitas', quantity: 999, min_stock: 0, cost_price: 0, sale_price: 0, supplier: '' });
     setModalOpen(true);
   };
 
@@ -80,14 +81,28 @@ export default function EstoquePage() {
     }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const res = await uploadImage(file);
+      setForm({ ...form, photo: res.url });
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) return <div className="animate-fadeIn" style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>Carregando...</div>;
 
   return (
     <div className="animate-fadeIn">
       <div className="page-header">
         <div>
-          <h1>Estoque</h1>
-          <p className="page-header__subtitle">{products.length} produtos • {lowStock > 0 ? `${lowStock} com estoque baixo` : 'Estoque em dia'}</p>
+          <h1>Catálogo / Menu</h1>
+          <p className="page-header__subtitle">{products.length} itens cadastrados</p>
         </div>
         <div className="page-header__actions">
           <button className="btn btn--primary" onClick={openNew}><FiPlus /> Novo Produto</button>
@@ -109,23 +124,26 @@ export default function EstoquePage() {
         <div className="table-responsive">
           <table>
             <thead>
-              <tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Custo</th><th>Venda</th><th>Fornecedor</th><th>Ações</th></tr>
+              <tr><th>Código</th><th>Foto</th><th>Produto</th><th>Categoria</th><th>Disponível</th><th>Custo</th><th>Venda</th><th>Ações</th></tr>
             </thead>
             <tbody>
               {filtered.map(p => (
                 <tr key={p.id}>
                   <td><code style={{ background: 'var(--gray-100)', padding: '2px 6px', borderRadius: '4px', fontSize: 'var(--font-xs)' }}>{p.code}</code></td>
+                  <td>
+                    <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {p.photo ? <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <FiImage style={{ color: 'var(--gray-400)' }} />}
+                    </div>
+                  </td>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
                   <td><span className="badge badge--neutral">{p.category}</span></td>
                   <td>
-                    <span style={{ fontWeight: 700, color: p.quantity === 0 ? 'var(--danger-500)' : p.quantity <= p.min_stock ? 'var(--warning-600)' : 'var(--success-600)' }}>
-                      {p.quantity}
+                    <span className={`badge ${p.quantity > 0 ? 'badge--success' : 'badge--danger'}`}>
+                      {p.quantity > 0 ? 'Ativo' : 'Esgotado'}
                     </span>
-                    {p.quantity <= p.min_stock && <FiAlertTriangle style={{ color: 'var(--warning-500)', marginLeft: '4px' }} />}
                   </td>
                   <td>{formatCurrency(p.cost_price)}</td>
-                  <td style={{ fontWeight: 600 }}>{formatCurrency(p.sale_price)}</td>
-                  <td style={{ fontSize: 'var(--font-sm)' }}>{p.supplier}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--primary-600)' }}>{formatCurrency(p.sale_price)}</td>
                   <td>
                     <div className="table-actions">
                       <button className="btn btn--secondary btn--sm" onClick={() => openEdit(p)}><FiEdit2 /></button>
@@ -172,18 +190,31 @@ export default function EstoquePage() {
           <textarea className="form-input" value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Descrição do produto" rows="3" />
         </div>
         <div className="form-group">
-          <label className="form-label">URL da Foto</label>
-          <input className="form-input" value={form.photo} onChange={e => setForm({...form, photo: e.target.value})} placeholder="https://exemplo.com/foto.jpg" />
+          <label className="form-label">Foto do Produto</label>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: 'var(--radius-md)', border: '1px dashed var(--gray-300)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: 'var(--gray-50)' }}>
+              {form.photo ? <img src={form.photo} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <FiImage style={{ fontSize: '1.5rem', color: 'var(--gray-400)' }} />}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="btn btn--secondary" style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                <FiUpload style={{ marginRight: 8 }} /> {uploading ? 'Enviando...' : 'Escolher Imagem (R2)'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={handlePhotoUpload} />
+              </label>
+              <div style={{ marginTop: 'var(--space-2)' }}>
+                <input className="form-input" value={form.photo} onChange={e => setForm({...form, photo: e.target.value})} placeholder="Ou cole a URL direta da imagem aqui" style={{ fontSize: 'var(--font-xs)', padding: '0.4rem 0.6rem' }} />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Quantidade</label>
-            <input className="form-input" type="number" value={form.quantity} onChange={e => setForm({...form, quantity: parseInt(e.target.value) || 0})} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Estoque Mínimo</label>
-            <input className="form-input" type="number" value={form.min_stock} onChange={e => setForm({...form, min_stock: parseInt(e.target.value) || 0})} />
-          </div>
+        
+        <div className="form-group" style={{ background: 'var(--gray-50)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <input type="checkbox" id="activeToggle" style={{ width: 20, height: 20, cursor: 'pointer' }}
+            checked={form.quantity > 0} 
+            onChange={e => setForm({...form, quantity: e.target.checked ? 999 : 0, min_stock: 0})} 
+          />
+          <label htmlFor="activeToggle" style={{ cursor: 'pointer', fontWeight: 600, color: form.quantity > 0 ? 'var(--success-600)' : 'var(--danger-500)' }}>
+            {form.quantity > 0 ? '✅ Disponível no Cardápio (Ativo)' : '❌ Esgotado / Escondido'}
+          </label>
         </div>
         <div className="form-row">
           <div className="form-group">

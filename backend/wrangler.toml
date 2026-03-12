@@ -8,4 +8,8 @@ node_compat = true
 # npx wrangler secret put DATABASE_URL
 # npx wrangler secret put JWT_SECRET
 
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "lojinha-do-ze-images"
+
 

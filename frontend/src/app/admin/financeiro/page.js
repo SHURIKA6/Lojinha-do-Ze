@@ -12,7 +12,7 @@ export default function FinanceiroPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ type: 'entrada', category: '', description: '', value: 0, date: '' });
+  const [form, setForm] = useState({ type: 'receita', category: '', description: '', value: 0, date: '' });
 
   useEffect(() => { loadData(); }, []);
 
@@ -30,8 +30,8 @@ export default function FinanceiroPage() {
     return matchType && matchSearch;
   });
 
-  const totalEntradas = transactions.filter(t => t.type === 'entrada').reduce((s, t) => s + parseFloat(t.value), 0);
-  const totalSaidas = transactions.filter(t => t.type === 'saida').reduce((s, t) => s + parseFloat(t.value), 0);
+  const totalEntradas = transactions.filter(t => t.type === 'receita').reduce((s, t) => s + parseFloat(t.value), 0);
+  const totalSaidas = transactions.filter(t => t.type === 'despesa').reduce((s, t) => s + parseFloat(t.value), 0);
   const saldo = totalEntradas - totalSaidas;
 
   // Chart data
@@ -40,7 +40,7 @@ export default function FinanceiroPage() {
     const d = t.date ? new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
     if (!d) return;
     if (!chartMap[d]) chartMap[d] = { dia: d, receita: 0, despesa: 0 };
-    if (t.type === 'entrada') chartMap[d].receita += parseFloat(t.value);
+    if (t.type === 'receita') chartMap[d].receita += parseFloat(t.value);
     else chartMap[d].despesa += parseFloat(t.value);
   });
   const chartData = Object.values(chartMap).reverse();
@@ -49,7 +49,7 @@ export default function FinanceiroPage() {
     try {
       await createTransaction(form);
       setModalOpen(false);
-      setForm({ type: 'entrada', category: '', description: '', value: 0, date: '' });
+      setForm({ type: 'receita', category: '', description: '', value: 0, date: '' });
       loadData();
     } catch (err) { console.error(err); }
   };
@@ -66,7 +66,7 @@ export default function FinanceiroPage() {
       <div className="page-header">
         <div>
           <h1>Financeiro</h1>
-          <p className="page-header__subtitle">Controle de receitas e despesas</p>
+          <p className="page-header__subtitle">Controle de receitas e despesas livre</p>
         </div>
         <div className="page-header__actions">
           <button className="btn btn--primary" onClick={() => setModalOpen(true)}><FiPlus /> Nova Transação</button>
@@ -77,21 +77,21 @@ export default function FinanceiroPage() {
         <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' }}>
           <div className="metric-card__icon" style={{ background: 'var(--success-50)', color: 'var(--success-600)' }}><FiTrendingUp /></div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Total Entradas</div>
+            <div className="metric-card__label">Total Receitas</div>
             <div className="metric-card__value" style={{ color: 'var(--success-600)' }}>{formatCurrency(totalEntradas)}</div>
           </div>
         </div>
         <div className="metric-card" style={{ '--metric-color': 'var(--danger-500)' }}>
           <div className="metric-card__icon" style={{ background: 'var(--danger-50)', color: 'var(--danger-500)' }}><FiTrendingDown /></div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Total Saídas</div>
+            <div className="metric-card__label">Total Despesas</div>
             <div className="metric-card__value" style={{ color: 'var(--danger-500)' }}>{formatCurrency(totalSaidas)}</div>
           </div>
         </div>
         <div className="metric-card" style={{ '--metric-color': saldo >= 0 ? 'var(--success-500)' : 'var(--danger-500)' }}>
           <div className="metric-card__icon" style={{ background: saldo >= 0 ? 'var(--success-50)' : 'var(--danger-50)', color: saldo >= 0 ? 'var(--success-600)' : 'var(--danger-500)' }}><FiDollarSign /></div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Saldo</div>
+            <div className="metric-card__label">Lucro / Saldo</div>
             <div className="metric-card__value" style={{ color: saldo >= 0 ? 'var(--success-600)' : 'var(--danger-500)' }}>{formatCurrency(saldo)}</div>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function FinanceiroPage() {
 
       {/* Chart */}
       <div className="table-container" style={{ marginBottom: 'var(--space-6)' }}>
-        <div className="table-header"><h3 className="table-header__title">Fluxo de Caixa</h3></div>
+        <div className="table-header"><h3 className="table-header__title">Fluxo de Caixa (DRE Simplificado)</h3></div>
         <div style={{ padding: 'var(--space-4)' }}>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -114,7 +114,7 @@ export default function FinanceiroPage() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Sem dados</div>
+            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Sem dados financeiros lançados.</div>
           )}
         </div>
       </div>
@@ -122,14 +122,14 @@ export default function FinanceiroPage() {
       {/* Filters & Table */}
       <div className="tabs">
         <button className={`tab ${typeFilter === '' ? 'active' : ''}`} onClick={() => setTypeFilter('')}>Todos</button>
-        <button className={`tab ${typeFilter === 'entrada' ? 'active' : ''}`} onClick={() => setTypeFilter('entrada')}>Entradas</button>
-        <button className={`tab ${typeFilter === 'saida' ? 'active' : ''}`} onClick={() => setTypeFilter('saida')}>Saídas</button>
+        <button className={`tab ${typeFilter === 'receita' ? 'active' : ''}`} onClick={() => setTypeFilter('receita')}>Receitas (Entradas)</button>
+        <button className={`tab ${typeFilter === 'despesa' ? 'active' : ''}`} onClick={() => setTypeFilter('despesa')}>Despesas (Saídas)</button>
       </div>
 
       <div className="filter-bar">
         <div className="table-search">
           <FiSearch className="table-search__icon" />
-          <input placeholder="Buscar transações..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder="Buscar transações, contas de luz, compras de insumos..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -141,36 +141,36 @@ export default function FinanceiroPage() {
               {filtered.map(t => (
                 <tr key={t.id}>
                   <td>{formatDate(t.date)}</td>
-                  <td><span className={`badge ${t.type === 'entrada' ? 'badge--success' : 'badge--danger'}`}>{t.type === 'entrada' ? 'Entrada' : 'Saída'}</span></td>
-                  <td>{t.category}</td>
-                  <td style={{ fontSize: 'var(--font-sm)' }}>{t.description}</td>
-                  <td style={{ fontWeight: 700, color: t.type === 'entrada' ? 'var(--success-600)' : 'var(--danger-500)' }}>{formatCurrency(t.value)}</td>
+                  <td><span className={`badge ${t.type === 'receita' ? 'badge--success' : 'badge--danger'}`}>{t.type === 'receita' ? 'Receita' : 'Despesa'}</span></td>
+                  <td><span className="badge badge--neutral">{t.category}</span></td>
+                  <td style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{t.description}</td>
+                  <td style={{ fontWeight: 800, color: t.type === 'receita' ? 'var(--success-600)' : 'var(--danger-500)' }}>{formatCurrency(t.value)}</td>
                   <td><button className="btn btn--danger btn--sm" onClick={() => handleDelete(t.id)}><FiTrash2 /></button></td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={6} className="table-empty">Nenhuma transação encontrada</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={6} className="table-empty">Nenhuma transação financeira encontrada</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nova Transação"
-        footer={<><button className="btn btn--secondary" onClick={() => setModalOpen(false)}>Cancelar</button><button className="btn btn--primary" onClick={handleCreate}>Criar</button></>}>
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Lançar Transação / DRE"
+        footer={<><button className="btn btn--secondary" onClick={() => setModalOpen(false)}>Cancelar</button><button className="btn btn--primary" onClick={handleCreate}>Lançar</button></>}>
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Tipo</label>
+            <label className="form-label">Tipo de Movimentação</label>
             <select className="form-select" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
-              <option value="entrada">Entrada</option><option value="saida">Saída</option>
+              <option value="receita">Receita (Entrada livre)</option><option value="despesa">Despesa (Caixa/Gasto)</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Categoria</label>
-            <input className="form-input" value={form.category} onChange={e => setForm({...form, category: e.target.value})} placeholder="Ex: Serviço, Aluguel" />
+            <input className="form-input" value={form.category} onChange={e => setForm({...form, category: e.target.value})} placeholder="Ex: Insumos (Arroz, Feijão), Água" />
           </div>
         </div>
         <div className="form-group">
           <label className="form-label">Descrição</label>
-          <input className="form-input" value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Descrição" />
+          <input className="form-input" value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Detalhe do gasto ou ganho extra" />
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -178,7 +178,7 @@ export default function FinanceiroPage() {
             <input className="form-input" type="number" step="0.01" value={form.value} onChange={e => setForm({...form, value: parseFloat(e.target.value) || 0})} />
           </div>
           <div className="form-group">
-            <label className="form-label">Data</label>
+            <label className="form-label">Data de Competência</label>
             <input className="form-input" type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
           </div>
         </div>
