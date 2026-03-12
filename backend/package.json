@@ -1,0 +1,25 @@
+{
+  "name": "lojinha-do-ze-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Lojinha do Zé management system",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/schema.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "hono": "^4.12.7",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.17"
+  }
+}
