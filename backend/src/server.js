@@ -7,12 +7,11 @@ import { authMiddleware, adminOnly } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import productsRoutes from './routes/products.js';
 import customersRoutes from './routes/customers.js';
-import servicesRoutes from './routes/services.js';
-import paymentsRoutes from './routes/payments.js';
 import transactionsRoutes from './routes/transactions.js';
 import reportsRoutes from './routes/reports.js';
 import catalogRoutes from './routes/catalog.js';
 import ordersRoutes from './routes/orders.js';
+import uploadRoutes from './routes/upload.js';
 
 const app = new Hono();
 
@@ -24,6 +23,12 @@ app.get('/api/health', (c) => {
   return c.json({ status: 'ok', message: 'Lojinha do Zé API' });
 });
 
+// Global Error Handler to avoid leaking internal DB data
+app.onError((err, c) => {
+  console.error('Unhandled Server Error:', err);
+  return c.json({ error: 'Erro interno no Servidor' }, 500);
+});
+
 // Public routes (no auth)
 app.route('/api/catalog', catalogRoutes);
 
@@ -31,11 +36,10 @@ app.route('/api/catalog', catalogRoutes);
 app.route('/api/auth', authRoutes);
 app.route('/api/products', productsRoutes);
 app.route('/api/customers', customersRoutes);
-app.route('/api/services', servicesRoutes);
-app.route('/api/payments', paymentsRoutes);
 app.route('/api/transactions', transactionsRoutes);
 app.route('/api/reports', reportsRoutes);
 app.route('/api/orders', ordersRoutes);
+app.route('/api/upload', uploadRoutes);
 
 // User profile update
 import pool from './db.js';
@@ -61,85 +65,75 @@ app.put('/api/profile', authMiddleware, async (c) => {
 // Dashboard data
 app.get('/api/dashboard', authMiddleware, adminOnly, async (c) => {
   try {
-    // Current month dates
     const now = new Date();
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, '0')} 23:59:59`;
 
-    // Month revenue
+    // Month revenue (receita)
     const { rows: revRow } = await pool.query(
-      "SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type='entrada' AND date BETWEEN $1 AND $2",
+      "SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type='receita' AND date BETWEEN $1 AND $2",
       [monthStart, monthEnd]
     );
 
-    // Month expenses
+    // Month expenses (despesa)
     const { rows: expRow } = await pool.query(
-      "SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type='saida' AND date BETWEEN $1 AND $2",
+      "SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type='despesa' AND date BETWEEN $1 AND $2",
       [monthStart, monthEnd]
     );
 
-    // Active services
+    // Active orders (em_preparo, recebido, saiu_entrega)
     const { rows: activeRow } = await pool.query(
-      "SELECT COUNT(*) FROM services WHERE status = 'em_andamento'"
+      "SELECT COUNT(*) FROM orders WHERE status IN ('recebido', 'em_preparo', 'saiu_entrega')"
     );
 
-    // Pending payments total
-    const { rows: pendingRow } = await pool.query(
-      "SELECT COALESCE(SUM(remaining_value),0) as total FROM payments WHERE status != 'pago'"
+    // Total completed sales (concluido)
+    const { rows: salesRow } = await pool.query(
+      "SELECT COUNT(*) FROM orders WHERE status = 'concluido'"
     );
 
-    // Low stock products
+    // Low stock
     const { rows: lowStock } = await pool.query(
       'SELECT * FROM products WHERE quantity <= min_stock ORDER BY quantity ASC'
     );
 
-    // Total completed sales
-    const { rows: salesRow } = await pool.query(
-      "SELECT COUNT(*) FROM payments WHERE status = 'pago'"
+    // Recent orders
+    const { rows: recentOrders } = await pool.query(
+      'SELECT * FROM orders ORDER BY created_at DESC LIMIT 5'
     );
 
-    // Recent services
-    const { rows: recentServices } = await pool.query(
-      'SELECT * FROM services ORDER BY created_at DESC LIMIT 5'
-    );
-
-    // Chart data: daily transactions for current month
+    // Chart data
     const { rows: dailyTx } = await pool.query(
-      `SELECT date, type, SUM(value) as total FROM transactions
-       WHERE date BETWEEN $1 AND $2 GROUP BY date, type ORDER BY date`,
+      `SELECT DATE(date) as day_date, type, SUM(value) as total FROM transactions
+       WHERE date BETWEEN $1 AND $2 GROUP BY DATE(date), type ORDER BY DATE(date)`,
       [monthStart, monthEnd]
+    );
+
+    const { rows: catData } = await pool.query(
+      `SELECT category as name, COUNT(*) as value FROM products GROUP BY category`
     );
 
     const chartData = {};
     dailyTx.forEach(row => {
-      const day = new Date(row.date).getDate().toString();
+      const day = new Date(row.day_date).toISOString().split('T')[0];
       if (!chartData[day]) chartData[day] = { day, receita: 0, despesa: 0 };
-      if (row.type === 'entrada') chartData[day].receita = parseFloat(row.total);
+      if (row.type === 'receita') chartData[day].receita = parseFloat(row.total);
       else chartData[day].despesa = parseFloat(row.total);
     });
-
-    // Revenue by category
-    const { rows: catData } = await pool.query(
-      `SELECT category as name, SUM(value) as value FROM transactions
-       WHERE type='entrada' AND date BETWEEN $1 AND $2 GROUP BY category`,
-      [monthStart, monthEnd]
-    );
 
     return c.json({
       monthRevenue: parseFloat(revRow[0].total),
       monthExpenses: parseFloat(expRow[0].total),
       profit: parseFloat(revRow[0].total) - parseFloat(expRow[0].total),
-      activeServices: parseInt(activeRow[0].count),
-      pendingTotal: parseFloat(pendingRow[0].total),
-      lowStock,
+      activeOrders: parseInt(activeRow[0].count),
       totalSales: parseInt(salesRow[0].count),
-      recentServices,
+      lowStock,
+      recentOrders,
       chartData: Object.values(chartData),
       categoryChart: catData.map(c => ({ name: c.name, value: parseFloat(c.value) })),
     });
   } catch (err) {
-    console.error('Dashboard GET error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+    console.error('Dashboard error:', err);
+    return c.json({ error: 'Erro interno no Dashboard' }, 500);
   }
 });
 

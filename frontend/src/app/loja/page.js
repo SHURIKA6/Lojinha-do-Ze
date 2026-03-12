@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getCatalog, createOrder, formatCurrency } from '@/lib/api';
 import Modal from '@/components/Modal';
 import dynamic2 from 'next/dynamic';
-import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiX, FiSearch, FiPhone, FiUser, FiCheckCircle, FiPackage, FiMapPin, FiEdit3 } from 'react-icons/fi';
+import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiX, FiSearch, FiPhone, FiUser, FiCheckCircle, FiPackage, FiMapPin, FiEdit3, FiTruck, FiShoppingBag } from 'react-icons/fi';
 
 const AddressPicker = dynamic2(() => import('@/components/AddressPicker'), { ssr: false });
 
@@ -23,6 +23,7 @@ export default function LojaPage() {
   const [customerForm, setCustomerForm] = useState({ name: '', phone: '', notes: '' });
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCoords, setCustomerCoords] = useState(null);
+  const [deliveryType, setDeliveryType] = useState('entrega');
   const [paymentMethod, setPaymentMethod] = useState('pix');
   const [isRegistered, setIsRegistered] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -105,13 +106,17 @@ export default function LojaPage() {
     let msg = `🛒 *NOVO PEDIDO #${order.id}*\n\n`;
     msg += `👤 *Cliente:* ${order.customer_name}\n`;
     msg += `📱 *Telefone:* ${order.customer_phone}\n`;
+    msg += `🚚 *Modalidade:* ${deliveryType === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
     msg += `💳 *Pagamento:* ${methodLabel}\n\n`;
     msg += `📦 *Itens:*\n`;
     items.forEach(item => {
       msg += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2)}\n`;
     });
-    msg += `\n💰 *Total: R$ ${parseFloat(order.total).toFixed(2)}*\n`;
-    if (customerAddress) msg += `\n📍 *Endereço:* ${customerAddress}\n`;
+    if (deliveryType === 'entrega') {
+      msg += `  • Taxa de Entrega — R$ 5.00\n`;
+    }
+    msg += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2)}*\n`;
+    if (deliveryType === 'entrega' && customerAddress) msg += `\n📍 *Endereço:* ${customerAddress}\n`;
     if (order.notes) msg += `\n📝 *Obs:* ${order.notes}`;
     const url = `https://wa.me/${ZE_PHONE}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
@@ -122,7 +127,7 @@ export default function LojaPage() {
       setError('Nome e telefone são obrigatórios');
       return;
     }
-    if (!customerAddress.trim()) {
+    if (deliveryType === 'entrega' && !customerAddress.trim()) {
       setError('Endereço de entrega é obrigatório');
       return;
     }
@@ -146,7 +151,10 @@ export default function LojaPage() {
         customer_name: customerForm.name,
         customer_phone: customerForm.phone,
         items: orderItems,
-        notes: customerForm.notes + (customerForm.notes ? ' | ' : '') + 'Pagamento: ' + (paymentMethod === 'pix' ? 'PIX' : 'Maquininha na entrega'),
+        delivery_type: deliveryType,
+        address: customerAddress,
+        payment_method: paymentMethod,
+        notes: customerForm.notes, // API and WhatsApp will handle payment notes
       });
       setOrderResult({ ...result, _paymentMethod: paymentMethod });
       // Send WhatsApp comprovante to Zé Paulo
@@ -175,10 +183,10 @@ export default function LojaPage() {
       <header className="loja-header">
         <div className="loja-header__inner">
           <div className="loja-header__brand">
-            <div className="loja-header__logo">LZ</div>
+            <div className="loja-header__logo">ZÉ</div>
             <div>
-              <h1 className="loja-header__title">Lojinha do Zé</h1>
-              <span className="loja-header__subtitle">Peças e Acessórios</span>
+              <h1 className="loja-header__title">Marmitas do Zé</h1>
+              <span className="loja-header__subtitle">Comida Caseira Quentinha</span>
             </div>
           </div>
           <div className="loja-header__search">
@@ -364,9 +372,21 @@ export default function LojaPage() {
                 <strong>{formatCurrency(item.price * item.quantity)}</strong>
               </div>
             ))}
-            <div style={{ borderTop: '1px solid var(--gray-200)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-              <span>Total</span>
-              <span style={{ color: 'var(--primary-600)', fontSize: 'var(--font-lg)' }}>{formatCurrency(cartTotal)}</span>
+            <div style={{ borderTop: '1px solid var(--gray-200)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
+              <span>Subtotal</span>
+              <span>{formatCurrency(cartTotal)}</span>
+            </div>
+            {deliveryType === 'entrega' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-sm)', color: 'var(--gray-600)', marginTop: 'var(--space-1)' }}>
+                <span>Taxa de Entrega</span>
+                <span>{formatCurrency(5)}</span>
+              </div>
+            )}
+            <div style={{ borderTop: '1px solid var(--gray-200)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+              <span>Total a Pagar</span>
+              <span style={{ color: 'var(--primary-600)', fontSize: 'var(--font-lg)' }}>
+                {formatCurrency(deliveryType === 'entrega' ? cartTotal + 5 : cartTotal)}
+              </span>
             </div>
           </div>
 
@@ -395,7 +415,24 @@ export default function LojaPage() {
                 <label className="form-label"><FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />Telefone / WhatsApp *</label>
                 <input className="form-input" value={customerForm.phone} onChange={e => setCustomerForm({...customerForm, phone: e.target.value})} placeholder="(00) 00000-0000" />
               </div>
-              <AddressPicker address={customerAddress} onAddressChange={setCustomerAddress} coordinates={customerCoords} onCoordinatesChange={setCustomerCoords} />
+              <div className="form-group">
+                <label className="form-label">🚚 Como deseja receber? *</label>
+                <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  <button type="button" className={`loja-payment-option ${deliveryType === 'entrega' ? 'active' : ''}`} onClick={() => setDeliveryType('entrega')}>
+                    <span style={{ fontSize: '1.5rem' }}>🛵</span>
+                    <strong>Entrega</strong>
+                    <span style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)' }}>+ R$ 5,00</span>
+                  </button>
+                  <button type="button" className={`loja-payment-option ${deliveryType === 'retirada' ? 'active' : ''}`} onClick={() => setDeliveryType('retirada')}>
+                    <span style={{ fontSize: '1.5rem' }}>🏪</span>
+                    <strong>Retirada</strong>
+                    <span style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)' }}>Sem taxa</span>
+                  </button>
+                </div>
+              </div>
+              {deliveryType === 'entrega' && (
+                <AddressPicker address={customerAddress} onAddressChange={setCustomerAddress} coordinates={customerCoords} onCoordinatesChange={setCustomerCoords} />
+              )}
             </>
           )}
 

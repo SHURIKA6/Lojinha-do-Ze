@@ -1,8 +1,23 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 import pool from '../db.js';
+import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
 const router = new Hono();
+
+const customerSchema = z.object({
+  name: z.string().min(2, 'Nome é obrigatório'),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  cpf: z.string().optional(),
+  address: z.string().optional(),
+  notes: z.string().optional()
+});
+
+// Securing all customer routes (Only admins can view or modify customer data via this endpoint)
+router.use('/*', authMiddleware, adminOnly);
 
 // GET /api/customers
 router.get('/', async (c) => {
@@ -32,9 +47,11 @@ router.get('/:id', async (c) => {
 });
 
 // POST /api/customers
-router.post('/', async (c) => {
+router.post('/', zValidator('json', customerSchema, (result, c) => {
+  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
+}), async (c) => {
   try {
-    const { name, email, phone, cpf, address, notes } = await c.req.json();
+    const { name, email, phone, cpf, address, notes } = c.req.valid('json');
     
     // Generate a secure random password if none is provided during registration
     const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
@@ -42,8 +59,8 @@ router.post('/', async (c) => {
     
     const avatar = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     const { rows } = await pool.query(
-      `INSERT INTO users (name, email, password, role, phone, cpf, address, notes, avatar)
-       VALUES ($1, $2, $3, 'customer', $4, $5, $6, $7, $8) RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
+      `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
+       VALUES ($1, $2, $3, true, 'customer', $4, $5, $6, $7, $8) RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
       [name, email || '', password, phone || '', cpf || '', address || '', notes || '', avatar]
     );
     return c.json(rows[0], 201);

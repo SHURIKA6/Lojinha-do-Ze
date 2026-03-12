@@ -6,9 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FiLogOut } from 'react-icons/fi';
 
 const navLinks = [
-  { href: '/cliente', label: 'Início' },
-  { href: '/cliente/servicos', label: 'Meus Serviços' },
-  { href: '/cliente/pagamentos', label: 'Pagamentos' },
+  { href: '/cliente', label: 'Meus Pedidos' },
   { href: '/cliente/perfil', label: 'Meu Perfil' },
 ];
 
@@ -40,8 +38,8 @@ export default function ClienteLayout({ children }) {
     <div>
       <div className="customer-topbar">
         <div className="customer-topbar__brand">
-          <div className="customer-topbar__logo">LZ</div>
-          <span className="customer-topbar__name">Lojinha do Zé</span>
+          <div className="customer-topbar__logo">ZÉ</div>
+          <span className="customer-topbar__name">Marmitas do Zé</span>
         </div>
         <nav className="customer-topbar__nav">
           {navLinks.map(link => (
