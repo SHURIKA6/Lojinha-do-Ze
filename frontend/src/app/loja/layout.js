@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Lojinha do Zé',
-  description: 'Suprimentos Fitoterápicos e Cosméticos',
+  title: 'Marmitas do Zé',
+  description: 'Peça sua marmita quentinha online!',
 };
 
 export default function LojaLayout({ children }) {
