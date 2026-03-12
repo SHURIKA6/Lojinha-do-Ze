@@ -183,10 +183,10 @@ export default function LojaPage() {
       <header className="loja-header">
         <div className="loja-header__inner">
           <div className="loja-header__brand">
-            <div className="loja-header__logo">ZÉ</div>
+            <div className="loja-header__logo">LZ</div>
             <div>
-              <h1 className="loja-header__title">Marmitas do Zé</h1>
-              <span className="loja-header__subtitle">Comida Caseira Quentinha</span>
+              <h1 className="loja-header__title">Lojinha do Zé</h1>
+              <span className="loja-header__subtitle">Produtos Fitoterápicos e Naturais</span>
             </div>
           </div>
           <div className="loja-header__search">

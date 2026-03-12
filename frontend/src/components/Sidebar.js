@@ -49,10 +49,9 @@ export default function Sidebar() {
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar__brand">
           <div className="sidebar__logo">ZÉ</div>
-          <div className="sidebar__brand-text">
-            <div className="sidebar__brand-name">Marmitas do Zé</div>
-            <div className="sidebar__brand-sub">Sistema de Gestão</div>
-          </div>
+          <div className="sidebar__brand-logo">LZ</div>
+          <div className="sidebar__brand-name">Lojinha do Zé</div>
+          <div className="sidebar__brand-sub">Sistema de Gestão</div>
         </div>
 
         <nav className="sidebar__nav">
