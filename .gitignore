@@ -121,4 +121,6 @@ Thumbs.db
 
 # Wrangler
 .wrangler/
+.dev.vars
+out.log
 
