@@ -36,9 +36,9 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card animate-fadeIn">
         <div className="login-card__header">
-          <div className="login-card__logo">ZÉ</div>
+          <div className="login-card__logo">LZ</div>
           <h1 className="login-card__title">Lojinha do Zé</h1>
-          <p className="login-card__subtitle">Painel do Tio</p>
+          <p className="login-card__subtitle">Gestão de Produtos Fitoterápicos</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-card__form">

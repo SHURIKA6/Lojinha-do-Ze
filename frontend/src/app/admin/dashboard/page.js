@@ -114,7 +114,7 @@ export default function DashboardPage() {
               <tbody>
                 {data.recentOrders && data.recentOrders.map(o => (
                   <tr key={o.id}>
-                    <td style={{ fontWeight: 600 }}>{o.customer_name || 'Marmita Avulsa'}</td>
+                    <td style={{ fontWeight: 600 }}>{o.customer_name || 'Cliente Avulso'}</td>
                     <td style={{ fontSize: 'var(--font-sm)' }}>{o.delivery_type === 'retirada' ? '🏪 Retirada' : '🛵 Entrega'}</td>
                     <td><span className={`badge badge--${getStatusVariant(o.status)}`}>{getStatusLabel(o.status)}</span></td>
                     <td style={{ fontWeight: 600 }}>{formatCurrency(o.total)}</td>

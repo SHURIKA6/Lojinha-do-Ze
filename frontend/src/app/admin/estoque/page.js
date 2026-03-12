@@ -5,7 +5,7 @@ import { getProducts, createProduct, updateProduct, deleteProduct, formatCurrenc
 import Modal from '@/components/Modal';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPackage, FiAlertTriangle, FiUpload, FiImage } from 'react-icons/fi';
 
-const categories = ['Marmitas', 'Bebidas', 'Sobremesas', 'Porções', 'Outros'];
+const categories = ['Cápsulas', 'Chás', 'Tinturas', 'Cremes', 'Cosméticos', 'Outros'];
 
 export default function EstoquePage() {
   const [products, setProducts] = useState([]);
@@ -16,7 +16,7 @@ export default function EstoquePage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
-    code: '', name: '', description: '', photo: '', category: 'Marmitas', quantity: 999, min_stock: 0,
+    code: '', name: '', description: '', photo: '', category: 'Cápsulas', quantity: 999, min_stock: 0,
     cost_price: 0, sale_price: 0, supplier: ''
   });
 
@@ -43,7 +43,7 @@ export default function EstoquePage() {
 
   const openNew = () => {
     setEditingProduct(null);
-    setForm({ code: '', name: '', description: '', photo: '', category: 'Marmitas', quantity: 999, min_stock: 0, cost_price: 0, sale_price: 0, supplier: '' });
+    setForm({ code: '', name: '', description: '', photo: '', category: 'Cápsulas', quantity: 999, min_stock: 0, cost_price: 0, sale_price: 0, supplier: '' });
     setModalOpen(true);
   };
 

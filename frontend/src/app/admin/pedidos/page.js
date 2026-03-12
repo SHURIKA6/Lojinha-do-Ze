@@ -40,9 +40,9 @@ export default function PedidosPage() {
   };
 
   const getActionLabel = (status, deliveryType) => {
-    if (status === 'novo' || status === 'recebido') return 'Começar Preparo';
+    if (status === 'novo' || status === 'recebido') return 'Preparar Envio';
     if (status === 'em_preparo') return deliveryType === 'retirada' ? 'Finalizar Retirada' : 'Saiu para Entrega';
-    if (status === 'saiu_entrega') return 'Avisar Entrega / Concluir';
+    if (status === 'saiu_entrega') return 'Confirmar Entrega / Concluir';
     return null;
   };
 
@@ -60,8 +60,8 @@ export default function PedidosPage() {
     <div className="animate-fadeIn">
       <div className="page-header">
         <div>
-          <h1>Cozinha e Despacho</h1>
-          <p className="page-header__subtitle">{orders.length} pedidos no total • {activeOrdersCount} ativos agora</p>
+          <h1>Pedidos e Logística</h1>
+          <p className="page-header__subtitle">{orders.length} pedidos no total • {activeOrdersCount} pendentes agora</p>
         </div>
       </div>
 

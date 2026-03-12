@@ -34,8 +34,8 @@ export default function ClienteDashboard() {
   return (
     <div className="animate-fadeIn">
       <div style={{ marginBottom: 'var(--space-8)' }}>
-        <h1 style={{ fontSize: 'var(--font-2xl)', marginBottom: 'var(--space-1)' }}>Olá, {user?.name?.split(' ')[0]}! 👋</h1>
-        <p style={{ color: 'var(--gray-500)' }}>Acompanhe o status das suas marmitas</p>
+        <h1>Meus Pedidos</h1>
+        <p style={{ color: 'var(--gray-500)' }}>Acompanhe o status das suas compras</p>
       </div>
 
       <div className="grid grid-4" style={{ marginBottom: 'var(--space-8)' }}>
