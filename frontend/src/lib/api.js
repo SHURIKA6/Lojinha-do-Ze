@@ -3,7 +3,7 @@
    Replaces localStorage db.js with HTTP calls to backend
    ============================================ */
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
 
 // ============================================
 // Token Management
