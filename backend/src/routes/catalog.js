@@ -42,7 +42,7 @@ router.get('/', async (c) => {
       total: rows.length,
     });
   } catch (err) {
-    console.error('Catalog GET error:', err.message);
+    console.error('Catalog GET error:', err.message, err.stack);
     return c.json({ error: 'Erro interno no Servidor' }, 500);
   }
 });
@@ -86,11 +86,14 @@ router.post('/orders', orderLimiter, zValidator('json', orderSchema, (result, c)
 
     const total = subtotal + delivery_fee;
 
+    const { rows: userFind } = await client.query('SELECT id FROM users WHERE phone = $1', [customer_phone]);
+    const customer_id = userFind.length > 0 ? userFind[0].id : null;
+
     // Create order
     const { rows: orderRows } = await client.query(
-      `INSERT INTO orders (customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [customer_name, customer_phone, JSON.stringify(enrichedItems), subtotal, delivery_fee, total, delivery_type, address || '', payment_method || '', notes || '']
+      `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [customer_id, customer_name, customer_phone, JSON.stringify(enrichedItems), subtotal, delivery_fee, total, delivery_type, address || '', payment_method || '', notes || '']
     );
 
     // Deduct stock for each item using atomic operations to prevent Race Conditions

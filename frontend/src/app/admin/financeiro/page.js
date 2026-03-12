@@ -145,7 +145,7 @@ export default function FinanceiroPage() {
                   <td><span className="badge badge--neutral">{t.category}</span></td>
                   <td style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{t.description}</td>
                   <td style={{ fontWeight: 800, color: t.type === 'receita' ? 'var(--success-600)' : 'var(--danger-500)' }}>{formatCurrency(t.value)}</td>
-                  <td><button className="btn btn--danger btn--sm" onClick={() => handleDelete(t.id)}><FiTrash2 /></button></td>
+                  <td><button className="btn btn--danger btn--sm" aria-label="Excluir transação" onClick={() => handleDelete(t.id)}><FiTrash2 /></button></td>
                 </tr>
               ))}
               {filtered.length === 0 && <tr><td colSpan={6} className="table-empty">Nenhuma transação financeira encontrada</td></tr>}

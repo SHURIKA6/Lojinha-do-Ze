@@ -139,7 +139,7 @@ export default function PedidosPage() {
                     {actionLabel}
                   </button>
                 ) : (
-                  <button className="btn btn--danger btn--sm" style={{ alignSelf: 'stretch' }} onClick={() => handleDelete(order.id)} title="Excluir"><FiTrash2 /></button>
+                  <button className="btn btn--danger btn--sm" style={{ alignSelf: 'stretch' }} aria-label="Excluir pedido" onClick={() => handleDelete(order.id)} title="Excluir"><FiTrash2 /></button>
                 )}
               </div>
             </div>

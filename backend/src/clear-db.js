@@ -3,6 +3,18 @@ const pool = require('./db');
 async function clearAllData() {
   console.log('🗑️  Limpando todos os dados do banco...\n');
 
+  if (process.env.NODE_ENV === 'production' && !process.argv.includes('--force')) {
+    console.error('❌ ERRO CRÍTICO: Tentativa de limpar banco de PRODUÇÃO sem flag --force.');
+    console.error('   Operação abortada para sua segurança.');
+    process.exit(1);
+  }
+
+  if (process.env.NODE_ENV === 'production' && !process.argv.includes('--force')) {
+    console.error('❌ ERRO CRÍTICO: Tentativa de limpar banco de PRODUÇÃO sem flag --force.');
+    console.error('   Operação abortada para sua segurança.');
+    process.exit(1);
+  }
+
   try {
     // Disable FK constraints temporarily and truncate all tables
     await pool.query(`

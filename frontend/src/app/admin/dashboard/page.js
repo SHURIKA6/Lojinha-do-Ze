@@ -2,25 +2,44 @@
 
 import { useState, useEffect } from 'react';
 import { getDashboard, formatCurrency, formatDate, getStatusLabel, getStatusVariant } from '@/lib/api';
-import { FiDollarSign, FiShoppingBag, FiTool, FiAlertCircle, FiTrendingUp, FiTrendingDown, FiPackage } from 'react-icons/fi';
+import { FiDollarSign, FiShoppingBag, FiTool, FiAlertCircle, FiTrendingUp, FiTrendingDown, FiPackage, FiBarChart2, FiPieChart } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-
-const COLORS = ['#ea580c', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']; // orange as first color
+import { CHART_COLORS } from '@/styles/theme';
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     getDashboard()
       .then(d => setData(d))
-      .catch(err => console.error(err))
+      .catch(err => {
+        console.error(err);
+        setError('Não foi possível carregar os dados do dashboard. Tente novamente.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading || !data) {
-    return <div className="animate-fadeIn" style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>Carregando dashboard...</div>;
+  if (loading) {
+    return (
+      <div className="animate-fadeIn" style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>
+        <div className="loja-loading__spinner" style={{ margin: '0 auto 10px', width: 24, height: 24, border: '3px solid var(--gray-200)', borderTopColor: 'var(--primary-500)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        Carregando dashboard...
+      </div>
+    );
   }
+
+  if (error) {
+    return (
+      <div className="animate-fadeIn" style={{ padding: '2rem', textAlign: 'center', color: 'var(--danger-500)' }}>
+        <FiAlertCircle style={{ fontSize: '2rem', marginBottom: '1rem' }} />
+        <p>{error}</p>
+        <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => window.location.reload()}>Recarregar Página</button>
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   return (
     <div className="animate-fadeIn">
@@ -74,13 +93,16 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
                   <XAxis dataKey="day" fontSize={12} />
                   <YAxis fontSize={12} />
-                  <Tooltip formatter={(val) => formatCurrency(val)} />
+                  <Tooltip formatter={(val) => formatCurrency(val || 0)} />
                   <Bar dataKey="receita" fill="var(--success-500)" name="Receita" radius={[4,4,0,0]} />
                   <Bar dataKey="despesa" fill="var(--danger-400)" name="Despesa" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Sem dados para o mês</div>
+              <div style={{ height: 250, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)', gap: '0.5rem' }}>
+                <FiBarChart2 style={{ fontSize: '2rem', opacity: 0.5 }} />
+                <span>Sem dados para o mês</span>
+              </div>
             )}
           </div>
         </div>
@@ -92,13 +114,16 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={data.categoryChart} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                    {data.categoryChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    {data.categoryChart.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Sem dados de catálogo</div>
+              <div style={{ height: 250, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)', gap: '0.5rem' }}>
+                <FiPieChart style={{ fontSize: '2rem', opacity: 0.5 }} />
+                <span>Sem dados de catálogo</span>
+              </div>
             )}
           </div>
         </div>

@@ -93,9 +93,9 @@ export default function ClientesPage() {
                   <td style={{ fontSize: 'var(--font-sm)' }}>{formatDate(c.created_at)}</td>
                   <td>
                     <div className="table-actions">
-                      <button className="btn btn--secondary btn--sm" onClick={() => openDetail(c)}><FiEye /></button>
-                      <button className="btn btn--secondary btn--sm" onClick={() => openEdit(c)}><FiEdit2 /></button>
-                      <button className="btn btn--danger btn--sm" onClick={() => handleDelete(c.id)}><FiTrash2 /></button>
+                      <button className="btn btn--secondary btn--sm" aria-label="Ver detalhes do cliente" onClick={() => openDetail(c)}><FiEye /></button>
+                      <button className="btn btn--secondary btn--sm" aria-label="Editar cliente" onClick={() => openEdit(c)}><FiEdit2 /></button>
+                      <button className="btn btn--danger btn--sm" aria-label="Excluir cliente" onClick={() => handleDelete(c.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>

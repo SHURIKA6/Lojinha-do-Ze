@@ -63,7 +63,9 @@ router.post('/', zValidator('json', customerSchema, (result, c) => {
        VALUES ($1, $2, $3, true, 'customer', $4, $5, $6, $7, $8) RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
       [name, email || '', password, phone || '', cpf || '', address || '', notes || '', avatar]
     );
-    return c.json(rows[0], 201);
+    const createdUser = rows[0];
+    createdUser.generatedPassword = tempPassword;
+    return c.json(createdUser, 201);
   } catch (err) {
     console.error('Customer POST error:', err.message);
     return c.json({ error: 'Erro interno no Servidor' }, 500);
