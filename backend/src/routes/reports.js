@@ -13,8 +13,8 @@ router.get('/:type', async (c) => {
 
     switch (type) {
       case 'vendas':
-        const { rows: services } = await pool.query('SELECT * FROM services ORDER BY created_at DESC');
-        data = services;
+        const { rows: orders } = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+        data = orders;
         break;
 
       case 'estoque':
@@ -26,20 +26,19 @@ router.get('/:type', async (c) => {
         const { rows: customers } = await pool.query(
           "SELECT id, name, email, phone, cpf, address, avatar, created_at FROM users WHERE role = 'customer' ORDER BY name"
         );
-        // Attach service count
         for (const cust of customers) {
-          const { rows: svcCount } = await pool.query(
-            'SELECT COUNT(*) FROM services WHERE customer_id = $1', [cust.id]
+          const { rows: orderCount } = await pool.query(
+            "SELECT COUNT(*) FROM orders WHERE customer_id = $1 OR customer_phone = $2", [cust.id, cust.phone]
           );
-          cust.service_count = parseInt(svcCount[0].count);
+          cust.order_count = parseInt(orderCount[0].count);
         }
         data = customers;
         break;
 
       case 'financeiro':
         const { rows: transactions } = await pool.query('SELECT * FROM transactions ORDER BY date DESC');
-        const { rows: incomeRow } = await pool.query("SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type = 'entrada'");
-        const { rows: expenseRow } = await pool.query("SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type = 'saida'");
+        const { rows: incomeRow } = await pool.query("SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type = 'receita'");
+        const { rows: expenseRow } = await pool.query("SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type = 'despesa'");
         data = {
           transactions,
           total_income: parseFloat(incomeRow[0].total),
@@ -49,8 +48,13 @@ router.get('/:type', async (c) => {
         break;
 
       case 'inadimplencia':
-        const { rows: pending } = await pool.query("SELECT * FROM payments WHERE status != 'pago' ORDER BY created_at DESC");
-        const { rows: totalRow } = await pool.query("SELECT COALESCE(SUM(remaining_value),0) as total FROM payments WHERE status != 'pago'");
+        // Pedidos pendentes e recebidos que não foram pagos ainda ou com pagamentos em aberto
+        const { rows: pending } = await pool.query(
+          "SELECT * FROM orders WHERE status IN ('recebido', 'pendente') ORDER BY created_at DESC"
+        );
+        const { rows: totalRow } = await pool.query(
+          "SELECT COALESCE(SUM(total),0) as total FROM orders WHERE status IN ('recebido', 'pendente')"
+        );
         data = {
           payments: pending,
           total_pending: parseFloat(totalRow[0].total),

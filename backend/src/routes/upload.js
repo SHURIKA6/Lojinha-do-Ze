@@ -3,11 +3,8 @@ import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
 const router = new Hono();
 
-// Securing upload routes (Only admins can upload images to R2)
-router.use('/*', authMiddleware, adminOnly);
-
 // POST /api/upload
-router.post('/', async (c) => {
+router.post('/', authMiddleware, adminOnly, async (c) => {
   try {
     const body = await c.req.parseBody();
     const file = body['file']; // Expected to be a Blob/File from FormData
@@ -20,8 +17,14 @@ router.post('/', async (c) => {
        return c.json({ error: 'Apenas imagens são permitidas.' }, 400);
     }
 
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      return c.json({ error: 'O arquivo excede o tamanho máximo permitido de 5MB.' }, 400);
+    }
+
     // Gerar um nome único
-    const ext = file.name.split('.').pop();
+    const extRaw = file.name.split('.').pop() || 'bin';
+    const ext = extRaw.replace(/[^a-z0-9]/gi, ''); // sanitization
     const fileName = `products/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
 
     const bucket = c.env.BUCKET;

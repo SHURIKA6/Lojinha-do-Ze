@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getCatalog, createOrder, formatCurrency } from '@/lib/api';
+import { getCatalog, createOrder, formatCurrency, getImageUrl } from '@/lib/api';
 import Modal from '@/components/Modal';
 import dynamic2 from 'next/dynamic';
 import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiX, FiSearch, FiPhone, FiUser, FiCheckCircle, FiPackage, FiMapPin, FiEdit3, FiTruck, FiShoppingBag } from 'react-icons/fi';
@@ -226,7 +226,7 @@ export default function LojaPage() {
               <div key={product.id} className="loja-product" onClick={() => openProductModal(product)}>
                 <div className="loja-product__image" style={{ overflow: 'hidden' }}>
                   {product.photo ? (
-                    <img src={product.photo} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={getImageUrl(product.photo)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <FiPackage />
                   )}
@@ -319,7 +319,7 @@ export default function LojaPage() {
           <div className="loja-product-modal">
             <div className="loja-product-modal__image" style={{ overflow: 'hidden' }}>
               {productModal.photo ? (
-                <img src={productModal.photo} alt={productModal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={getImageUrl(productModal.photo)} alt={productModal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <FiPackage />
               )}

@@ -10,7 +10,7 @@ router.get('/', authMiddleware, async (c) => {
     const status = c.req.query('status');
     
     if (user.role === 'customer') {
-      const { rows } = await pool.query('SELECT * FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC', [user.phone]);
+      const { rows } = await pool.query('SELECT * FROM orders WHERE customer_id = $1 ORDER BY created_at DESC', [user.id]);
       return c.json(rows);
     }
 

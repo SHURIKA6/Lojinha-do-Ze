@@ -4,6 +4,7 @@
    ============================================ */
 
 const API_BASE = 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
+// const API_BASE = 'http://localhost:8787/api';
 
 // ============================================
 // Token Management
@@ -80,6 +81,15 @@ export async function login(email, password) {
   const data = await request('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  });
+  setToken(data.token);
+  return data;
+}
+
+export async function loginPhone(phone) {
+  const data = await request('/auth/phone', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
   });
   setToken(data.token);
   return data;
@@ -247,4 +257,12 @@ export function getStatusVariant(status) {
 export function getPaymentMethodLabel(method) {
   const labels = { pix: 'PIX', cartao: 'Cartão', dinheiro: 'Dinheiro', boleto: 'Boleto', transferencia: 'Transferência' };
   return labels[method] || method || '—';
+}
+
+export function getImageUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  // Make sure we strip /api from API_BASE if the path already starts with /api
+  const base = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
+  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
 }

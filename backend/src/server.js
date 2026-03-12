@@ -18,6 +18,14 @@ const app = new Hono();
 // Middleware
 app.use('*', cors());
 
+import pool from './db.js';
+app.use('*', async (c, next) => {
+  if (c.env && c.env.DATABASE_URL) {
+    pool.init(c.env.DATABASE_URL);
+  }
+  await next();
+});
+
 // Health check
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', message: 'Lojinha do Zé API' });
@@ -42,8 +50,6 @@ app.route('/api/orders', ordersRoutes);
 app.route('/api/upload', uploadRoutes);
 
 // User profile update
-import pool from './db.js';
-
 app.put('/api/profile', authMiddleware, async (c) => {
   try {
     const { name, email, phone, address } = await c.req.json();

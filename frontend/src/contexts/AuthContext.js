@@ -34,6 +34,17 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginWithPhone = async (phone) => {
+    try {
+      const { loginPhone } = await import('@/lib/api');
+      const data = await loginPhone(phone);
+      setUser(data.user);
+      return { success: true, user: data.user };
+    } catch (err) {
+      return { success: false, error: err.message, requireName: err.message.includes('informe seu nome') };
+    }
+  };
+
   const logout = () => {
     apiLogout();
     setUser(null);
@@ -43,7 +54,7 @@ export function AuthProvider({ children }) {
   const isCustomer = user?.role === 'customer';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isCustomer }}>
+    <AuthContext.Provider value={{ user, login, loginWithPhone, logout, loading, isAdmin, isCustomer }}>
       {children}
     </AuthContext.Provider>
   );

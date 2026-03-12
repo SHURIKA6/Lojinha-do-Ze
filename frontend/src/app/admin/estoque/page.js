@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getProducts, createProduct, updateProduct, deleteProduct, formatCurrency, uploadImage } from '@/lib/api';
+import { getProducts, createProduct, updateProduct, deleteProduct, formatCurrency, uploadImage, getImageUrl } from '@/lib/api';
 import Modal from '@/components/Modal';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPackage, FiAlertTriangle, FiUpload, FiImage } from 'react-icons/fi';
 
@@ -132,7 +132,7 @@ export default function EstoquePage() {
                   <td><code style={{ background: 'var(--gray-100)', padding: '2px 6px', borderRadius: '4px', fontSize: 'var(--font-xs)' }}>{p.code}</code></td>
                   <td>
                     <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {p.photo ? <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <FiImage style={{ color: 'var(--gray-400)' }} />}
+                      {p.photo ? <img src={getImageUrl(p.photo)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <FiImage style={{ color: 'var(--gray-400)' }} />}
                     </div>
                   </td>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
@@ -146,8 +146,8 @@ export default function EstoquePage() {
                   <td style={{ fontWeight: 700, color: 'var(--primary-600)' }}>{formatCurrency(p.sale_price)}</td>
                   <td>
                     <div className="table-actions">
-                      <button className="btn btn--secondary btn--sm" onClick={() => openEdit(p)}><FiEdit2 /></button>
-                      <button className="btn btn--danger btn--sm" onClick={() => handleDelete(p.id)}><FiTrash2 /></button>
+                      <button className="btn btn--secondary btn--sm" aria-label="Editar produto" onClick={() => openEdit(p)}><FiEdit2 /></button>
+                      <button className="btn btn--danger btn--sm" aria-label="Excluir produto" onClick={() => handleDelete(p.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -193,7 +193,7 @@ export default function EstoquePage() {
           <label className="form-label">Foto do Produto</label>
           <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
             <div style={{ width: 80, height: 80, borderRadius: 'var(--radius-md)', border: '1px dashed var(--gray-300)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: 'var(--gray-50)' }}>
-              {form.photo ? <img src={form.photo} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <FiImage style={{ fontSize: '1.5rem', color: 'var(--gray-400)' }} />}
+              {form.photo ? <img src={getImageUrl(form.photo)} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <FiImage style={{ fontSize: '1.5rem', color: 'var(--gray-400)' }} />}
             </div>
             <div style={{ flex: 1 }}>
               <label className="btn btn--secondary" style={{ cursor: 'pointer', display: 'inline-flex' }}>

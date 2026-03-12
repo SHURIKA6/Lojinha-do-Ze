@@ -29,24 +29,24 @@ export default function RelatoriosPage() {
     if (!data) return;
     let csv = '', filename = '';
     if (reportType === 'vendas') {
-      csv = 'Cliente,Serviço,Dispositivo,Status,Valor,Data\n';
-      data.forEach(s => { csv += `"${s.customer_name}","${s.description}","${s.device}","${getStatusLabel(s.status)}","${s.value}","${formatDate(s.created_at)}"\n`; });
+      csv = 'Cliente,Telefone,Itens(Json),Status,Total,Data\n';
+      data.forEach(s => { csv += `"${s.customer_name}","${s.customer_phone}","${JSON.stringify(s.items).replace(/"/g, '""')}","${getStatusLabel(s.status)}","${s.total}","${formatDate(s.created_at)}"\n`; });
       filename = 'relatorio_vendas.csv';
     } else if (reportType === 'estoque') {
       csv = 'Código,Produto,Categoria,Estoque,Mínimo,Custo,Venda,Fornecedor\n';
       data.forEach(p => { csv += `"${p.code}","${p.name}","${p.category}",${p.quantity},${p.min_stock},${p.cost_price},${p.sale_price},"${p.supplier}"\n`; });
       filename = 'relatorio_estoque.csv';
     } else if (reportType === 'clientes') {
-      csv = 'Nome,Telefone,Email,CPF,Serviços,Desde\n';
-      data.forEach(c => { csv += `"${c.name}","${c.phone || ''}","${c.email}","${c.cpf || ''}",${c.service_count},"${formatDate(c.created_at)}"\n`; });
+      csv = 'Nome,Telefone,Email,CPF,Pedidos,Desde\n';
+      data.forEach(c => { csv += `"${c.name}","${c.phone || ''}","${c.email}","${c.cpf || ''}",${c.order_count},"${formatDate(c.created_at)}"\n`; });
       filename = 'relatorio_clientes.csv';
     } else if (reportType === 'financeiro') {
       csv = 'Data,Tipo,Categoria,Descrição,Valor\n';
-      data.transactions.forEach(t => { csv += `"${formatDate(t.date)}","${t.type === 'entrada' ? 'Entrada' : 'Saída'}","${t.category}","${t.description}",${t.value}\n`; });
+      data.transactions.forEach(t => { csv += `"${formatDate(t.date)}","${t.type === 'receita' ? 'Receita' : 'Despesa'}","${t.category}","${t.description}",${t.value}\n`; });
       filename = 'relatorio_financeiro.csv';
     } else if (reportType === 'inadimplencia') {
-      csv = 'Cliente,Descrição,Total,Pago,Pendente,Status\n';
-      data.payments.forEach(p => { csv += `"${p.customer_name}","${p.description}",${p.total_value},${p.paid_value},${p.remaining_value},"${getStatusLabel(p.status)}"\n`; });
+      csv = 'PedidoID,Cliente,Telefone,Status,Total\n';
+      data.payments.forEach(p => { csv += `"${p.id}","${p.customer_name}","${p.customer_phone}","${getStatusLabel(p.status)}",${p.total}\n`; });
       filename = 'relatorio_inadimplencia.csv';
     }
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -62,15 +62,17 @@ export default function RelatoriosPage() {
       case 'vendas':
         return (
           <table>
-            <thead><tr><th>Cliente</th><th>Serviço</th><th>Dispositivo</th><th>Status</th><th>Valor</th><th>Data</th></tr></thead>
+            <thead><tr><th>Pedido ID</th><th>Cliente</th><th>Telefone</th><th>Status</th><th>Total</th><th>Data</th></tr></thead>
             <tbody>
               {data.map(s => (
-                <tr key={s.id}><td style={{ fontWeight: 600 }}>{s.customer_name}</td><td>{s.description}</td><td>{s.device}</td>
-                  <td><span className={`badge badge--${s.status === 'concluido' || s.status === 'entregue' ? 'success' : s.status === 'em_andamento' ? 'info' : 'warning'}`}>{getStatusLabel(s.status)}</span></td>
-                  <td style={{ fontWeight: 600 }}>{formatCurrency(s.value)}</td><td>{formatDate(s.created_at)}</td></tr>
+                <tr key={s.id}>
+                  <td>#{s.id}</td><td style={{ fontWeight: 600 }}>{s.customer_name}</td><td>{s.customer_phone}</td>
+                  <td><span className={`badge badge--${s.status === 'concluido' || s.status === 'entregue' ? 'success' : s.status === 'em_andamento' || s.status === 'recebido' ? 'info' : 'warning'}`}>{getStatusLabel(s.status)}</span></td>
+                  <td style={{ fontWeight: 600 }}>{formatCurrency(s.total)}</td><td>{formatDate(s.created_at)}</td>
+                </tr>
               ))}
             </tbody>
-            <tfoot><tr><td colSpan={4} style={{ fontWeight: 700, textAlign: 'right' }}>Total:</td><td style={{ fontWeight: 800 }}>{formatCurrency(data.reduce((s, sv) => s + parseFloat(sv.value), 0))}</td><td></td></tr></tfoot>
+            <tfoot><tr><td colSpan={4} style={{ fontWeight: 700, textAlign: 'right' }}>Total Vendas:</td><td style={{ fontWeight: 800 }}>{formatCurrency(data.reduce((s, sv) => s + parseFloat(sv.total), 0))}</td><td></td></tr></tfoot>
           </table>
         );
       case 'estoque':
@@ -93,11 +95,11 @@ export default function RelatoriosPage() {
       case 'clientes':
         return (
           <table>
-            <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>CPF</th><th>Serviços</th><th>Desde</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>CPF</th><th>Pedidos</th><th>Desde</th></tr></thead>
             <tbody>
               {data.map(c => (
                 <tr key={c.id}><td style={{ fontWeight: 600 }}>{c.name}</td><td>{c.phone}</td><td>{c.email}</td><td>{c.cpf || '—'}</td>
-                  <td><span className="badge badge--info">{c.service_count}</span></td><td>{formatDate(c.created_at)}</td></tr>
+                  <td><span className="badge badge--info">{c.order_count}</span></td><td>{formatDate(c.created_at)}</td></tr>
               ))}
             </tbody>
           </table>
@@ -124,9 +126,9 @@ export default function RelatoriosPage() {
               <tbody>
                 {data.transactions.map(t => (
                   <tr key={t.id}><td>{formatDate(t.date)}</td>
-                    <td><span className={`badge ${t.type === 'entrada' ? 'badge--success' : 'badge--danger'}`}>{t.type === 'entrada' ? 'Entrada' : 'Saída'}</span></td>
+                    <td><span className={`badge ${t.type === 'receita' ? 'badge--success' : 'badge--danger'}`}>{t.type === 'receita' ? 'Receita' : 'Despesa'}</span></td>
                     <td>{t.category}</td><td>{t.description}</td>
-                    <td style={{ fontWeight: 700, color: t.type === 'entrada' ? 'var(--success-600)' : 'var(--danger-500)' }}>{formatCurrency(t.value)}</td></tr>
+                    <td style={{ fontWeight: 700, color: t.type === 'receita' ? 'var(--success-600)' : 'var(--danger-500)' }}>{formatCurrency(t.value)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -140,15 +142,18 @@ export default function RelatoriosPage() {
               <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 800, color: 'var(--danger-500)' }}>{formatCurrency(data.total_pending)}</div>
             </div>
             <table>
-              <thead><tr><th>Cliente</th><th>Descrição</th><th>Total</th><th>Pago</th><th>Pendente</th><th>Status</th></tr></thead>
+              <thead><tr><th>Pedido ID</th><th>Cliente</th><th>Telefone</th><th>Status</th><th>Valor Pedido</th></tr></thead>
               <tbody>
                 {data.payments.map(p => (
-                  <tr key={p.id}><td style={{ fontWeight: 600 }}>{p.customer_name}</td><td>{p.description}</td>
-                    <td>{formatCurrency(p.total_value)}</td><td style={{ color: 'var(--success-600)' }}>{formatCurrency(p.paid_value)}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--danger-500)' }}>{formatCurrency(p.remaining_value)}</td>
-                    <td><span className={`badge badge--${p.status === 'parcial' ? 'warning' : 'danger'}`}>{getStatusLabel(p.status)}</span></td></tr>
+                  <tr key={p.id}>
+                    <td>#{p.id}</td>
+                    <td style={{ fontWeight: 600 }}>{p.customer_name}</td>
+                    <td>{p.customer_phone}</td>
+                    <td><span className={`badge badge--${p.status === 'parcial' ? 'warning' : 'danger'}`}>{getStatusLabel(p.status)}</span></td>
+                    <td style={{ fontWeight: 700, color: 'var(--danger-500)' }}>{formatCurrency(p.total)}</td>
+                  </tr>
                 ))}
-                {data.payments.length === 0 && <tr><td colSpan={6} className="table-empty">Nenhuma inadimplência 🎉</td></tr>}
+                {data.payments.length === 0 && <tr><td colSpan={5} className="table-empty">Nenhuma inadimplência 🎉</td></tr>}
               </tbody>
             </table>
           </div>

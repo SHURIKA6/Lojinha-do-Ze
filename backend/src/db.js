@@ -5,18 +5,14 @@ import { Pool } from '@neondatabase/serverless';
 let lazyPool = null;
 
 const pool = {
-  getPool: () => {
+  init: (url) => {
     if (!lazyPool) {
-      const url = typeof process !== 'undefined' && process.env.DATABASE_URL
-        ? process.env.DATABASE_URL
-        : '';
-        
-      if (!url) {
-        console.warn("CRITICAL: DATABASE_URL is not set");
-      }
-      // Using Pool via WebSockets allows stateful transactions (BEGIN, COMMIT) and returns proper rowCount
+      if (!url) console.warn("CRITICAL: DATABASE_URL is not set");
       lazyPool = new Pool({ connectionString: url });
     }
+  },
+  getPool: () => {
+    if (!lazyPool) throw new Error("Database pool was not initialized");
     return lazyPool;
   },
   query: async (text, params) => {
