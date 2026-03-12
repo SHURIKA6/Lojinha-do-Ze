@@ -3,8 +3,8 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata = {
-  title: 'Lojinha do Zé - Sistema de Gestão',
-  description: 'Sistema completo de gestão para assistência técnica - controle de estoque, finanças, clientes e serviços.',
+  title: 'Lojinha do Zé',
+  description: 'Produtos Fitoterápicos e Cosméticos',
 };
 
 export default function RootLayout({ children }) {
