@@ -3,8 +3,24 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import pool from '../db.js';
 import { orderLimiter } from '../middleware/rateLimit.js';
+import { optionalAuthMiddleware } from '../middleware/auth.js';
+import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize.js';
 
 const router = new Hono();
+
+function mergeOrderItems(items) {
+  const merged = new Map();
+
+  for (const item of items) {
+    const current = merged.get(item.productId) || 0;
+    merged.set(item.productId, current + item.quantity);
+  }
+
+  return Array.from(merged.entries()).map(([productId, quantity]) => ({
+    productId,
+    quantity,
+  }));
+}
 
 const orderItemSchema = z.object({
   productId: z.coerce.number().int().positive('ID de produto inválido'),
@@ -19,6 +35,14 @@ const orderSchema = z.object({
   address: z.string().optional(),
   payment_method: z.string().optional(),
   items: z.array(orderItemSchema).min(1, 'Pedido deve conter ao menos 1 item')
+}).superRefine((data, ctx) => {
+  if (data.delivery_type === 'entrega' && !cleanOptionalString(data.address)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Endereço de entrega é obrigatório',
+      path: ['address'],
+    });
+  }
 });
 
 // GET /api/catalog — Public, no auth required
@@ -48,14 +72,25 @@ router.get('/', async (c) => {
 });
 
 // POST /api/orders — Public, create order (guest checkout)
-router.post('/orders', orderLimiter, zValidator('json', orderSchema, (result, c) => {
+router.post('/orders', optionalAuthMiddleware, orderLimiter, zValidator('json', orderSchema, (result, c) => {
   if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
 }), async (c) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const { customer_name, customer_phone, items, notes, delivery_type, address, payment_method } = c.req.valid('json');
+    const {
+      customer_name,
+      customer_phone,
+      items,
+      notes,
+      delivery_type,
+      address,
+      payment_method,
+    } = c.req.valid('json');
+    const authUser = c.get('user');
+    const normalizedRequestPhone = normalizePhoneDigits(customer_phone);
+    const mergedItems = mergeOrderItems(items);
 
     // Calculate total and validate stock
     let subtotal = 0;
@@ -63,7 +98,7 @@ router.post('/orders', orderLimiter, zValidator('json', orderSchema, (result, c)
     const enrichedItems = [];
     
     // First loop: check product existence and calculate totals, without updating.
-    for (const item of items) {
+    for (const item of mergedItems) {
       const parsedQtd = item.quantity;
 
       const { rows } = await client.query('SELECT id, name, sale_price, quantity FROM products WHERE id = $1', [item.productId]);
@@ -72,6 +107,10 @@ router.post('/orders', orderLimiter, zValidator('json', orderSchema, (result, c)
         return c.json({ error: `Produto ID ${item.productId} não encontrado` }, 400);
       }
       const product = rows[0];
+      if (product.quantity < parsedQtd) {
+        await client.query('ROLLBACK');
+        return c.json({ error: `Estoque insuficiente para ${product.name}` }, 400);
+      }
       
       const itemSubtotal = parseFloat(product.sale_price) * parsedQtd;
       subtotal += itemSubtotal;
@@ -86,14 +125,35 @@ router.post('/orders', orderLimiter, zValidator('json', orderSchema, (result, c)
 
     const total = subtotal + delivery_fee;
 
-    const { rows: userFind } = await client.query('SELECT id FROM users WHERE phone = $1', [customer_phone]);
-    const customer_id = userFind.length > 0 ? userFind[0].id : null;
+    let customer_id = null;
+    if (authUser?.role === 'customer') {
+      const normalizedUserPhone = normalizePhoneDigits(authUser.phone);
+      if (!normalizedUserPhone || normalizedUserPhone !== normalizedRequestPhone) {
+        await client.query('ROLLBACK');
+        return c.json({
+          error: 'Telefone do pedido não corresponde ao cliente autenticado',
+        }, 400);
+      }
+      customer_id = authUser.id;
+    }
 
     // Create order
     const { rows: orderRows } = await client.query(
       `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [customer_id, customer_name, customer_phone, JSON.stringify(enrichedItems), subtotal, delivery_fee, total, delivery_type, address || '', payment_method || '', notes || '']
+      [
+        customer_id,
+        customer_name.trim(),
+        customer_phone.trim(),
+        JSON.stringify(enrichedItems),
+        subtotal,
+        delivery_fee,
+        total,
+        delivery_type,
+        cleanOptionalString(address) || '',
+        cleanOptionalString(payment_method) || '',
+        cleanOptionalString(notes) || '',
+      ]
     );
 
     // Deduct stock for each item using atomic operations to prevent Race Conditions

@@ -58,6 +58,10 @@ export default function LojaPage() {
   }, []);
 
   const allProducts = useMemo(() => catalogData.categories.flatMap(c => c.products), [catalogData]);
+  const stockByProductId = useMemo(
+    () => Object.fromEntries(allProducts.map(product => [product.id, Number(product.quantity) || 0])),
+    [allProducts]
+  );
 
   const filteredProducts = useMemo(() => {
     if (search) {
@@ -67,24 +71,54 @@ export default function LojaPage() {
     return cat ? cat.products : allProducts;
   }, [search, activeCategory, allProducts, catalogData]);
 
+  useEffect(() => {
+    setCart(prev => prev
+      .map(item => {
+        const availableStock = stockByProductId[item.productId] ?? 0;
+        return {
+          ...item,
+          quantity: Math.min(item.quantity, availableStock),
+        };
+      })
+      .filter(item => item.quantity > 0)
+    );
+  }, [stockByProductId]);
+
   const cartTotal = cart.reduce((s, item) => s + item.price * item.quantity, 0);
   const cartCount = cart.reduce((s, item) => s + item.quantity, 0);
+  const checkoutTotal = deliveryType === 'entrega' ? cartTotal + 5 : cartTotal;
+
+  const getAvailableStock = (productId) => stockByProductId[productId] ?? 0;
 
   const addToCart = (product, qty = 1) => {
+    const availableStock = getAvailableStock(product.id);
+    if (availableStock <= 0) return;
+
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
-        return prev.map(item => item.productId === product.id ? { ...item, quantity: item.quantity + qty } : item);
+        const nextQty = Math.min(availableStock, existing.quantity + qty);
+        return prev.map(item => item.productId === product.id ? { ...item, quantity: nextQty } : item);
       }
-      return [...prev, { productId: product.id, name: product.name, price: parseFloat(product.sale_price), quantity: qty }];
+      return [...prev, {
+        productId: product.id,
+        name: product.name,
+        price: parseFloat(product.sale_price),
+        quantity: Math.min(availableStock, qty),
+      }];
     });
   };
 
   const updateCartItem = (productId, qty) => {
+    const availableStock = getAvailableStock(productId);
     if (qty <= 0) {
       setCart(prev => prev.filter(item => item.productId !== productId));
+    } else if (availableStock <= 0) {
+      setCart(prev => prev.filter(item => item.productId !== productId));
     } else {
-      setCart(prev => prev.map(item => item.productId === productId ? { ...item, quantity: qty } : item));
+      setCart(prev => prev.map(item => item.productId === productId
+        ? { ...item, quantity: Math.min(qty, availableStock) }
+        : item));
     }
   };
 
@@ -102,34 +136,42 @@ export default function LojaPage() {
 
   const handleAddFromModal = () => {
     if (productModal) {
-      addToCart(productModal, productQty);
+      addToCart(productModal, Math.min(productQty, getAvailableStock(productModal.id)));
       setProductModal(null);
     }
   };
 
   const sendWhatsAppComprovante = (order, items, method) => {
-    const ZE_PHONE = '5511999999999';
+    const ZE_PHONE = process.env.NEXT_PUBLIC_ZE_PHONE;
+    if (!ZE_PHONE) {
+      console.error('CRITICAL: NEXT_PUBLIC_ZE_PHONE is not defined in environment variables.');
+      return;
+    }
     const methodLabel = method === 'pix' ? 'PIX' : 'Maquininha na entrega';
     let msg = `🛒 *NOVO PEDIDO #${order.id}*\n\n`;
     msg += `👤 *Cliente:* ${order.customer_name}\n`;
     msg += `📱 *Telefone:* ${order.customer_phone}\n`;
-    msg += `🚚 *Modalidade:* ${deliveryType === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
+    msg += `🚚 *Modalidade:* ${order.delivery_type === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
     msg += `💳 *Pagamento:* ${methodLabel}\n\n`;
     msg += `📦 *Itens:*\n`;
     items.forEach(item => {
       msg += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2)}\n`;
     });
-    if (deliveryType === 'entrega') {
+    if (order.delivery_type === 'entrega') {
       msg += `  • Taxa de Entrega — R$ 5.00\n`;
     }
     msg += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2)}*\n`;
-    if (deliveryType === 'entrega' && customerAddress) msg += `\n📍 *Endereço:* ${customerAddress}\n`;
+    if (order.delivery_type === 'entrega' && order.address) msg += `\n📍 *Endereço:* ${order.address}\n`;
     if (order.notes) msg += `\n📝 *Obs:* ${order.notes}`;
     const url = `https://wa.me/${ZE_PHONE}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
 
   const handleCheckout = async () => {
+    if (cart.length === 0) {
+      setError('Adicione ao menos um item ao carrinho');
+      return;
+    }
     if (!customerForm.name.trim() || !customerForm.phone.trim()) {
       setError('Nome e telefone são obrigatórios');
       return;
@@ -140,16 +182,6 @@ export default function LojaPage() {
     }
     setError('');
     setSubmitting(true);
-
-    // Save customer registration for future orders
-    localStorage.setItem('lojinha_customer', JSON.stringify({
-      name: customerForm.name,
-      phone: customerForm.phone,
-      address: customerAddress,
-      coords: customerCoords,
-    }));
-    setIsRegistered(true);
-    setEditingProfile(false);
 
     const orderItems = cart.map(item => ({ productId: item.productId, quantity: item.quantity, name: item.name, price: item.price }));
 
@@ -163,6 +195,14 @@ export default function LojaPage() {
         payment_method: paymentMethod,
         notes: customerForm.notes, // API and WhatsApp will handle payment notes
       });
+      localStorage.setItem('lojinha_customer', JSON.stringify({
+        name: customerForm.name,
+        phone: customerForm.phone,
+        address: customerAddress,
+        coords: customerCoords,
+      }));
+      setIsRegistered(true);
+      setEditingProfile(false);
       setOrderResult({ ...result, _paymentMethod: paymentMethod });
       // Send WhatsApp comprovante to Zé Paulo
       sendWhatsAppComprovante(result.order, cart, paymentMethod);
@@ -229,6 +269,7 @@ export default function LojaPage() {
         <div className="loja-grid">
           {filteredProducts.map(product => {
             const cartItem = cart.find(item => item.productId === product.id);
+            const availableStock = getAvailableStock(product.id);
             return (
               <div key={product.id} className="loja-product" onClick={() => openProductModal(product)}>
                 <div className="loja-product__image" style={{ overflow: 'hidden' }}>
@@ -243,7 +284,11 @@ export default function LojaPage() {
                   <h3 className="loja-product__name">{product.name}</h3>
                   <div className="loja-product__footer">
                     <span className="loja-product__price">{formatCurrency(product.sale_price)}</span>
-                    <button className={`loja-product__add ${cartItem ? 'in-cart' : ''}`} onClick={(e) => handleQuickAdd(e, product)}>
+                    <button
+                      className={`loja-product__add ${cartItem ? 'in-cart' : ''}`}
+                      onClick={(e) => handleQuickAdd(e, product)}
+                      disabled={availableStock <= 0 || cartItem?.quantity >= availableStock}
+                    >
                       {cartItem ? <span className="loja-product__qty">{cartItem.quantity}</span> : <FiPlus />}
                     </button>
                   </div>
@@ -302,7 +347,12 @@ export default function LojaPage() {
                       <div className="loja-cart-item__controls">
                         <button onClick={() => updateCartItem(item.productId, item.quantity - 1)}><FiMinus /></button>
                         <span>{item.quantity}</span>
-                        <button onClick={() => updateCartItem(item.productId, item.quantity + 1)}><FiPlus /></button>
+                        <button
+                          onClick={() => updateCartItem(item.productId, item.quantity + 1)}
+                          disabled={item.quantity >= getAvailableStock(item.productId)}
+                        >
+                          <FiPlus />
+                        </button>
                       </div>
                       <div className="loja-cart-item__subtotal">
                         <span>{formatCurrency(item.price * item.quantity)}</span>
@@ -361,9 +411,18 @@ export default function LojaPage() {
               <div className="loja-product-modal__qty">
                 <button onClick={() => setProductQty(Math.max(1, productQty - 1))}><FiMinus /></button>
                 <span>{productQty}</span>
-                <button onClick={() => setProductQty(Math.min(productModal.quantity, productQty + 1))}><FiPlus /></button>
+                <button
+                  onClick={() => setProductQty(Math.min(getAvailableStock(productModal.id), productQty + 1))}
+                  disabled={productQty >= getAvailableStock(productModal.id)}
+                >
+                  <FiPlus />
+                </button>
               </div>
-              <button className="btn btn--primary btn--full btn--lg" onClick={handleAddFromModal}>
+              <button
+                className="btn btn--primary btn--full btn--lg"
+                onClick={handleAddFromModal}
+                disabled={getAvailableStock(productModal.id) <= 0}
+              >
                 Adicionar {formatCurrency(parseFloat(productModal.sale_price) * productQty)}
               </button>
             </div>
@@ -377,7 +436,7 @@ export default function LojaPage() {
           <>
             <button className="btn btn--secondary" onClick={() => { setCheckoutOpen(false); setEditingProfile(false); }}>Voltar</button>
             <button className="btn btn--primary btn--lg" onClick={handleCheckout} disabled={submitting}>
-              {submitting ? 'Enviando...' : `Confirmar Pedido ${formatCurrency(cartTotal)}`}
+              {submitting ? 'Enviando...' : `Confirmar Pedido ${formatCurrency(checkoutTotal)}`}
             </button>
           </>
         }>
@@ -404,7 +463,7 @@ export default function LojaPage() {
             <div style={{ borderTop: '1px solid var(--gray-200)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
               <span>Total a Pagar</span>
               <span style={{ color: 'var(--primary-600)', fontSize: 'var(--font-lg)' }}>
-                {formatCurrency(deliveryType === 'entrega' ? cartTotal + 5 : cartTotal)}
+                {formatCurrency(checkoutTotal)}
               </span>
             </div>
           </div>

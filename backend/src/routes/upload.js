@@ -2,6 +2,12 @@ import { Hono } from 'hono';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
 const router = new Hono();
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
 
 // POST /api/upload
 router.post('/', authMiddleware, adminOnly, async (c) => {
@@ -13,19 +19,17 @@ router.post('/', authMiddleware, adminOnly, async (c) => {
       return c.json({ error: 'Nenhum arquivo de imagem válido foi enviado.' }, 400);
     }
 
-    if (!file.type.startsWith('image/')) {
-       return c.json({ error: 'Apenas imagens são permitidas.' }, 400);
+    const extension = ALLOWED_IMAGE_TYPES[file.type];
+    if (!extension) {
+      return c.json({ error: 'Envie apenas imagens JPG, PNG ou WEBP.' }, 400);
     }
 
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_SIZE) {
-      return c.json({ error: 'O arquivo excede o tamanho máximo permitido de 5MB.' }, 400);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return c.json({ error: 'A imagem deve ter no máximo 5 MB.' }, 400);
     }
 
     // Gerar um nome único
-    const extRaw = file.name.split('.').pop() || 'bin';
-    const ext = extRaw.replace(/[^a-z0-9]/gi, ''); // sanitization
-    const fileName = `products/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
+    const fileName = `products/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
 
     const bucket = c.env.BUCKET;
     if (!bucket) {
@@ -70,6 +74,7 @@ router.get('/products/:filename', async (c) => {
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
     headers.set('Cache-Control', 'public, max-age=31536000'); // Cache 1 ano
+    headers.set('X-Content-Type-Options', 'nosniff');
 
     return new Response(object.body, { headers });
   } catch(err) {

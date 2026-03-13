@@ -1,24 +1,44 @@
 import jwt from 'jsonwebtoken';
+import config from '../config.js';
 
-async function authMiddleware(c, next) {
+function decodeToken(c) {
   const authHeader = c.req.header('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Token não fornecido' }, 401);
+    return { user: null };
   }
 
   const token = authHeader.split(' ')[1];
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      console.error('CRITICAL ERROR: JWT_SECRET is not defined in environment variables.');
-      return c.json({ error: 'Erro interno no Servidor' }, 500);
-    }
-    const decoded = jwt.verify(token, secret);
-    c.set('user', decoded);
-    await next();
+    return { user: jwt.verify(token, config.jwtSecret) };
   } catch (err) {
-    return c.json({ error: 'Token inválido' }, 401);
+    return { error: c.json({ error: 'Token inválido' }, 401) };
   }
+}
+
+async function authMiddleware(c, next) {
+  const decoded = decodeToken(c);
+  if (!decoded.user && !decoded.error) {
+    return c.json({ error: 'Token não fornecido' }, 401);
+  }
+  if (decoded.error) {
+    return decoded.error;
+  }
+
+  c.set('user', decoded.user);
+  await next();
+}
+
+async function optionalAuthMiddleware(c, next) {
+  const decoded = decodeToken(c);
+  if (decoded.error) {
+    return decoded.error;
+  }
+
+  if (decoded.user) {
+    c.set('user', decoded.user);
+  }
+
+  await next();
 }
 
 async function adminOnly(c, next) {
@@ -29,6 +49,6 @@ async function adminOnly(c, next) {
   await next();
 }
 
-export { authMiddleware, adminOnly };
+export { authMiddleware, optionalAuthMiddleware, adminOnly };
 
 

@@ -24,14 +24,13 @@ router.get('/:type', async (c) => {
 
       case 'clientes':
         const { rows: customers } = await pool.query(
-          "SELECT id, name, email, phone, cpf, address, avatar, created_at FROM users WHERE role = 'customer' ORDER BY name"
+          `SELECT 
+            u.id, u.name, u.email, u.phone, u.cpf, u.address, u.avatar, u.created_at,
+            (SELECT COUNT(*) FROM orders WHERE customer_id = u.id OR customer_phone = u.phone) as order_count
+           FROM users u 
+           WHERE u.role = 'customer' 
+           ORDER BY u.name`
         );
-        for (const cust of customers) {
-          const { rows: orderCount } = await pool.query(
-            "SELECT COUNT(*) FROM orders WHERE customer_id = $1 OR customer_phone = $2", [cust.id, cust.phone]
-          );
-          cust.order_count = parseInt(orderCount[0].count);
-        }
         data = customers;
         break;
 
@@ -50,10 +49,10 @@ router.get('/:type', async (c) => {
       case 'inadimplencia':
         // Pedidos em andamento / não concluídos
         const { rows: pending } = await pool.query(
-          "SELECT * FROM orders WHERE status IN ('recebido', 'em_preparo', 'saiu_entrega') ORDER BY created_at DESC"
+          "SELECT * FROM orders WHERE status IN ('novo', 'recebido', 'em_preparo', 'saiu_entrega') ORDER BY created_at DESC"
         );
         const { rows: totalRow } = await pool.query(
-          "SELECT COALESCE(SUM(total),0) as total FROM orders WHERE status IN ('recebido', 'em_preparo', 'saiu_entrega')"
+          "SELECT COALESCE(SUM(total),0) as total FROM orders WHERE status IN ('novo', 'recebido', 'em_preparo', 'saiu_entrega')"
         );
         data = {
           orders: pending,

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { login as apiLogin, loginPhone as apiLoginPhone, logout as apiLogout, getMe, isLoggedIn } from '@/lib/api';
+import { login as apiLogin, logout as apiLogout, getMe, isLoggedIn } from '@/lib/api';
 
 const AuthContext = createContext(null);
 
@@ -34,16 +34,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithPhone = async (phone, name) => {
-    try {
-      const data = await apiLoginPhone(phone, name);
-      setUser(data.user);
-      return { success: true, user: data.user };
-    } catch (err) {
-      return { success: false, error: err.message, requireName: err.message.includes('informe seu nome') };
-    }
-  };
-
   const logout = () => {
     apiLogout();
     setUser(null);
@@ -53,7 +43,7 @@ export function AuthProvider({ children }) {
   const isCustomer = user?.role === 'customer';
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithPhone, logout, loading, isAdmin, isCustomer }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isCustomer }}>
       {children}
     </AuthContext.Provider>
   );

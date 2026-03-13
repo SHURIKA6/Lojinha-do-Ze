@@ -1,9 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer, getOrders, formatCurrency, formatDate, getStatusLabel, getStatusVariant } from '@/lib/api';
+import {
+  getCustomers,
+  createCustomer,
+  updateCustomer,
+  resetCustomerPassword,
+  deleteCustomer,
+  getOrders,
+  formatCurrency,
+  formatDate,
+  getStatusLabel,
+  getStatusVariant,
+} from '@/lib/api';
 import Modal from '@/components/Modal';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiEye, FiUser } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiEye, FiUser, FiKey } from 'react-icons/fi';
 
 export default function ClientesPage() {
   const [customers, setCustomers] = useState([]);
@@ -14,6 +25,7 @@ export default function ClientesPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [generatedAccess, setGeneratedAccess] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', cpf: '', address: '', notes: '' });
 
   useEffect(() => { loadData(); }, []);
@@ -53,10 +65,34 @@ export default function ClientesPage() {
   const handleSave = async () => {
     try {
       if (editingCustomer) await updateCustomer(editingCustomer.id, form);
-      else await createCustomer(form);
+      else {
+        const createdCustomer = await createCustomer(form);
+        if (createdCustomer.generatedPassword) {
+          setGeneratedAccess({
+            name: createdCustomer.name,
+            identifier: createdCustomer.email || createdCustomer.phone || 'sem identificador',
+            password: createdCustomer.generatedPassword,
+          });
+        }
+      }
       setModalOpen(false);
       loadData();
     } catch (err) { console.error(err); }
+  };
+
+  const handleResetPassword = async (customer) => {
+    if (!confirm(`Gerar uma nova senha temporária para ${customer.name}?`)) return;
+    try {
+      const result = await resetCustomerPassword(customer.id);
+      setGeneratedAccess({
+        name: result.name,
+        identifier: result.email || result.phone || 'sem identificador',
+        password: result.generatedPassword,
+      });
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -95,6 +131,7 @@ export default function ClientesPage() {
                     <div className="table-actions">
                       <button className="btn btn--secondary btn--sm" aria-label="Ver detalhes do cliente" onClick={() => openDetail(c)}><FiEye /></button>
                       <button className="btn btn--secondary btn--sm" aria-label="Editar cliente" onClick={() => openEdit(c)}><FiEdit2 /></button>
+                      <button className="btn btn--secondary btn--sm" aria-label="Gerar senha temporária" onClick={() => handleResetPassword(c)} title="Gerar senha temporária"><FiKey /></button>
                       <button className="btn btn--danger btn--sm" aria-label="Excluir cliente" onClick={() => handleDelete(c.id)}><FiTrash2 /></button>
                     </div>
                   </td>
@@ -142,11 +179,37 @@ export default function ClientesPage() {
         footer={<><button className="btn btn--secondary" onClick={() => setModalOpen(false)}>Cancelar</button><button className="btn btn--primary" onClick={handleSave}>{editingCustomer ? 'Salvar' : 'Criar'}</button></>}>
         <div className="form-group"><label className="form-label">Nome Completo</label><input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
         <div className="form-row">
-          <div className="form-group"><label className="form-label">Telefone (Essencial para Login)</label><input className="form-input" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(11) 99999-9999" /></div>
-          <div className="form-group"><label className="form-label">E-mail (Opcional)</label><input className="form-input" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
+          <div className="form-group"><label className="form-label">Telefone</label><input className="form-input" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(11) 99999-9999" /></div>
+          <div className="form-group"><label className="form-label">E-mail</label><input className="form-input" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="cliente@email.com" /></div>
+        </div>
+        <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', marginBottom: 'var(--space-3)' }}>
+          Informe ao menos um e-mail ou telefone. O cliente fara login com esse identificador e uma senha temporaria gerada pela loja.
         </div>
         <div className="form-group"><label className="form-label">Endereço de Entrega</label><input className="form-input" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Rua, Número, Bairro..." /></div>
         <div className="form-group"><label className="form-label">Observações</label><textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Preferências do cliente..." /></div>
+      </Modal>
+
+      <Modal
+        isOpen={!!generatedAccess}
+        onClose={() => setGeneratedAccess(null)}
+        title="Senha temporária gerada"
+        footer={<button className="btn btn--primary" onClick={() => setGeneratedAccess(null)}>Fechar</button>}
+      >
+        {generatedAccess && (
+          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            <p style={{ color: 'var(--gray-600)', margin: 0 }}>
+              Compartilhe estes dados com <strong>{generatedAccess.name}</strong>.
+            </p>
+            <div className="card" style={{ margin: 0 }}>
+              <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', marginBottom: 'var(--space-2)' }}>Login</div>
+              <div style={{ fontWeight: 700 }}>{generatedAccess.identifier}</div>
+            </div>
+            <div className="card" style={{ margin: 0 }}>
+              <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', marginBottom: 'var(--space-2)' }}>Senha temporária</div>
+              <div style={{ fontWeight: 700, letterSpacing: '0.04em' }}>{generatedAccess.password}</div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

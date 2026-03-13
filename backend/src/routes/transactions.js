@@ -1,7 +1,18 @@
 import { Hono } from 'hono';
 import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
+
 const router = new Hono();
+
+const transactionSchema = z.object({
+  type: z.enum(['receita', 'despesa']),
+  category: z.string().min(2, 'Categoria é obrigatória'),
+  description: z.string().optional(),
+  value: z.number().positive('Valor deve ser positivo'),
+  date: z.string().optional()
+});
 
 router.use('*', authMiddleware, adminOnly);
 
@@ -10,7 +21,7 @@ router.get('/', async (c) => {
   try {
     const type = c.req.query('type');
     let query = 'SELECT * FROM transactions';
-    let params = [];
+    const params = [];
     if (type) {
       query += ' WHERE type = $1';
       params.push(type);
@@ -25,13 +36,15 @@ router.get('/', async (c) => {
 });
 
 // POST /api/transactions
-router.post('/', async (c) => {
+router.post('/', zValidator('json', transactionSchema, (result, c) => {
+  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
+}), async (c) => {
   try {
-    const { type, category, description, value, date } = await c.req.json();
+    const { type, category, description, value, date } = c.req.valid('json');
     const { rows } = await pool.query(
       `INSERT INTO transactions (type, category, description, value, date)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [type, category, description, value || 0, date || new Date().toISOString().split('T')[0]]
+      [type, category, description, value, date || new Date().toISOString().split('T')[0]]
     );
     return c.json(rows[0], 201);
   } catch (err) {
@@ -54,6 +67,3 @@ router.delete('/:id', async (c) => {
 });
 
 export default router;
-
-
-
