@@ -170,8 +170,8 @@ async function seedData() {
   await pool.query(`
     INSERT INTO transactions (type, category, description, value, date) VALUES
     ('receita', 'Venda', 'Venda avulsa balcão', 120.00, NOW()),
-    ('despesa', 'Fornecedor', 'Compra mercadão hortifruti', 350.00, NOW()),
-    ('despesa', 'Embalagens', 'Compra de Marmitex Isopor', 150.00, NOW())
+    ('despesa', 'Fornecedor', 'Reposição de estoque produtos naturais', 350.00, NOW()),
+    ('despesa', 'Embalagens', 'Compra de embalagens diversas', 150.00, NOW())
   `);
 
   // --- Inventory Log ---
