@@ -28,7 +28,7 @@ No extra config is required if your backend is at `http://localhost:8787/api` (d
 
 ### Production / Vercel
 
-Set `API_PROXY_BASE` to your deployed Worker API base (must include `/api`), for example:
+Set `API_PROXY_BASE` to your deployed Worker URL. It can be the origin (`https://<your-worker-domain>`) or the API base (`https://<your-worker-domain>/api`), for example:
 
 ```bash
 API_PROXY_BASE=https://<your-worker-domain>/api
