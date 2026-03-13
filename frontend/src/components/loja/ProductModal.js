@@ -1,6 +1,7 @@
 'use client';
 
 import Modal from '@/components/Modal';
+import AppImage from '@/components/ui/AppImage';
 import { formatCurrency, getImageUrl } from '@/lib/api';
 import { FiMinus, FiPackage, FiPlus } from 'react-icons/fi';
 
@@ -25,7 +26,13 @@ export default function ProductModal({
         <div className="loja-product-modal">
           <div className="loja-product-modal__image">
             {productModal.photo ? (
-              <img src={getImageUrl(productModal.photo)} alt={productModal.name} />
+              <AppImage
+                src={getImageUrl(productModal.photo)}
+                alt={productModal.name}
+                fill
+                sizes="(max-width: 920px) 100vw, 420px"
+                style={{ objectFit: 'cover' }}
+              />
             ) : (
               <FiPackage />
             )}
@@ -46,11 +53,12 @@ export default function ProductModal({
 
           <div className="loja-product-modal__actions">
             <div className="loja-product-modal__qty">
-              <button onClick={() => setProductQty(Math.max(1, productQty - 1))}>
+              <button type="button" onClick={() => setProductQty(Math.max(1, productQty - 1))}>
                 <FiMinus />
               </button>
               <span>{productQty}</span>
               <button
+                type="button"
                 onClick={() => setProductQty(Math.min(availableStock, productQty + 1))}
                 disabled={availableStock <= productQty}
               >
@@ -59,6 +67,7 @@ export default function ProductModal({
             </div>
 
             <button
+              type="button"
               className="btn btn--primary btn--full btn--lg"
               onClick={handleAddFromModal}
               disabled={availableStock <= 0}

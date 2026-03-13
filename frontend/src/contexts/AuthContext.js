@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { login as apiLogin, logout as apiLogout, getMe, isLoggedIn } from '@/lib/api';
+import { getMe, login as apiLogin, logout as apiLogout } from '@/lib/api';
 
 const AuthContext = createContext(null);
 
@@ -9,24 +9,33 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUser = async () => {
+    const userData = await getMe();
+    setUser(userData);
+    return userData;
+  };
+
   useEffect(() => {
-    // Check for existing session
-    if (isLoggedIn()) {
-      getMe()
-        .then(userData => setUser(userData))
-        .catch(() => {
-          apiLogout();
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    refreshUser()
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email, password) => {
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setUser(null);
+      setLoading(false);
+    };
+
+    window.addEventListener('auth:expired', handleExpiredSession);
+    return () => window.removeEventListener('auth:expired', handleExpiredSession);
+  }, []);
+
+  const login = async (identifier, password) => {
     try {
-      const data = await apiLogin(email, password);
+      const data = await apiLogin(identifier, password);
       setUser(data.user);
       return { success: true, user: data.user };
     } catch (err) {
@@ -34,8 +43,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    apiLogout();
+  const logout = async () => {
+    await apiLogout().catch(() => {});
     setUser(null);
   };
 
@@ -43,7 +52,9 @@ export function AuthProvider({ children }) {
   const isCustomer = user?.role === 'customer';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isCustomer }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, loading, refreshUser, setUser, isAdmin, isCustomer }}
+    >
       {children}
     </AuthContext.Provider>
   );

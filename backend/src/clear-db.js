@@ -11,6 +11,8 @@ async function clearAllData() {
     // Disable FK constraints temporarily and truncate all tables
     await db.query(`
       TRUNCATE TABLE 
+        password_setup_tokens,
+        auth_sessions,
         inventory_log,
         transactions,
         orders,
@@ -26,6 +28,8 @@ async function clearAllData() {
       ALTER SEQUENCE transactions_id_seq RESTART WITH 1;
       ALTER SEQUENCE inventory_log_id_seq RESTART WITH 1;
       ALTER SEQUENCE orders_id_seq RESTART WITH 1;
+      ALTER SEQUENCE auth_sessions_id_seq RESTART WITH 1;
+      ALTER SEQUENCE password_setup_tokens_id_seq RESTART WITH 1;
     `);
 
     console.log('✅ Todos os dados foram apagados com sucesso!');

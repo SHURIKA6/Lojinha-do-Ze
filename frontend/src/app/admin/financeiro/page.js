@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
+import { useToast } from '@/components/ui/ToastProvider';
 import { getTransactions, createTransaction, deleteTransaction, formatCurrency, formatDate } from '@/lib/api';
 import Modal from '@/components/Modal';
 import { FiPlus, FiTrash2, FiTrendingUp, FiTrendingDown, FiDollarSign, FiSearch } from 'react-icons/fi';
@@ -13,6 +15,8 @@ export default function FinanceiroPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ type: 'receita', category: '', description: '', value: 0, date: '' });
+  const confirm = useConfirm();
+  const toast = useToast();
 
   useEffect(() => { loadData(); }, []);
 
@@ -20,7 +24,10 @@ export default function FinanceiroPage() {
     try {
       const data = await getTransactions();
       setTransactions(data);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Não foi possível carregar as transações.');
+    }
     finally { setLoading(false); }
   };
 
@@ -50,13 +57,32 @@ export default function FinanceiroPage() {
       await createTransaction(form);
       setModalOpen(false);
       setForm({ type: 'receita', category: '', description: '', value: 0, date: '' });
+      toast.success('Transação lançada com sucesso.');
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Não foi possível lançar a transação.');
+    }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Excluir esta transação?')) return;
-    try { await deleteTransaction(id); loadData(); } catch (err) { console.error(err); }
+    const confirmed = await confirm({
+      title: 'Excluir transação',
+      description: 'Esta ação remove a movimentação financeira.',
+      body: 'Tem certeza que deseja excluir esta transação?',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+    });
+
+    if (!confirmed) return;
+    try {
+      await deleteTransaction(id);
+      toast.success('Transação excluída com sucesso.');
+      loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Não foi possível excluir a transação.');
+    }
   };
 
   if (loading) return <div className="animate-fadeIn" style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>Carregando...</div>;

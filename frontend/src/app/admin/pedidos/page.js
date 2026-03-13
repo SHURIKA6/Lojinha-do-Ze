@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
+import { useToast } from '@/components/ui/ToastProvider';
 import {
   deleteOrder,
   formatCurrency,
@@ -45,6 +47,8 @@ export default function PedidosPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   useEffect(() => {
     loadData();
@@ -55,6 +59,7 @@ export default function PedidosPage() {
       setOrders(await getOrders());
     } catch (err) {
       console.error(err);
+      toast.error(err.message || 'Não foi possível carregar os pedidos.');
     } finally {
       setLoading(false);
     }
@@ -63,22 +68,34 @@ export default function PedidosPage() {
   const handleStatusChange = async (id, status) => {
     try {
       await updateOrderStatus(id, status);
+      toast.success('Status do pedido atualizado.');
       await loadData();
     } catch (err) {
       console.error(err);
+      toast.error(err.message || 'Não foi possível atualizar o pedido.');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Excluir este pedido? Esta ação não pode ser desfeita.')) {
+    const confirmed = await confirm({
+      title: 'Excluir pedido',
+      description: 'Esta ação não pode ser desfeita.',
+      body: 'Deseja realmente excluir este pedido?',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+    });
+
+    if (!confirmed) {
       return;
     }
 
     try {
       await deleteOrder(id);
+      toast.success('Pedido excluído com sucesso.');
       await loadData();
     } catch (err) {
       console.error(err);
+      toast.error(err.message || 'Não foi possível excluir o pedido.');
     }
   };
 

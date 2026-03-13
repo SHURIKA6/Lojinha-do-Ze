@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/ToastProvider';
 import { updateProfile } from '@/lib/api';
 import { FiMail, FiMapPin, FiPhone, FiSave, FiUser } from 'react-icons/fi';
 
 export default function ClientePerfilPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -18,10 +20,13 @@ export default function ClientePerfilPage() {
   const handleSave = async () => {
     try {
       await updateProfile(form);
+      await refreshUser();
       setSaved(true);
+      toast.success('Perfil atualizado com sucesso.');
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error(err);
+      toast.error(err.message || 'Não foi possível atualizar o perfil.');
     }
   };
 
@@ -99,7 +104,7 @@ export default function ClientePerfilPage() {
             />
           </div>
 
-          <button className="btn btn--primary" onClick={handleSave}>
+          <button type="button" className="btn btn--primary" onClick={handleSave}>
             <FiSave />
             Salvar alterações
           </button>

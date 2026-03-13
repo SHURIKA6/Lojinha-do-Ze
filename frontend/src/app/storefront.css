@@ -343,6 +343,15 @@
   box-shadow: var(--shadow-md);
 }
 
+.loja-product:focus-visible,
+.loja-cart-bar__btn:focus-visible,
+.loja-header__portal:focus-visible,
+.loja-header__cart-btn:focus-visible,
+.loja-categories__tab:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 .loja-product__image {
   position: relative;
   aspect-ratio: 4 / 3;
@@ -483,7 +492,7 @@
   background: linear-gradient(135deg, rgba(23, 33, 28, 0.98), rgba(41, 68, 58, 0.98));
   color: white;
   box-shadow: var(--shadow-lg);
-  cursor: pointer;
+  cursor: default;
 }
 
 .loja-cart-bar__info {
@@ -514,6 +523,7 @@
   background: rgba(255, 255, 255, 0.08);
   color: white;
   font-weight: 800;
+  cursor: pointer;
 }
 
 .loja-overlay {
@@ -667,6 +677,7 @@
 }
 
 .loja-product-modal__image {
+  position: relative;
   aspect-ratio: 16 / 7;
   display: flex;
   align-items: center;

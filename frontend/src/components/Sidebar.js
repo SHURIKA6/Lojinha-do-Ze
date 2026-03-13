@@ -57,7 +57,12 @@ export default function Sidebar() {
 
   return (
     <>
-      <button className="sidebar__toggle" onClick={() => setMobileOpen((value) => !value)}>
+      <button
+        type="button"
+        className="sidebar__toggle"
+        onClick={() => setMobileOpen((value) => !value)}
+        aria-label={mobileOpen ? 'Fechar navegação' : 'Abrir navegação'}
+      >
         {mobileOpen ? <FiX /> : <FiMenu />}
       </button>
 
@@ -97,14 +102,14 @@ export default function Sidebar() {
         </nav>
 
         <div className="sidebar__footer">
-          <div className="sidebar__user" onClick={handleLogout} title="Sair">
+          <button type="button" className="sidebar__user" onClick={handleLogout} title="Sair">
             <div className="sidebar__avatar">{user?.avatar || 'U'}</div>
             <div className="sidebar__user-info">
               <div className="sidebar__user-name">{user?.name || 'Usuário'}</div>
               <div className="sidebar__user-role">Administrador</div>
             </div>
             <FiLogOut style={{ marginLeft: 'auto', opacity: 0.7, flexShrink: 0 }} />
-          </div>
+          </button>
         </div>
       </aside>
 

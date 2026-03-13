@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FiMapPin, FiNavigation } from 'react-icons/fi';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function AddressPicker({
   address,
@@ -14,6 +15,7 @@ export default function AddressPicker({
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
+  const toast = useToast();
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
@@ -41,7 +43,7 @@ export default function AddressPicker({
         setShowMap(true);
       },
       () => {
-        alert('Não foi possível obter sua localização. Verifique as permissões do navegador.');
+        toast.error('Não foi possível obter sua localização. Verifique as permissões do navegador.');
       },
       { enableHighAccuracy: true }
     );
@@ -149,6 +151,7 @@ export default function AddressPicker({
         </label>
         <input
           className="form-input"
+          id="checkout-address"
           value={address}
           onChange={(e) => onAddressChange(e.target.value)}
           placeholder="Rua, número, bairro, cidade..."

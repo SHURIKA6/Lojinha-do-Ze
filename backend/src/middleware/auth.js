@@ -1,67 +1,73 @@
-import jwt from 'jsonwebtoken';
+import { getCookie } from 'hono/cookie';
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../domain/constants.js';
+import { resolveSession } from '../services/authService.js';
+import { isSafeMethod, jsonError } from '../utils/http.js';
 
-export function getJwtSecret(c) {
-  const jwtSecret = c.env?.JWT_SECRET;
-  if (!jwtSecret) {
-    console.error('CRITICAL: JWT_SECRET is not configured for this request.');
+async function loadSession(c) {
+  const db = c.get('db');
+  if (!db) {
     return null;
   }
-  return jwtSecret;
-}
 
-function decodeToken(c) {
-  const authHeader = c.req.header('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { user: null };
+  const cached = c.get('resolvedSession');
+  if (cached !== undefined) {
+    return cached;
   }
 
-  const jwtSecret = getJwtSecret(c);
-  if (!jwtSecret) {
-    return { error: c.json({ error: 'Erro interno no Servidor' }, 500) };
-  }
-
-  const token = authHeader.split(' ')[1];
+  const client = await db.connect();
   try {
-    return { user: jwt.verify(token, jwtSecret) };
-  } catch (err) {
-    return { error: c.json({ error: 'Token inválido' }, 401) };
+    return await resolveSession(c, client);
+  } finally {
+    client.release();
   }
 }
 
-async function authMiddleware(c, next) {
-  const decoded = decodeToken(c);
-  if (!decoded.user && !decoded.error) {
-    return c.json({ error: 'Token não fornecido' }, 401);
-  }
-  if (decoded.error) {
-    return decoded.error;
-  }
-
-  c.set('user', decoded.user);
+export async function optionalAuthMiddleware(c, next) {
+  await loadSession(c);
   await next();
 }
 
-async function optionalAuthMiddleware(c, next) {
-  const decoded = decodeToken(c);
-  if (decoded.error) {
-    return decoded.error;
-  }
-
-  if (decoded.user) {
-    c.set('user', decoded.user);
+export async function authMiddleware(c, next) {
+  const session = await loadSession(c);
+  if (!session?.user) {
+    return jsonError(c, 401, 'Sessão inválida ou expirada');
   }
 
   await next();
 }
 
-async function adminOnly(c, next) {
+export async function csrfMiddleware(c, next) {
+  if (isSafeMethod(c.req.method)) {
+    await next();
+    return;
+  }
+
+  const session = c.get('session');
+  if (!session?.id) {
+    const hasSessionCookie = Boolean(getCookie(c, SESSION_COOKIE_NAME));
+    if (!hasSessionCookie) {
+      await next();
+      return;
+    }
+
+    return jsonError(c, 401, 'Sessão inválida ou expirada');
+  }
+
+  const headerToken = c.req.header('x-csrf-token');
+  const cookieToken = getCookie(c, CSRF_COOKIE_NAME);
+
+  if (!headerToken || !cookieToken || headerToken !== cookieToken || headerToken !== session.csrfToken) {
+    return jsonError(c, 403, 'Falha na verificação de segurança da sessão');
+  }
+
+  await next();
+}
+
+export async function adminOnly(c, next) {
   const user = c.get('user');
   if (!user || user.role !== 'admin') {
-    return c.json({ error: 'Acesso restrito ao administrador' }, 403);
+    return jsonError(c, 403, 'Acesso restrito ao administrador');
   }
+
   await next();
 }
-
-export { authMiddleware, optionalAuthMiddleware, adminOnly };
-
-

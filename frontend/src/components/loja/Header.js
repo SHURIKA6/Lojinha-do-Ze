@@ -27,6 +27,7 @@ export default function Header({
         <div className="loja-header__search">
           <FiSearch className="loja-header__search-icon" />
           <input
+            aria-label="Buscar produto"
             placeholder="Buscar produto..."
             value={search}
             onChange={(e) => {
@@ -37,19 +38,29 @@ export default function Header({
             }}
           />
           {search && (
-            <button className="loja-header__search-clear" onClick={() => setSearch('')}>
+            <button
+              type="button"
+              className="loja-header__search-clear"
+              onClick={() => setSearch('')}
+              aria-label="Limpar busca"
+            >
               <FiX />
             </button>
           )}
         </div>
 
         <div className="loja-header__actions">
-          <button className="loja-header__portal" onClick={onPortalClick} title={portalLabel}>
+          <button type="button" className="loja-header__portal" onClick={onPortalClick} title={portalLabel}>
             <PortalIcon />
             <span className="loja-header__portal-label">{portalLabel}</span>
           </button>
 
-          <button className="loja-header__cart-btn" onClick={() => setCartOpen(true)} title="Abrir carrinho">
+          <button
+            type="button"
+            className="loja-header__cart-btn"
+            onClick={() => setCartOpen(true)}
+            title="Abrir carrinho"
+          >
             <FiShoppingCart />
             {cartCount > 0 && <span className="loja-header__cart-badge">{cartCount}</span>}
           </button>

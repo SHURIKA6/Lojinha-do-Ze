@@ -1,180 +1,287 @@
 import { Hono } from 'hono';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware, adminOnly } from '../middleware/auth.js';
+import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
+import { customerCreateSchema, customerUpdateSchema } from '../domain/schemas.js';
+import { generatePasswordSetupInvite } from '../services/authService.js';
 import {
+  buildAvatar,
   cleanOptionalString,
   isUniqueViolation,
+  normalizeCpfDigits,
+  normalizeEmail,
+  normalizePhoneDigits,
   uniqueFieldLabel,
 } from '../utils/normalize.js';
+import { jsonError, setNoStore } from '../utils/http.js';
 
 const router = new Hono();
 
-const customerSchema = z.object({
-  name: z.string().trim().min(2, 'Nome é obrigatório'),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-  phone: z.string().optional(),
-  cpf: z.string().optional(),
-  address: z.string().optional(),
-  notes: z.string().optional()
-}).superRefine((data, ctx) => {
-  if (!cleanOptionalString(data.email) && !cleanOptionalString(data.phone)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Informe ao menos um e-mail ou telefone para acesso',
-      path: ['phone'],
-    });
+function validationError(result, c) {
+  if (!result.success) {
+    return jsonError(c, 400, result.error.issues[0].message);
   }
-});
 
-// Securing all customer routes (Only admins can view or modify customer data via this endpoint)
-router.use('/*', authMiddleware, adminOnly);
+  return undefined;
+}
 
-// GET /api/customers
+router.use('*', authMiddleware, adminOnly);
+
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
     const { rows } = await db.query(
-      "SELECT id, name, email, phone, cpf, address, notes, avatar, created_at FROM users WHERE role = 'customer' ORDER BY name"
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+       FROM users
+       WHERE role = 'customer'
+       ORDER BY name`
     );
+    setNoStore(c);
     return c.json(rows);
-  } catch (err) {
-    console.error('Customers GET error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+  } catch (error) {
+    console.error('Customers GET error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-// GET /api/customers/:id
 router.get('/:id', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
     const { rows } = await db.query(
-      "SELECT id, name, email, phone, cpf, address, notes, avatar, created_at FROM users WHERE id = $1 AND role = 'customer'",
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+       FROM users
+       WHERE id = $1 AND role = 'customer'`,
       [id]
     );
-    if (rows.length === 0) return c.json({ error: 'Cliente não encontrado' }, 404);
+
+    if (!rows.length) {
+      return jsonError(c, 404, 'Cliente não encontrado');
+    }
+
+    setNoStore(c);
     return c.json(rows[0]);
-  } catch (err) {
-    console.error('Customers GET /:id error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+  } catch (error) {
+    console.error('Customers GET /:id error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-// POST /api/customers
-router.post('/', zValidator('json', customerSchema, (result, c) => {
-  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
-}), async (c) => {
-  try {
-    const db = c.get('db');
-    const { name, email, phone, cpf, address, notes } = c.req.valid('json');
-    const cleanName = name.trim();
-    const cleanEmail = cleanOptionalString(email);
-    const cleanPhone = cleanOptionalString(phone);
-    const cleanCpf = cleanOptionalString(cpf);
-    const cleanAddress = cleanOptionalString(address);
-    const cleanNotes = cleanOptionalString(notes);
-    
-    // Generate a secure random password if none is provided during registration
-    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
-    const password = await bcrypt.hash(tempPassword, 10);
-    
-    const avatar = cleanName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    const { rows } = await db.query(
-      `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
-       VALUES ($1, $2, $3, true, 'customer', $4, $5, $6, $7, $8) RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
-      [cleanName, cleanEmail, password, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar]
-    );
-    const createdUser = rows[0];
-    createdUser.generatedPassword = tempPassword;
-    return c.json(createdUser, 201);
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      return c.json({ error: `${uniqueFieldLabel(err)} já cadastrado` }, 409);
-    }
-    console.error('Customer POST error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
-  }
-});
-
-// PUT /api/customers/:id
-router.put('/:id', zValidator('json', customerSchema, (result, c) => {
-  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
-}), async (c) => {
+router.get('/:id/orders', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    const { name, email, phone, cpf, address, notes } = c.req.valid('json');
-    const cleanName = name.trim();
-    const cleanEmail = cleanOptionalString(email);
-    const cleanPhone = cleanOptionalString(phone);
-    const cleanCpf = cleanOptionalString(cpf);
-    const cleanAddress = cleanOptionalString(address);
-    const cleanNotes = cleanOptionalString(notes);
-    const avatar = cleanName ? cleanName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : undefined;
-    const { rows } = await db.query(
-      `UPDATE users SET name=$1, email=$2, phone=$3,
-       cpf=$4, address=$5, notes=$6,
-       avatar=$7, updated_at=NOW()
-       WHERE id=$8 AND role='customer'
-       RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
-      [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar, id]
+    const customerResult = await db.query(
+      `SELECT id, phone
+       FROM users
+       WHERE id = $1 AND role = 'customer'`,
+      [id]
     );
-    if (rows.length === 0) return c.json({ error: 'Cliente não encontrado' }, 404);
-    return c.json(rows[0]);
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      return c.json({ error: `${uniqueFieldLabel(err)} já cadastrado` }, 409);
+
+    if (!customerResult.rows.length) {
+      return jsonError(c, 404, 'Cliente não encontrado');
     }
-    console.error('Customers PUT error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+
+    const customer = customerResult.rows[0];
+    const normalizedPhone = normalizePhoneDigits(customer.phone || '');
+
+    const { rows } = await db.query(
+      `SELECT id, customer_name, customer_phone, items, total, status, delivery_type, payment_method, created_at
+       FROM orders
+       WHERE customer_id = $1
+          OR REGEXP_REPLACE(COALESCE(customer_phone, ''), '\\D', '', 'g') = $2
+       ORDER BY created_at DESC`,
+      [id, normalizedPhone]
+    );
+
+    setNoStore(c);
+    return c.json(rows);
+  } catch (error) {
+    console.error('Customers GET /:id/orders error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-// PATCH /api/customers/:id/reset-password
-router.patch('/:id/reset-password', async (c) => {
-  try {
+router.post(
+  '/',
+  csrfMiddleware,
+  zValidator('json', customerCreateSchema, validationError),
+  async (c) => {
     const db = c.get('db');
+    const client = await db.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const payload = c.req.valid('json');
+      const cleanName = payload.name.trim();
+      const cleanEmail = normalizeEmail(payload.email);
+      const rawPhone = cleanOptionalString(payload.phone);
+      const cleanPhone = rawPhone ? rawPhone.trim() : null;
+      const cleanCpf = payload.cpf ? normalizeCpfDigits(payload.cpf) : null;
+      const cleanAddress = cleanOptionalString(payload.address);
+      const cleanNotes = cleanOptionalString(payload.notes);
+      const avatar = buildAvatar(cleanName);
+
+      const { rows } = await client.query(
+        `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
+         VALUES ($1, $2, NULL, false, 'customer', $3, $4, $5, $6, $7)
+         RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
+        [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar]
+      );
+
+      const createdCustomer = rows[0];
+      const invite = await generatePasswordSetupInvite(c, client, createdCustomer);
+
+      await client.query('COMMIT');
+      setNoStore(c);
+
+      return c.json(
+        {
+          ...createdCustomer,
+          invite,
+        },
+        201
+      );
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      if (isUniqueViolation(error)) {
+        return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
+      }
+
+      console.error('Customer POST error:', error);
+      return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
+    }
+  }
+);
+
+router.put(
+  '/:id',
+  csrfMiddleware,
+  zValidator('json', customerUpdateSchema, validationError),
+  async (c) => {
+    try {
+      const db = c.get('db');
+      const id = c.req.param('id');
+      const payload = c.req.valid('json');
+      const cleanName = payload.name.trim();
+      const cleanEmail = normalizeEmail(payload.email);
+      const rawPhone = cleanOptionalString(payload.phone);
+      const cleanPhone = rawPhone ? rawPhone.trim() : null;
+      const cleanCpf = payload.cpf ? normalizeCpfDigits(payload.cpf) : null;
+      const cleanAddress = cleanOptionalString(payload.address);
+      const cleanNotes = cleanOptionalString(payload.notes);
+      const avatar = buildAvatar(cleanName);
+
+      const { rows } = await db.query(
+        `UPDATE users
+         SET name = $1,
+             email = $2,
+             phone = $3,
+             cpf = $4,
+             address = $5,
+             notes = $6,
+             avatar = $7,
+             updated_at = NOW()
+         WHERE id = $8 AND role = 'customer'
+         RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
+        [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar, id]
+      );
+
+      if (!rows.length) {
+        return jsonError(c, 404, 'Cliente não encontrado');
+      }
+
+      setNoStore(c);
+      return c.json(rows[0]);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
+      }
+
+      console.error('Customers PUT error:', error);
+      return jsonError(c, 500, 'Erro interno no servidor');
+    }
+  }
+);
+
+router.post('/:id/invite', csrfMiddleware, async (c) => {
+  const db = c.get('db');
+  const client = await db.connect();
+
+  try {
     const id = c.req.param('id');
-    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    const { rows } = await db.query(
-      `UPDATE users
-       SET password = $1, is_temporary_password = true, updated_at = NOW()
-       WHERE id = $2 AND role = 'customer'
-       RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
-      [hashedPassword, id]
+    const { rows } = await client.query(
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+       FROM users
+       WHERE id = $1 AND role = 'customer'`,
+      [id]
     );
 
-    if (rows.length === 0) {
-      return c.json({ error: 'Cliente não encontrado' }, 404);
+    if (!rows.length) {
+      return jsonError(c, 404, 'Cliente não encontrado');
     }
 
-    return c.json({
-      ...rows[0],
-      generatedPassword: tempPassword,
-    });
-  } catch (err) {
-    console.error('Customers reset-password error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+    const invite = await generatePasswordSetupInvite(c, client, rows[0]);
+    setNoStore(c);
+    return c.json({ ...rows[0], invite });
+  } catch (error) {
+    console.error('Customers invite error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
+  } finally {
+    client.release();
   }
 });
 
-// DELETE /api/customers/:id
-router.delete('/:id', async (c) => {
+router.patch('/:id/reset-password', csrfMiddleware, async (c) => {
+  const db = c.get('db');
+  const client = await db.connect();
+
+  try {
+    const id = c.req.param('id');
+    const { rows } = await client.query(
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+       FROM users
+       WHERE id = $1 AND role = 'customer'`,
+      [id]
+    );
+
+    if (!rows.length) {
+      return jsonError(c, 404, 'Cliente não encontrado');
+    }
+
+    const invite = await generatePasswordSetupInvite(c, client, rows[0]);
+    setNoStore(c);
+    return c.json({ ...rows[0], invite });
+  } catch (error) {
+    console.error('Customers reset-password error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
+  } finally {
+    client.release();
+  }
+});
+
+router.delete('/:id', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    const { rowCount } = await db.query("DELETE FROM users WHERE id = $1 AND role = 'customer'", [id]);
-    if (rowCount === 0) return c.json({ error: 'Cliente não encontrado' }, 404);
+    const { rowCount } = await db.query(
+      `DELETE FROM users
+       WHERE id = $1 AND role = 'customer'`,
+      [id]
+    );
+
+    if (!rowCount) {
+      return jsonError(c, 404, 'Cliente não encontrado');
+    }
+
+    setNoStore(c);
     return c.json({ message: 'Cliente excluído' });
-  } catch (err) {
-    console.error('Customers DELETE error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+  } catch (error) {
+    console.error('Customers DELETE error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
 export default router;
-
-

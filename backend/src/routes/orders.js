@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import { authMiddleware, adminOnly } from '../middleware/auth.js';
-import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
+import { orderStatusSchema } from '../domain/schemas.js';
+import { jsonError } from '../utils/http.js';
 
 const router = new Hono();
 
@@ -10,7 +11,7 @@ function parseOrderItems(items) {
 
   try {
     return JSON.parse(items || '[]');
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -31,102 +32,126 @@ async function restoreOrderStock(client, order) {
   }
 }
 
-const statusSchema = z.object({
-  status: z.enum(['novo', 'recebido', 'em_preparo', 'saiu_entrega', 'concluido', 'cancelado'])
-});
+function validationError(result, c) {
+  if (!result.success) {
+    return jsonError(c, 400, result.error.issues[0].message);
+  }
 
-// GET /api/orders — list all orders (adm) or user orders (customer)
+  return undefined;
+}
+
 router.get('/', authMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const user = c.get('user');
     const status = c.req.query('status');
-    
+
     if (user.role === 'customer') {
-      const { rows } = await db.query('SELECT * FROM orders WHERE customer_id = $1 ORDER BY created_at DESC', [user.id]);
+      const { rows } = await db.query(
+        `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+         FROM orders
+         WHERE customer_id = $1
+         ORDER BY created_at DESC`,
+        [user.id]
+      );
       return c.json(rows);
     }
 
-    // Admin logic
-    let query = 'SELECT * FROM orders';
     const params = [];
+    let query = `
+      SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+      FROM orders
+    `;
     if (status) {
-      query += ' WHERE status = $1';
       params.push(status);
+      query += ` WHERE status = $${params.length}`;
     }
     query += ' ORDER BY created_at DESC';
+
     const { rows } = await db.query(query, params);
     return c.json(rows);
-  } catch (err) {
-    console.error('Orders GET error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+  } catch (error) {
+    console.error('Orders GET error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-// PATCH /api/orders/:id/status — update order status
-router.patch('/:id/status', authMiddleware, adminOnly, zValidator('json', statusSchema, (result, c) => {
-  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
-}), async (c) => {
-  const db = c.get('db');
-  let client;
-  try {
-    client = await db.connect();
-    const id = c.req.param('id');
-    const { status } = c.req.valid('json');
-    await client.query('BEGIN');
+router.patch(
+  '/:id/status',
+  authMiddleware,
+  adminOnly,
+  csrfMiddleware,
+  zValidator('json', orderStatusSchema, validationError),
+  async (c) => {
+    const db = c.get('db');
+    const client = await db.connect();
 
-    const { rows: currentRows } = await client.query(
-      'SELECT * FROM orders WHERE id = $1 FOR UPDATE',
-      [id]
-    );
-    if (currentRows.length === 0) {
-      await client.query('ROLLBACK');
-      return c.json({ error: 'Pedido não encontrado' }, 404);
-    }
+    try {
+      await client.query('BEGIN');
 
-    const currentOrder = currentRows[0];
-    if (
-      status === 'cancelado' &&
-      currentOrder.status !== 'cancelado' &&
-      currentOrder.status !== 'concluido'
-    ) {
-      await restoreOrderStock(client, currentOrder);
-    }
+      const id = c.req.param('id');
+      const { status } = c.req.valid('json');
+      const { rows: currentRows } = await client.query(
+        `SELECT *
+         FROM orders
+         WHERE id = $1
+         FOR UPDATE`,
+        [id]
+      );
 
-    const { rows } = await client.query(
-      'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-      [status, id]
-    );
-    await client.query('COMMIT');
-    if (rows.length === 0) return c.json({ error: 'Pedido não encontrado' }, 404);
-    return c.json(rows[0]);
-  } catch (err) {
-    console.error('Orders PATCH error:', err.message);
-    if (client) {
+      if (!currentRows.length) {
+        await client.query('ROLLBACK');
+        return jsonError(c, 404, 'Pedido não encontrado');
+      }
+
+      const currentOrder = currentRows[0];
+      if (
+        status === 'cancelado' &&
+        currentOrder.status !== 'cancelado' &&
+        currentOrder.status !== 'concluido'
+      ) {
+        await restoreOrderStock(client, currentOrder);
+      }
+
+      const { rows } = await client.query(
+        `UPDATE orders
+         SET status = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at`,
+        [status, id]
+      );
+
+      await client.query('COMMIT');
+      return c.json(rows[0]);
+    } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
+      console.error('Orders PATCH error:', error);
+      return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
     }
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
-  } finally {
-    client?.release();
   }
-});
+);
 
-// DELETE /api/orders/:id
-router.delete('/:id', authMiddleware, adminOnly, async (c) => {
+router.delete('/:id', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
   const db = c.get('db');
-  let client;
+  const client = await db.connect();
+
   try {
-    client = await db.connect();
-    const id = c.req.param('id');
     await client.query('BEGIN');
 
+    const id = c.req.param('id');
     const { rows } = await client.query(
-      'SELECT * FROM orders WHERE id = $1 FOR UPDATE',
+      `SELECT *
+       FROM orders
+       WHERE id = $1
+       FOR UPDATE`,
       [id]
     );
-    if (rows.length === 0) {
+
+    if (!rows.length) {
       await client.query('ROLLBACK');
-      return c.json({ error: 'Pedido não encontrado' }, 404);
+      return jsonError(c, 404, 'Pedido não encontrado');
     }
 
     const order = rows[0];
@@ -137,17 +162,13 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
     await client.query('DELETE FROM orders WHERE id = $1', [id]);
     await client.query('COMMIT');
     return c.json({ message: 'Pedido excluído' });
-  } catch (err) {
-    console.error('Orders DELETE error:', err.message);
-    if (client) {
-      await client.query('ROLLBACK').catch(() => {});
-    }
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Orders DELETE error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
-    client?.release();
+    client.release();
   }
 });
 
 export default router;
-
-

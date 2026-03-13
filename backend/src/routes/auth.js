@@ -1,155 +1,247 @@
-import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { z } from 'zod';
+import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware, getJwtSecret } from '../middleware/auth.js';
+import { authMiddleware, csrfMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import {
+  changePasswordSchema,
+  loginSchema,
+  passwordSetupSchema,
+} from '../domain/schemas.js';
+import {
+  clearSessionCookies,
+  consumePasswordSetupInvite,
+  destroySession,
+  issueSession,
+  resolveSession,
+} from '../services/authService.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
-import { cleanOptionalString } from '../utils/normalize.js';
+import { jsonError, setNoStore } from '../utils/http.js';
+import { normalizeEmail, normalizePhoneDigits } from '../utils/normalize.js';
 
 const router = new Hono();
 
-const loginSchema = z.object({
-  email: z.string().trim().min(1, 'E-mail ou telefone é obrigatório'),
-  password: z.string().min(1, 'Senha é obrigatória'),
-});
-
-// POST /api/auth/login
-router.post('/login', loginLimiter, zValidator('json', loginSchema, (result, c) => {
+function validationError(result, c) {
   if (!result.success) {
-    return c.json({ error: result.error.issues[0].message }, 400);
+    return jsonError(c, 400, result.error.issues[0].message);
   }
-}), async (c) => {
-  try {
+
+  return undefined;
+}
+
+router.post(
+  '/login',
+  loginLimiter,
+  zValidator('json', loginSchema, validationError),
+  async (c) => {
     const db = c.get('db');
-    const { email, password } = c.req.valid('json');
-    const identifier = email.trim();
+    const client = await db.connect();
 
-    const { rows } = await db.query(
-      'SELECT * FROM users WHERE email = $1 OR phone = $1 LIMIT 1',
-      [identifier]
-    );
-    if (rows.length === 0) {
-      return c.json({ error: 'E-mail ou senha incorretos' }, 401);
-    }
+    try {
+      const payload = c.req.valid('json');
+      const identifier = normalizeEmail(payload.identifier || payload.email) || payload.identifier?.trim();
+      const phoneDigits = normalizePhoneDigits(payload.identifier || payload.email || '');
 
-    const user = rows[0];
-    if (!user.password) {
+      const { rows } = await client.query(
+        `SELECT *
+         FROM users
+         WHERE LOWER(COALESCE(email, '')) = LOWER($1)
+            OR REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g') = $2
+         LIMIT 1`,
+        [identifier || '', phoneDigits]
+      );
+
+      if (rows.length === 0) {
+        setNoStore(c);
+        return jsonError(c, 401, 'E-mail, telefone ou senha incorretos');
+      }
+
+      const user = rows[0];
+      if (!user.password) {
+        setNoStore(c);
+        return jsonError(
+          c,
+          403,
+          'Esse cadastro ainda não foi ativado. Solicite ou reutilize seu convite de acesso.'
+        );
+      }
+
+      const validPassword = await bcrypt.compare(payload.password, user.password);
+      if (!validPassword) {
+        setNoStore(c);
+        return jsonError(c, 401, 'E-mail, telefone ou senha incorretos');
+      }
+
+      await issueSession(c, client, user.id);
+      setNoStore(c);
+
       return c.json({
-        error: 'Esse cadastro precisa de uma senha. Solicite uma senha temporária para a loja.',
-      }, 403);
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          cpf: user.cpf,
+          address: user.address,
+          avatar: user.avatar,
+          created_at: user.created_at,
+        },
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
     }
-
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return c.json({ error: 'E-mail ou senha incorretos' }, 401);
-    }
-
-    const jwtSecret = getJwtSecret(c);
-    if (!jwtSecret) {
-      return c.json({ error: 'Erro interno no Servidor' }, 500);
-    }
-
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        name: user.name, 
-        email: user.email, 
-        role: user.role, 
-        avatar: user.avatar,
-        is_temporary_password: user.is_temporary_password 
-      },
-      jwtSecret,
-      { expiresIn: '7d' }
-    );
-
-    const { password: _, ...userWithoutPassword } = user;
-    return c.json({ token, user: userWithoutPassword });
-  } catch (err) {
-    console.error('Login error:', err);
-    return c.json({ error: 'Erro interno' }, 500);
   }
-});
+);
 
-const phoneSchema = z.object({
-  phone: z.string().min(8, 'Telefone é obrigatório'),
-  name: z.string().optional()
-});
+router.post('/logout', optionalAuthMiddleware, async (c) => {
+  const db = c.get('db');
+  const client = await db.connect();
 
-// POST /api/auth/phone
-router.post('/phone', loginLimiter, zValidator('json', phoneSchema, (result, c) => {
-  if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
-}), async (c) => {
   try {
-    const { name } = c.req.valid('json');
-    const cleanName = cleanOptionalString(name);
-
-    return c.json({
-      error: cleanName
-        ? 'Login por telefone foi desativado por segurança. Use telefone ou e-mail com senha.'
-        : 'Login por telefone sem senha foi desativado por segurança. Solicite uma senha temporária para a loja.',
-    }, 403);
-  } catch (err) {
-    console.error('Phone Auth error:', err);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+    await destroySession(c, client);
+    setNoStore(c);
+    return c.json({ message: 'Sessão encerrada com sucesso' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    clearSessionCookies(c);
+    return jsonError(c, 500, 'Erro interno no servidor');
+  } finally {
+    client.release();
   }
 });
 
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Senha atual é obrigatória'),
-  newPassword: z.string().min(6, 'Nova senha deve ter pelo menos 6 caracteres'),
-});
-
-// POST /api/auth/change-password
-router.post('/change-password', authMiddleware, zValidator('json', changePasswordSchema, (result, c) => {
-  if (!result.success) {
-    return c.json({ error: result.error.issues[0].message }, 400);
-  }
-}), async (c) => {
-  try {
+router.post(
+  '/setup-password',
+  zValidator('json', passwordSetupSchema, validationError),
+  async (c) => {
     const db = c.get('db');
-    const authUser = c.get('user');
-    const { currentPassword, newPassword } = c.req.valid('json');
+    const client = await db.connect();
 
-    const { rows } = await db.query('SELECT password FROM users WHERE id = $1', [authUser.id]);
-    if (rows.length === 0) return c.json({ error: 'Usuário não encontrado' }, 404);
-    if (!rows[0].password) {
-      return c.json({ error: 'Esse cadastro ainda não possui senha definida' }, 400);
+    try {
+      await client.query('BEGIN');
+
+      const payload = c.req.valid('json');
+      const invite = await consumePasswordSetupInvite(client, {
+        token: payload.token,
+        code: payload.code,
+      });
+
+      if (!invite?.user) {
+        await client.query('ROLLBACK');
+        setNoStore(c);
+        return jsonError(c, 400, 'Convite inválido, expirado ou já utilizado');
+      }
+
+      const passwordHash = await bcrypt.hash(payload.password, 12);
+      const { rows } = await client.query(
+        `UPDATE users
+         SET password = $1, is_temporary_password = false, updated_at = NOW()
+         WHERE id = $2
+         RETURNING id, name, email, role, phone, cpf, address, avatar, created_at`,
+        [passwordHash, invite.user.id]
+      );
+
+      await issueSession(c, client, invite.user.id);
+      await client.query('COMMIT');
+      setNoStore(c);
+
+      return c.json({ user: rows[0] });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('Setup password error:', error);
+      return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
     }
-
-    const validPassword = await bcrypt.compare(currentPassword, rows[0].password);
-    if (!validPassword) {
-      return c.json({ error: 'Senha atual incorreta' }, 400);
-    }
-
-    const hashedNew = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = $1, is_temporary_password = false WHERE id = $2', [hashedNew, authUser.id]);
-
-    return c.json({ message: 'Senha atualizada com sucesso' });
-  } catch (err) {
-    console.error('Change password error:', err);
-    return c.json({ error: 'Erro interno' }, 500);
   }
-});
+);
 
-// GET /api/auth/me
+router.post(
+  '/change-password',
+  authMiddleware,
+  csrfMiddleware,
+  zValidator('json', changePasswordSchema, validationError),
+  async (c) => {
+    const db = c.get('db');
+    const client = await db.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const session = await resolveSession(c, client);
+      if (!session?.user) {
+        await client.query('ROLLBACK');
+        setNoStore(c);
+        return jsonError(c, 401, 'Sessão inválida ou expirada');
+      }
+
+      const payload = c.req.valid('json');
+      const { rows } = await client.query('SELECT password FROM users WHERE id = $1', [
+        session.user.id,
+      ]);
+
+      if (rows.length === 0) {
+        await client.query('ROLLBACK');
+        return jsonError(c, 404, 'Usuário não encontrado');
+      }
+
+      const validPassword = await bcrypt.compare(payload.currentPassword, rows[0].password || '');
+      if (!validPassword) {
+        await client.query('ROLLBACK');
+        setNoStore(c);
+        return jsonError(c, 400, 'Senha atual incorreta');
+      }
+
+      const newHash = await bcrypt.hash(payload.newPassword, 12);
+      await client.query(
+        `UPDATE users
+         SET password = $1, is_temporary_password = false, updated_at = NOW()
+         WHERE id = $2`,
+        [newHash, session.user.id]
+      );
+
+      await destroySession(c, client);
+      await issueSession(c, client, session.user.id);
+      await client.query('COMMIT');
+      setNoStore(c);
+
+      return c.json({ message: 'Senha atualizada com sucesso' });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('Change password error:', error);
+      return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
+    }
+  }
+);
+
 router.get('/me', authMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const user = c.get('user');
     const { rows } = await db.query(
-      'SELECT id, name, email, role, phone, cpf, address, avatar, created_at FROM users WHERE id = $1',
+      `SELECT id, name, email, role, phone, cpf, address, avatar, created_at
+       FROM users
+       WHERE id = $1`,
       [user.id]
     );
+
     if (rows.length === 0) {
-      return c.json({ error: 'Usuário não encontrado' }, 404);
+      clearSessionCookies(c);
+      setNoStore(c);
+      return jsonError(c, 404, 'Usuário não encontrado');
     }
+
+    setNoStore(c);
     return c.json(rows[0]);
-  } catch (err) {
-    return c.json({ error: 'Erro interno' }, 500);
+  } catch (error) {
+    console.error('Auth me error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
 export default router;
-
-
