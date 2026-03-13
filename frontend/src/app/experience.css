@@ -87,8 +87,7 @@
 }
 
 .landing-eyebrow,
-.page-eyebrow,
-.loja-hero__eyebrow {
+.page-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;

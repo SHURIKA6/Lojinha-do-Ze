@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  FiCheckCircle,
-  FiGrid,
-  FiLock,
-  FiMapPin,
-  FiShoppingBag,
-  FiTruck,
-  FiUser,
-} from 'react-icons/fi';
+import { FiGrid, FiLock, FiShoppingBag, FiUser } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 import CartSidebar from '@/components/loja/CartSidebar';
@@ -317,7 +309,6 @@ export default function StorefrontPageClient() {
   const portalHref = isAdmin ? '/admin/dashboard' : user ? '/cliente' : '/login';
   const portalLabel = isAdmin ? 'Painel' : user ? 'Minha conta' : 'Entrar';
   const PortalIcon = isAdmin ? FiGrid : user ? FiUser : FiLock;
-  const categoryCount = catalogData.categories.length;
 
   return (
     <div className="loja">
@@ -331,74 +322,6 @@ export default function StorefrontPageClient() {
         setCartOpen={setCartOpen}
         setSearch={setSearch}
       />
-
-      <div className="loja-main">
-        <section className="loja-hero">
-          <div className="loja-hero__panel">
-            <span className="loja-hero__eyebrow">
-              <FiCheckCircle />
-              Curadoria natural premium
-            </span>
-            <h1 className="loja-hero__title">Compre com clareza, atendimento local e confiança.</h1>
-            <p className="loja-hero__copy">
-              Uma vitrine mais profissional para destacar seus produtos naturais, facilitar a decisão
-              de compra e manter o pedido fluindo até o WhatsApp da loja.
-            </p>
-
-            <div className="loja-hero__chips">
-              <span className="loja-hero__chip">
-                <FiTruck />
-                Entrega local
-              </span>
-              <span className="loja-hero__chip">
-                <FiShoppingBag />
-                Retirada no balcão
-              </span>
-              <span className="loja-hero__chip">
-                <FiMapPin />
-                PIX ou maquininha
-              </span>
-            </div>
-          </div>
-
-          <div className="loja-hero__card">
-            <h2>Experiência mais forte para venda direta</h2>
-            <p>Visual editorial para a loja, sem mexer na regra de negócio do seu checkout.</p>
-
-            <div className="loja-hero__stats">
-              <div className="loja-hero__stat">
-                <span>Categorias</span>
-                <strong>{categoryCount}</strong>
-              </div>
-              <div className="loja-hero__stat">
-                <span>Produtos</span>
-                <strong>{allProducts.length}</strong>
-              </div>
-              <div className="loja-hero__stat">
-                <span>No carrinho</span>
-                <strong>{cartCount}</strong>
-              </div>
-            </div>
-
-            <div className="loja-hero__meta">
-              <div className="loja-hero__meta-item">
-                <FiCheckCircle />
-                <div>
-                  <strong>Checkout simples</strong>
-                  <p>Resumo, entrega, pagamento e confirmação no mesmo fluxo.</p>
-                </div>
-              </div>
-              <div className="loja-hero__meta-item">
-                <FiGrid />
-                <div>
-                  <strong>Acesso rápido</strong>
-                  <p>Cliente entra na conta e admin acessa o painel direto da vitrine.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
 
       <nav className="loja-categories" aria-label="Categorias do catálogo">
         <div className="loja-categories__inner">
