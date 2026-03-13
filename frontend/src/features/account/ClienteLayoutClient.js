@@ -55,7 +55,7 @@ export default function ClienteLayoutClient({ children }) {
             </button>
           ))}
 
-          <button type="button" className="customer-topbar__link" onClick={() => router.push('/loja')}>
+          <button type="button" className="customer-topbar__link" onClick={() => router.push('/')}>
             <FiShoppingBag />
             Loja
           </button>
