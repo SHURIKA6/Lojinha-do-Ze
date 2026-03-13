@@ -1,32 +1,35 @@
 import { Pool } from '@neondatabase/serverless';
 
-// Wrap Neon Pool connection to provide the standard pg.Pool interface
-// We initialize it lazily because process.env is only available during request handling in Cloudflare
-let lazyPool = null;
-
-const pool = {
-  init: (url) => {
-    if (!lazyPool) {
-      if (!url) console.warn("CRITICAL: DATABASE_URL is not set");
-      lazyPool = new Pool({ connectionString: url });
-    }
-  },
-  getPool: () => {
-    if (!lazyPool) throw new Error("Database pool was not initialized");
-    return lazyPool;
-  },
-  query: async (text, params) => {
-    return pool.getPool().query(text, params);
-  },
-  connect: async () => {
-    return pool.getPool().connect();
-  },
-  end: async () => {
-    if (lazyPool) await lazyPool.end();
+export function createDb(connectionString) {
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set');
   }
-};
 
-export default pool;
+  const pool = new Pool({ connectionString });
+  let closed = false;
 
+  return {
+    query(text, params) {
+      return pool.query(text, params);
+    },
 
+    connect() {
+      return pool.connect();
+    },
 
+    async close() {
+      if (closed) return;
+      closed = true;
+      await pool.end();
+    },
+  };
+}
+
+export async function withDb(connectionString, callback) {
+  const db = createDb(connectionString);
+  try {
+    return await callback(db);
+  } finally {
+    await db.close();
+  }
+}

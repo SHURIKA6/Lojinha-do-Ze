@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -39,11 +38,12 @@ const statusSchema = z.object({
 // GET /api/orders — list all orders (adm) or user orders (customer)
 router.get('/', authMiddleware, async (c) => {
   try {
+    const db = c.get('db');
     const user = c.get('user');
     const status = c.req.query('status');
     
     if (user.role === 'customer') {
-      const { rows } = await pool.query('SELECT * FROM orders WHERE customer_id = $1 ORDER BY created_at DESC', [user.id]);
+      const { rows } = await db.query('SELECT * FROM orders WHERE customer_id = $1 ORDER BY created_at DESC', [user.id]);
       return c.json(rows);
     }
 
@@ -55,7 +55,7 @@ router.get('/', authMiddleware, async (c) => {
       params.push(status);
     }
     query += ' ORDER BY created_at DESC';
-    const { rows } = await pool.query(query, params);
+    const { rows } = await db.query(query, params);
     return c.json(rows);
   } catch (err) {
     console.error('Orders GET error:', err.message);
@@ -67,8 +67,10 @@ router.get('/', authMiddleware, async (c) => {
 router.patch('/:id/status', authMiddleware, adminOnly, zValidator('json', statusSchema, (result, c) => {
   if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
 }), async (c) => {
-  const client = await pool.connect();
+  const db = c.get('db');
+  let client;
   try {
+    client = await db.connect();
     const id = c.req.param('id');
     const { status } = c.req.valid('json');
     await client.query('BEGIN');
@@ -100,17 +102,21 @@ router.patch('/:id/status', authMiddleware, adminOnly, zValidator('json', status
     return c.json(rows[0]);
   } catch (err) {
     console.error('Orders PATCH error:', err.message);
-    await client.query('ROLLBACK');
+    if (client) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
     return c.json({ error: 'Erro interno no Servidor' }, 500);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
 // DELETE /api/orders/:id
 router.delete('/:id', authMiddleware, adminOnly, async (c) => {
-  const client = await pool.connect();
+  const db = c.get('db');
+  let client;
   try {
+    client = await db.connect();
     const id = c.req.param('id');
     await client.query('BEGIN');
 
@@ -133,10 +139,12 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
     return c.json({ message: 'Pedido excluído' });
   } catch (err) {
     console.error('Orders DELETE error:', err.message);
-    await client.query('ROLLBACK');
+    if (client) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
     return c.json({ error: 'Erro interno no Servidor' }, 500);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 

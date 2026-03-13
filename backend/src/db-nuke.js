@@ -1,29 +1,14 @@
-import pool from './db.js';
-import 'dotenv/config';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { createDb } from './db.js';
+import { getRequiredEnv, loadLocalEnv } from './load-local-env.js';
 
-// Load .dev.vars for local execution if present
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const devVarsPath = join(__dirname, '..', '.dev.vars');
-
-if (existsSync(devVarsPath)) {
-  const content = readFileSync(devVarsPath, 'utf8');
-  content.split('\n').forEach(line => {
-    const [key, ...value] = line.split('=');
-    if (key && value.length) {
-      process.env[key.trim()] = value.join('=').trim().replace(/^["']|["']$/g, '');
-    }
-  });
-}
+loadLocalEnv();
 
 async function updateSchema() {
   console.log('🔄 Atualizando schema do banco de dados (Alterando colunas)...');
-  
+  const db = createDb(getRequiredEnv('DATABASE_URL'));
+
   try {
-    pool.init(process.env.DATABASE_URL);
-    const client = await pool.connect();
+    const client = await db.connect();
     
     // Drop the old tables entirely to rebuild cleanly
     await client.query('DROP TABLE IF EXISTS inventory_log CASCADE');
@@ -37,7 +22,7 @@ async function updateSchema() {
   } catch(err) {
     console.error('Erro:', err);
   } finally {
-    pool.end();
+    await db.close();
   }
 }
 

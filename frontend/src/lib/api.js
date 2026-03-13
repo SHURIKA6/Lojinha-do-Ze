@@ -3,7 +3,11 @@
    Replaces localStorage db.js with HTTP calls to backend
    ============================================ */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
+const DEFAULT_API_BASE = process.env.NODE_ENV === 'development'
+  ? 'http://localhost:8787/api'
+  : 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE;
 
 // ============================================
 // Token Management
@@ -21,6 +25,46 @@ function removeToken() {
   localStorage.removeItem('lojinha_token');
 }
 
+async function performFetch(url, options, fallbackMessage) {
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new Error('Não foi possível conectar ao servidor. Verifique se o backend está online e acessível.');
+    }
+
+    throw new Error(err instanceof Error && err.message ? err.message : fallbackMessage);
+  }
+}
+
+async function parseResponse(res, fallbackMessage) {
+  let data = null;
+  const contentType = res.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch (err) {
+      data = null;
+    }
+  } else {
+    try {
+      const text = await res.text();
+      if (text) {
+        data = { error: text };
+      }
+    } catch (err) {
+      data = null;
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || fallbackMessage);
+  }
+
+  return data;
+}
+
 // ============================================
 // Upload API
 // ============================================
@@ -29,17 +73,15 @@ export async function uploadImage(file) {
   formData.append('file', file);
   
   const token = getToken();
-  const res = await fetch(`${API_BASE}/upload`, {
+  const res = await performFetch(`${API_BASE}/upload`, {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData
-  });
-  
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Erro ao fazer upload da imagem');
-  return data;
+  }, 'Erro ao fazer upload da imagem');
+
+  return parseResponse(res, 'Erro ao fazer upload da imagem');
 }
 
 // ============================================
@@ -53,10 +95,10 @@ async function request(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+  const res = await performFetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
-  });
+  }, 'Erro na requisição');
 
   if (res.status === 401) {
     removeToken();
@@ -66,11 +108,7 @@ async function request(endpoint, options = {}) {
     throw new Error('Sessão expirada');
   }
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || 'Erro na requisição');
-  }
-  return data;
+  return parseResponse(res, 'Erro na requisição');
 }
 
 // ============================================
@@ -180,25 +218,21 @@ export async function updateProfile(data) {
 // Catalog API (Public — no auth)
 // ============================================
 export async function getCatalog() {
-  const res = await fetch(`${API_BASE}/catalog`);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Erro ao carregar catálogo');
-  return data;
+  const res = await performFetch(`${API_BASE}/catalog`, undefined, 'Erro ao carregar catálogo');
+  return parseResponse(res, 'Erro ao carregar catálogo');
 }
 
 export async function createOrder(orderData) {
   const token = getToken();
-  const res = await fetch(`${API_BASE}/catalog/orders`, {
+  const res = await performFetch(`${API_BASE}/catalog/orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(orderData),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Erro ao criar pedido');
-  return data;
+  }, 'Erro ao criar pedido');
+  return parseResponse(res, 'Erro ao criar pedido');
 }
 
 // ============================================

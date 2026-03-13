@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -32,7 +31,8 @@ const updateProductSchema = createProductSchema.partial().refine(
 // GET routes are accessible to any authenticated user
 router.get('/', authMiddleware, async (c) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM products ORDER BY name');
+    const db = c.get('db');
+    const { rows } = await db.query('SELECT * FROM products ORDER BY name');
     return c.json(rows);
   } catch (err) {
     console.error('Products GET error:', err.message);
@@ -42,8 +42,9 @@ router.get('/', authMiddleware, async (c) => {
 
 router.get('/:id', authMiddleware, async (c) => {
   try {
+    const db = c.get('db');
     const id = c.req.param('id');
-    const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    const { rows } = await db.query('SELECT * FROM products WHERE id = $1', [id]);
     if (rows.length === 0) return c.json({ error: 'Produto não encontrado' }, 404);
     return c.json(rows[0]);
   } catch (err) {
@@ -59,8 +60,9 @@ router.post('/', authMiddleware, adminOnly, zValidator('json', createProductSche
   }
 }), async (c) => {
   try {
+    const db = c.get('db');
     const { code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier } = c.req.valid('json');
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       `INSERT INTO products (code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [
@@ -92,6 +94,7 @@ router.put('/:id', authMiddleware, adminOnly, zValidator('json', updateProductSc
   }
 }), async (c) => {
   try {
+    const db = c.get('db');
     const id = c.req.param('id');
     const data = c.req.valid('json');
     const fields = [];
@@ -114,7 +117,7 @@ router.put('/:id', authMiddleware, adminOnly, zValidator('json', updateProductSc
     if (data.supplier !== undefined) setField('supplier', cleanOptionalString(data.supplier) || '');
 
     values.push(id);
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       `UPDATE products SET ${fields.join(', ')}, updated_at=NOW()
        WHERE id=$${values.length} RETURNING *`,
       values
@@ -132,8 +135,9 @@ router.put('/:id', authMiddleware, adminOnly, zValidator('json', updateProductSc
 
 router.delete('/:id', authMiddleware, adminOnly, async (c) => {
   try {
+    const db = c.get('db');
     const id = c.req.param('id');
-    const { rowCount } = await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    const { rowCount } = await db.query('DELETE FROM products WHERE id = $1', [id]);
     if (rowCount === 0) return c.json({ error: 'Produto não encontrado' }, 404);
     return c.json({ message: 'Produto excluído' });
   } catch (err) {

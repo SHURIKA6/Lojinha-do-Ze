@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import pool from '../db.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
 const router = new Hono();
@@ -8,50 +7,51 @@ router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
   try {
+    const db = c.get('db');
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
     // Month revenue (receita)
-    const { rows: revRow } = await pool.query(
+    const { rows: revRow } = await db.query(
       "SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type='receita' AND date BETWEEN $1 AND $2",
       [monthStart, monthEnd]
     );
 
     // Month expenses (despesa)
-    const { rows: expRow } = await pool.query(
+    const { rows: expRow } = await db.query(
       "SELECT COALESCE(SUM(value),0) as total FROM transactions WHERE type='despesa' AND date BETWEEN $1 AND $2",
       [monthStart, monthEnd]
     );
 
     // Active orders (novo, recebido, em_preparo, saiu_entrega)
-    const { rows: activeRow } = await pool.query(
+    const { rows: activeRow } = await db.query(
       "SELECT COUNT(*) FROM orders WHERE status IN ('novo', 'recebido', 'em_preparo', 'saiu_entrega')"
     );
 
     // Total completed sales (concluido)
-    const { rows: salesRow } = await pool.query(
+    const { rows: salesRow } = await db.query(
       "SELECT COUNT(*) FROM orders WHERE status = 'concluido'"
     );
 
     // Low stock
-    const { rows: lowStock } = await pool.query(
+    const { rows: lowStock } = await db.query(
       'SELECT * FROM products WHERE quantity <= min_stock ORDER BY quantity ASC'
     );
 
     // Recent orders
-    const { rows: recentOrders } = await pool.query(
+    const { rows: recentOrders } = await db.query(
       'SELECT * FROM orders ORDER BY created_at DESC LIMIT 5'
     );
 
     // Chart data
-    const { rows: dailyTx } = await pool.query(
+    const { rows: dailyTx } = await db.query(
       `SELECT DATE(date) as day_date, type, SUM(value) as total FROM transactions
        WHERE date BETWEEN $1 AND $2 GROUP BY DATE(date), type ORDER BY DATE(date)`,
       [monthStart, monthEnd]
     );
 
-    const { rows: catData } = await pool.query(
+    const { rows: catData } = await db.query(
       `SELECT category as name, COUNT(*) as value FROM products GROUP BY category`
     );
 
