@@ -8,8 +8,8 @@ const orderMap = new Map();
 
 export function createRateLimiter(store, limit, windowMs) {
   return async (c, next) => {
-    // Get IP from Cloudflare header
-    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
+    // Trust only the platform-provided client IP.
+    const ip = c.req.header('cf-connecting-ip') || '127.0.0.1';
     const now = Date.now();
     
     if (!store.has(ip)) {
@@ -27,9 +27,13 @@ export function createRateLimiter(store, limit, windowMs) {
       }
     }
     
-    // Prevent memory leaks in long-lived isolates
+    // Prevent memory leaks in long-lived isolates without dropping all protections.
     if (store.size > 5000) {
-      store.clear();
+      for (const [key, state] of store.entries()) {
+        if (now > state.resetAt) {
+          store.delete(key);
+        }
+      }
     }
     
     await next();

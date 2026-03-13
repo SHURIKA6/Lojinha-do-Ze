@@ -3,18 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiLock, FiMail, FiLogIn, FiPhone, FiUser } from 'react-icons/fi';
+import { FiLock, FiMail, FiLogIn, FiInfo } from 'react-icons/fi';
 
 export default function LoginPage() {
-  const [method, setMethod] = useState('email'); // 'email' or 'phone'
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [requireName, setRequireName] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, loginWithPhone } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -22,27 +18,19 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    let result;
-    if (method === 'email') {
-      result = await login(email, password);
-    } else {
-      result = await loginWithPhone(phone, name);
-      if (result.requireName) {
-        setRequireName(true);
-      }
-    }
-    
+    const result = await login(identifier, password);
     setLoading(false);
 
-    if (result && result.success) {
+    if (result?.success) {
       if (result.user.role === 'admin') {
         router.push('/admin/dashboard');
       } else {
         router.push('/cliente');
       }
-    } else if (result) {
-      setError(result.error || 'Erro ao fazer login');
+      return;
     }
+
+    setError(result?.error || 'Erro ao fazer login');
   };
 
   return (
@@ -51,42 +39,61 @@ export default function LoginPage() {
         <div className="login-card__header">
           <div className="login-card__logo">LZ</div>
           <h1 className="login-card__title">Lojinha do Zé</h1>
-          <p className="login-card__subtitle">Bem-vindo(a) de volta</p>
+          <p className="login-card__subtitle">Acesse com e-mail ou telefone e senha</p>
         </div>
 
-        <div className="tabs" style={{ marginBottom: 'var(--space-4)' }}>
-          <button className={`tab ${method === 'email' ? 'active' : ''}`} type="button" onClick={() => { setMethod('email'); setError(''); }}>E-mail Administrativo</button>
-          <button className={`tab ${method === 'phone' ? 'active' : ''}`} type="button" onClick={() => { setMethod('phone'); setError(''); }}>Telefone Cliente</button>
+        <div
+          style={{
+            marginBottom: 'var(--space-4)',
+            padding: 'var(--space-3)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--warning-50)',
+            color: 'var(--warning-700)',
+            fontSize: 'var(--font-sm)',
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'flex-start',
+          }}
+        >
+          <FiInfo style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            O login sem senha por telefone foi removido por segurança. Se voce nao tem senha,
+            solicite uma senha temporaria para a loja.
+          </span>
         </div>
 
         <form onSubmit={handleSubmit} className="login-card__form">
           {error && <div className="login-card__error">{error}</div>}
 
-          {method === 'email' ? (
-            <>
-              <div className="form-group">
-                <label className="form-label"><FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />E-mail</label>
-                <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" required />
-              </div>
-              <div className="form-group">
-                <label className="form-label"><FiLock style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />Senha</label>
-                <input className="form-input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="form-group">
-                <label className="form-label"><FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />Telefone</label>
-                <input className="form-input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(11) 99999-9999" required />
-              </div>
-              {requireName && (
-                <div className="form-group animate-fadeIn">
-                  <label className="form-label"><FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />Nome Completo</label>
-                  <input className="form-input" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Como gostaria de ser chamado?" required />
-                </div>
-              )}
-            </>
-          )}
+          <div className="form-group">
+            <label className="form-label">
+              <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+              E-mail ou Telefone
+            </label>
+            <input
+              className="form-input"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="seu@email.com ou (11) 99999-9999"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              <FiLock style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+              Senha
+            </label>
+            <input
+              className="form-input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
 
           <button className="btn btn--primary btn--full" type="submit" disabled={loading}>
             {loading ? 'Entrando...' : <><FiLogIn /> Entrar</>}

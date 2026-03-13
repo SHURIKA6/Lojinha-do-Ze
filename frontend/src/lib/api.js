@@ -85,15 +85,6 @@ export async function login(email, password) {
   return data;
 }
 
-export async function loginPhone(phone, name) {
-  const data = await request('/auth/phone', {
-    method: 'POST',
-    body: JSON.stringify({ phone, name }),
-  });
-  setToken(data.token);
-  return data;
-}
-
 export async function getMe() {
   return request('/auth/me');
 }
@@ -147,6 +138,10 @@ export async function updateCustomer(id, customer) {
   return request(`/customers/${id}`, { method: 'PUT', body: JSON.stringify(customer) });
 }
 
+export async function resetCustomerPassword(id) {
+  return request(`/customers/${id}/reset-password`, { method: 'PATCH' });
+}
+
 export async function deleteCustomer(id) {
   return request(`/customers/${id}`, { method: 'DELETE' });
 }
@@ -192,9 +187,13 @@ export async function getCatalog() {
 }
 
 export async function createOrder(orderData) {
+  const token = getToken();
   const res = await fetch(`${API_BASE}/catalog/orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(orderData),
   });
   const data = await res.json();
@@ -239,7 +238,7 @@ export function formatDateTime(dateStr) {
 
 export function getStatusLabel(status) {
   const labels = {
-    recebido: 'Recebido', em_preparo: 'Em Preparo', saiu_entrega: 'Saiu para Entrega',
+    novo: 'Novo', recebido: 'Recebido', em_preparo: 'Em Preparo', saiu_entrega: 'Saiu para Entrega',
     concluido: 'Concluído', cancelado: 'Cancelado',
   };
   return labels[status] || status;
@@ -247,7 +246,7 @@ export function getStatusLabel(status) {
 
 export function getStatusVariant(status) {
   const variants = {
-    recebido: 'neutral', em_preparo: 'info', saiu_entrega: 'warning',
+    novo: 'info', recebido: 'neutral', em_preparo: 'info', saiu_entrega: 'warning',
     concluido: 'success', cancelado: 'danger',
   };
   return variants[status] || 'neutral';
