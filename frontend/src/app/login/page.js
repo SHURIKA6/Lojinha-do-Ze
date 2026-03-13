@@ -3,7 +3,25 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiLock, FiMail, FiLogIn, FiInfo } from 'react-icons/fi';
+import { FiArrowRight, FiClock, FiInfo, FiLock, FiMail, FiShield, FiUser } from 'react-icons/fi';
+
+const benefits = [
+  {
+    icon: FiShield,
+    title: 'Acesso mais seguro',
+    text: 'O login por identificador e senha substitui o fluxo improvisado e protege clientes e operação.',
+  },
+  {
+    icon: FiClock,
+    title: 'Acompanhamento fácil',
+    text: 'Clientes acompanham pedidos e perfil no mesmo idioma visual da loja.',
+  },
+  {
+    icon: FiUser,
+    title: 'Administração centralizada',
+    text: 'Admin entra no painel com o mesmo sistema de autenticação da experiência pública.',
+  },
+];
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -22,11 +40,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.success) {
-      if (result.user.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/cliente');
-      }
+      router.push(result.user.role === 'admin' ? '/admin/dashboard' : '/cliente');
       return;
     }
 
@@ -35,70 +49,92 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      <div className="login-card animate-fadeIn">
-        <div className="login-card__header">
-          <div className="login-card__logo">LZ</div>
-          <h1 className="login-card__title">Lojinha do Zé</h1>
-          <p className="login-card__subtitle">Acesse com e-mail ou telefone e senha</p>
-        </div>
-
-        <div
-          style={{
-            marginBottom: 'var(--space-4)',
-            padding: 'var(--space-3)',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--warning-50)',
-            color: 'var(--warning-700)',
-            fontSize: 'var(--font-sm)',
-            display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'flex-start',
-          }}
-        >
-          <FiInfo style={{ flexShrink: 0, marginTop: 2 }} />
-          <span>
-            O login sem senha por telefone foi removido por segurança. Se voce nao tem senha,
-            solicite uma senha temporaria para a loja.
-          </span>
-        </div>
-
-        <form onSubmit={handleSubmit} className="login-card__form">
-          {error && <div className="login-card__error">{error}</div>}
-
-          <div className="form-group">
-            <label className="form-label">
-              <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
-              E-mail ou Telefone
-            </label>
-            <input
-              className="form-input"
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="seu@email.com ou (11) 99999-9999"
-              required
-            />
+      <div className="login-shell animate-fadeIn">
+        <section className="login-panel">
+          <div className="login-panel__copy">
+            <span className="landing-eyebrow">
+              <FiShield />
+              Acesso autenticado
+            </span>
+            <h1>Entre com segurança na nova experiência da Lojinha do Zé.</h1>
+            <p>
+              Um login mais profissional para clientes e operação, mantendo o fluxo simples e direto.
+            </p>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">
-              <FiLock style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
-              Senha
-            </label>
-            <input
-              className="form-input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+          <div className="login-panel__list">
+            {benefits.map(({ icon: Icon, title, text }) => (
+              <div key={title} className="login-panel__item">
+                <Icon />
+                <div>
+                  <strong>{title}</strong>
+                  <p>{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="login-card">
+          <div className="login-card__header">
+            <div className="login-card__logo">LZ</div>
+            <h1 className="login-card__title">Entrar</h1>
+            <p className="login-card__subtitle">Use e-mail ou telefone com a senha cadastrada.</p>
           </div>
 
-          <button className="btn btn--primary btn--full" type="submit" disabled={loading}>
-            {loading ? 'Entrando...' : <><FiLogIn /> Entrar</>}
-          </button>
-        </form>
+          <div className="login-note">
+            <FiInfo />
+            <span>
+              O login sem senha por telefone foi removido por segurança. Se você ainda não tem senha,
+              solicite uma temporária para a loja.
+            </span>
+          </div>
+
+          <form onSubmit={handleSubmit} className="login-card__form">
+            {error && <div className="login-card__error">{error}</div>}
+
+            <div className="form-group">
+              <label className="form-label">
+                <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+                E-mail ou telefone
+              </label>
+              <input
+                className="form-input"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="seu@email.com ou (11) 99999-9999"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <FiLock style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+                Senha
+              </label>
+              <input
+                className="form-input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <button className="btn btn--primary btn--full btn--lg" type="submit" disabled={loading}>
+              {loading ? (
+                'Entrando...'
+              ) : (
+                <>
+                  <FiArrowRight />
+                  Acessar conta
+                </>
+              )}
+            </button>
+          </form>
+        </section>
       </div>
     </div>
   );

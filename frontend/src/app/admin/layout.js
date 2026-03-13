@@ -17,8 +17,9 @@ export default function AdminLayout({ children }) {
 
   if (loading || !user || !isAdmin) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <span>Carregando...</span>
+      <div className="app-loader">
+        <div className="app-loader__spinner" />
+        <p>Carregando painel...</p>
       </div>
     );
   }
@@ -26,9 +27,7 @@ export default function AdminLayout({ children }) {
   return (
     <div className="layout">
       <Sidebar />
-      <main className="layout__main">
-        {children}
-      </main>
+      <main className="layout__main">{children}</main>
     </div>
   );
 }
