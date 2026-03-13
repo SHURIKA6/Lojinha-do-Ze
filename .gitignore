@@ -125,3 +125,9 @@ Thumbs.db
 out.log
 
 .env.local
+tail.json
+*.json
+!package.json
+!tsconfig.json
+!jsconfig.json
+!manifest.json

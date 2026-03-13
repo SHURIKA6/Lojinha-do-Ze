@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiLogOut } from 'react-icons/fi';
+import { FiLogOut, FiShoppingBag } from 'react-icons/fi';
 
 const navLinks = [
   { href: '/cliente', label: 'Meus Pedidos' },
@@ -23,8 +23,9 @@ export default function ClienteLayout({ children }) {
 
   if (loading || !user) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        Carregando...
+      <div className="app-loader">
+        <div className="app-loader__spinner" />
+        <p>Carregando sua conta...</p>
       </div>
     );
   }
@@ -41,24 +42,37 @@ export default function ClienteLayout({ children }) {
           <div className="customer-topbar__logo">LZ</div>
           <span className="customer-topbar__name">Lojinha do Zé</span>
         </div>
+
         <nav className="customer-topbar__nav">
-          {navLinks.map(link => (
-            <a
+          {navLinks.map((link) => (
+            <button
               key={link.href}
+              type="button"
               className={`customer-topbar__link ${pathname === link.href ? 'active' : ''}`}
               onClick={() => router.push(link.href)}
             >
               {link.label}
-            </a>
+            </button>
           ))}
-          <a className="customer-topbar__link" onClick={handleLogout} style={{ color: 'var(--danger-500)' }}>
-            <FiLogOut style={{ marginRight: '4px' }} /> Sair
-          </a>
+
+          <button type="button" className="customer-topbar__link" onClick={() => router.push('/loja')}>
+            <FiShoppingBag />
+            Loja
+          </button>
+
+          <button
+            type="button"
+            className="customer-topbar__link"
+            onClick={handleLogout}
+            style={{ color: 'var(--danger-500)' }}
+          >
+            <FiLogOut />
+            Sair
+          </button>
         </nav>
       </div>
-      <div className="customer-content">
-        {children}
-      </div>
+
+      <main className="customer-content">{children}</main>
     </div>
   );
 }

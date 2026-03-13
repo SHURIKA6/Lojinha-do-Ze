@@ -1,68 +1,171 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getOrders, formatCurrency, formatDate, getStatusLabel, getStatusVariant } from '@/lib/api';
-import { FiClock, FiCheckCircle, FiPackage, FiTruck } from 'react-icons/fi';
-import { useRouter } from 'next/navigation';
+import {
+  formatCurrency,
+  formatDate,
+  getOrders,
+  getStatusLabel,
+  getStatusVariant,
+} from '@/lib/api';
+import { FiCheckCircle, FiClock, FiPackage, FiTruck } from 'react-icons/fi';
 
 export default function ClienteDashboard() {
   const { user } = useAuth();
-  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      getOrders()
-        .then(data => setOrders(Array.isArray(data) ? data : []))
-        .catch(err => console.error(err))
-        .finally(() => setLoading(false));
+    if (!user) {
+      return;
     }
+
+    getOrders()
+      .then((data) => setOrders(Array.isArray(data) ? data : []))
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
   }, [user]);
 
-  if (loading) return <div className="animate-fadeIn" style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-400)' }}>Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="app-loader" style={{ minHeight: '50vh' }}>
+        <div className="app-loader__spinner" />
+        <p>Carregando seus pedidos...</p>
+      </div>
+    );
+  }
 
   const validOrders = Array.isArray(orders) ? orders : [];
-  const completedOrders = validOrders.filter(o => o.status === 'concluido' || o.status === 'cancelado');
-  
-  // count active statuses
-  const pendingCount = validOrders.filter(o => ['novo', 'recebido'].includes(o.status)).length;
-  const preparingCount = validOrders.filter(o => o.status === 'em_preparo').length;
-  const deliveringCount = validOrders.filter(o => o.status === 'saiu_entrega').length;
+  const completedOrders = validOrders.filter((order) =>
+    ['concluido', 'cancelado'].includes(order.status)
+  );
+  const pendingCount = validOrders.filter((order) => ['novo', 'recebido'].includes(order.status)).length;
+  const preparingCount = validOrders.filter((order) => order.status === 'em_preparo').length;
+  const deliveringCount = validOrders.filter((order) => order.status === 'saiu_entrega').length;
 
   return (
     <div className="animate-fadeIn">
-      <div style={{ marginBottom: 'var(--space-8)' }}>
-        <h1>Meus Pedidos</h1>
-        <p style={{ color: 'var(--gray-500)' }}>Acompanhe o status das suas compras</p>
+      <div className="page-header">
+        <div>
+          <span className="page-eyebrow">
+            <FiPackage />
+            Minha conta
+          </span>
+          <h1>Meus pedidos</h1>
+          <p className="page-header__subtitle">
+            Acompanhe status, histórico e pagamentos em uma leitura mais clara.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-4" style={{ marginBottom: 'var(--space-8)' }}>
-        <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' }}><div className="metric-card__icon" style={{ background: 'var(--warning-50)', color: 'var(--warning-600)' }}><FiClock /></div><div className="metric-card__content"><div className="metric-card__label">Na Fila</div><div className="metric-card__value">{pendingCount}</div></div></div>
-        <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' }}><div className="metric-card__icon" style={{ background: 'var(--info-50)', color: 'var(--info-600)' }}><FiPackage /></div><div className="metric-card__content"><div className="metric-card__label">Em Preparo</div><div className="metric-card__value">{preparingCount}</div></div></div>
-        <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' }}><div className="metric-card__icon" style={{ background: 'var(--primary-50)', color: 'var(--primary-600)' }}><FiTruck /></div><div className="metric-card__content"><div className="metric-card__label">A Caminho</div><div className="metric-card__value">{deliveringCount}</div></div></div>
-        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' }}><div className="metric-card__icon" style={{ background: 'var(--success-50)', color: 'var(--success-600)' }}><FiCheckCircle /></div><div className="metric-card__content"><div className="metric-card__label">Concluídos</div><div className="metric-card__value">{completedOrders.length}</div></div></div>
+      <div className="status-summary">
+        <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' }}>
+          <div className="metric-card__icon">
+            <FiClock />
+          </div>
+          <div className="metric-card__content">
+            <div className="metric-card__label">Na fila</div>
+            <div className="metric-card__value">{pendingCount}</div>
+          </div>
+        </div>
+
+        <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' }}>
+          <div className="metric-card__icon">
+            <FiPackage />
+          </div>
+          <div className="metric-card__content">
+            <div className="metric-card__label">Em preparo</div>
+            <div className="metric-card__value">{preparingCount}</div>
+          </div>
+        </div>
+
+        <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' }}>
+          <div className="metric-card__icon">
+            <FiTruck />
+          </div>
+          <div className="metric-card__content">
+            <div className="metric-card__label">A caminho</div>
+            <div className="metric-card__value">{deliveringCount}</div>
+          </div>
+        </div>
+
+        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' }}>
+          <div className="metric-card__icon">
+            <FiCheckCircle />
+          </div>
+          <div className="metric-card__content">
+            <div className="metric-card__label">Concluídos</div>
+            <div className="metric-card__value">{completedOrders.length}</div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-1">
-        <div className="table-container">
-          <div className="table-header"><h3 className="table-header__title">Seus Pedidos</h3></div>
-          <div className="table-responsive"><table><thead><tr><th>Pedido</th><th>Itens</th><th>Pagamento</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody>
-            {validOrders.length > 0 ? validOrders.map(o => {
-              let itemsLabel = '';
-              try { const items = JSON.parse(o.items || '[]'); itemsLabel = items.map(i => `${i.quantity}x ${i.name}`).join(', '); } catch(e) {}
-              return (
-              <tr key={o.id}>
-                <td><div style={{ fontWeight: 600 }}>#{o.id}</div><div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-400)' }}>{o.delivery_type === 'retirada' ? '🏪 Retirada' : '🛵 Entrega'}</div></td>
-                <td><div style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-600)', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemsLabel}</div></td>
-                <td><div style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>{o.payment_method === 'pix' ? 'PIX' : (o.payment_method === 'maquininha' ? 'Maquininha' : o.payment_method)}</div></td>
-                <td style={{ fontWeight: 700 }}>{formatCurrency(o.total)}</td>
-                <td><span className={`badge badge--${getStatusVariant(o.status)}`}>{getStatusLabel(o.status)}</span></td>
-                <td style={{ fontSize: 'var(--font-xs)' }}>{formatDate(o.created_at)}</td>
+      <div className="table-container">
+        <div className="table-header">
+          <h3 className="table-header__title">Histórico de pedidos</h3>
+        </div>
+
+        <div className="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Itens</th>
+                <th>Pagamento</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Data</th>
               </tr>
-            )}) : <tr><td colSpan={6} className="table-empty" style={{ padding: '2rem' }}>Você ainda não fez nenhum pedido.</td></tr>}
-          </tbody></table></div>
+            </thead>
+
+            <tbody>
+              {validOrders.length > 0 ? (
+                validOrders.map((order) => {
+                  let itemsLabel = '';
+
+                  try {
+                    const items = JSON.parse(order.items || '[]');
+                    itemsLabel = items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
+                  } catch (error) {
+                    console.error(error);
+                  }
+
+                  return (
+                    <tr key={order.id}>
+                      <td>
+                        <strong>#{order.id}</strong>
+                        <div style={{ color: 'var(--gray-500)', fontSize: 'var(--font-xs)' }}>
+                          {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
+                        </div>
+                      </td>
+                      <td>{itemsLabel || 'Itens indisponíveis'}</td>
+                      <td>
+                        {order.payment_method === 'pix'
+                          ? 'PIX'
+                          : order.payment_method === 'maquininha'
+                            ? 'Maquininha'
+                            : order.payment_method}
+                      </td>
+                      <td style={{ fontWeight: 800 }}>{formatCurrency(order.total)}</td>
+                      <td>
+                        <span className={`badge badge--${getStatusVariant(order.status)}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </td>
+                      <td>{formatDate(order.created_at)}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="table-empty">
+                    Você ainda não fez nenhum pedido.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
