@@ -59,8 +59,8 @@ const storyPoints = [
 export default function HomePageClient() {
   const { user, isAdmin } = useAuth();
 
-  const portalHref = isAdmin ? '/admin/dashboard' : user ? '/cliente' : '/login';
-  const portalLabel = isAdmin ? 'Abrir Painel' : user ? 'Minha Conta' : 'Entrar';
+  const portalHref = isAdmin ? '/admin/dashboard' : user ? '/conta' : '/login';
+  const portalLabel = isAdmin ? 'Abrir Painel' : user ? 'Minha Conta' : 'Login';
   const PortalIcon = isAdmin ? FiGrid : user ? FiUser : FiArrowRight;
 
   return (
@@ -143,7 +143,7 @@ export default function HomePageClient() {
                     <span>Compra direta</span>
                   </div>
                   <div className="landing-visual-stat">
-                    <strong>/cliente</strong>
+                    <strong>/conta</strong>
                     <span>Acompanhamento</span>
                   </div>
                   <div className="landing-visual-stat">
@@ -232,4 +232,3 @@ export default function HomePageClient() {
     </div>
   );
 }
-

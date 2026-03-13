@@ -1,0 +1,69 @@
+'use client';
+
+import { createContext, useContext, useState, useEffect } from 'react';
+import { getMe, login as apiLogin, logout as apiLogout } from '@/lib/api';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const refreshUser = async () => {
+    const userData = await getMe();
+    setUser(userData);
+    return userData;
+  };
+
+  useEffect(() => {
+    refreshUser()
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setUser(null);
+      setLoading(false);
+    };
+
+    window.addEventListener('auth:expired', handleExpiredSession);
+    return () => window.removeEventListener('auth:expired', handleExpiredSession);
+  }, []);
+
+  const login = async (identifier, password) => {
+    try {
+      const data = await apiLogin(identifier, password);
+      setUser(data.user);
+      return { success: true, user: data.user };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const logout = async () => {
+    await apiLogout().catch(() => {});
+    setUser(null);
+  };
+
+  const isAdmin = user?.role === 'admin';
+  const isCustomer = user?.role === 'customer';
+
+  return (
+    <AuthContext.Provider
+      value={{ user, login, logout, loading, refreshUser, setUser, isAdmin, isCustomer }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

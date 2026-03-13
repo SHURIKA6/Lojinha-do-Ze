@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "seed": "node src/schema.js"
+    "seed": "node src/schema.js",
+    "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",

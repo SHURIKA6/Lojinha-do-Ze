@@ -24,4 +24,3 @@ export function deleteOrder(id) {
     method: 'DELETE',
   });
 }
-

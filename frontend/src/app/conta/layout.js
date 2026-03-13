@@ -8,6 +8,6 @@ export const metadata = {
   },
 };
 
-export default function ClienteLayout({ children }) {
+export default function ContaLayout({ children }) {
   return <ClienteLayoutClient>{children}</ClienteLayoutClient>;
 }

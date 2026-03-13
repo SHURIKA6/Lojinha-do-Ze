@@ -14,16 +14,17 @@ import { createOrder, getCatalog } from '@/lib/api';
 
 const CUSTOMER_STORAGE_KEY = 'lojinha_customer';
 
-export default function StorefrontPageClient() {
-  const [catalogData, setCatalogData] = useState({ categories: [], total: 0 });
+export default function StorefrontPageClient({ initialCatalog = null }) {
+  const hasInitialCatalog = Boolean(initialCatalog?.categories);
+  const [catalogData, setCatalogData] = useState(() => initialCatalog || { categories: [], total: 0 });
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [productModal, setProductModal] = useState(null);
   const [productQty, setProductQty] = useState(1);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState(() => initialCatalog?.categories?.[0]?.name || '');
+  const [loading, setLoading] = useState(() => !hasInitialCatalog);
   const [orderResult, setOrderResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [customerForm, setCustomerForm] = useState({ name: '', phone: '', notes: '' });
@@ -41,7 +42,9 @@ export default function StorefrontPageClient() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    if (!hasInitialCatalog) {
+      setLoading(true);
+    }
 
     getCatalog()
       .then((data) => {
@@ -50,19 +53,27 @@ export default function StorefrontPageClient() {
         }
 
         setCatalogData(data || { categories: [], total: 0 });
-        if (data?.categories?.length > 0) {
-          setActiveCategory(data.categories[0].name);
-        }
+        setActiveCategory((previous) => {
+          const categories = data?.categories || [];
+
+          if (previous && categories.some((category) => category.name === previous)) {
+            return previous;
+          }
+
+          return categories[0]?.name || '';
+        });
       })
       .catch((catalogError) => {
         console.error(catalogError);
         const nextError =
           'Não foi possível carregar o catálogo. Verifique sua conexão ou as configurações do backend.';
-        setError(nextError);
-        toast.error(nextError, 'Catálogo indisponível');
+        if (!hasInitialCatalog) {
+          setError(nextError);
+          toast.error(nextError, 'Catálogo indisponível');
+        }
       })
       .finally(() => {
-        if (active) {
+        if (active && !hasInitialCatalog) {
           setLoading(false);
         }
       });
@@ -70,7 +81,7 @@ export default function StorefrontPageClient() {
     return () => {
       active = false;
     };
-  }, [toast]);
+  }, [hasInitialCatalog, toast]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -306,8 +317,8 @@ export default function StorefrontPageClient() {
     }
   };
 
-  const portalHref = isAdmin ? '/admin/dashboard' : user ? '/cliente' : '/login';
-  const portalLabel = isAdmin ? 'Painel' : user ? 'Minha conta' : 'Entrar';
+  const portalHref = isAdmin ? '/admin/dashboard' : user ? '/conta' : '/login';
+  const portalLabel = isAdmin ? 'Painel Admin' : user ? 'Minha conta' : 'Login';
   const PortalIcon = isAdmin ? FiGrid : user ? FiUser : FiLock;
 
   return (

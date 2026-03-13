@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { FiArrowRight, FiClock, FiInfo, FiLock, FiMail, FiShield, FiUser } from 'react-icons/fi';
@@ -28,20 +28,30 @@ export default function LoginPageClient() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const { user, loading, isAdmin, login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (user) {
+      router.replace(isAdmin ? '/admin/dashboard' : '/conta');
+    }
+  }, [user, loading, isAdmin, router]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
 
     const result = await login(identifier, password);
-    setLoading(false);
+    setSubmitting(false);
 
     if (result?.success) {
-      router.push(result.user.role === 'admin' ? '/admin/dashboard' : '/cliente');
+      router.push(result.user.role === 'admin' ? '/admin/dashboard' : '/conta');
       return;
     }
 
@@ -132,8 +142,8 @@ export default function LoginPageClient() {
               />
             </div>
 
-            <button className="btn btn--primary btn--full btn--lg" type="submit" disabled={loading}>
-              {loading ? (
+            <button className="btn btn--primary btn--full btn--lg" type="submit" disabled={submitting}>
+              {submitting ? (
                 'Entrando...'
               ) : (
                 <>

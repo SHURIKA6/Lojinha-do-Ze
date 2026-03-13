@@ -6,22 +6,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FiLogOut, FiShoppingBag } from 'react-icons/fi';
 
 const navLinks = [
-  { href: '/cliente', label: 'Meus Pedidos' },
-  { href: '/cliente/perfil', label: 'Meu Perfil' },
+  { href: '/conta', label: 'Meus Pedidos' },
+  { href: '/conta/perfil', label: 'Meu Perfil' },
 ];
 
 export default function ClienteLayoutClient({ children }) {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, isAdmin, isCustomer } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
+    if (loading) {
+      return;
     }
-  }, [user, loading, router]);
 
-  if (loading || !user) {
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+
+    if (!isCustomer) {
+      router.replace(isAdmin ? '/admin/dashboard' : '/');
+    }
+  }, [user, loading, isAdmin, isCustomer, router]);
+
+  if (loading || !user || !isCustomer) {
     return (
       <div className="app-loader" aria-live="polite">
         <div className="app-loader__spinner" />

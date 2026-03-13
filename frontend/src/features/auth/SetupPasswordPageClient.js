@@ -35,9 +35,9 @@ export default function SetupPasswordPageClient() {
         confirmPassword,
       });
 
-      await refreshUser().catch(() => null);
+      const user = await refreshUser().catch(() => null);
       toast.success('Conta ativada com sucesso. Você já está autenticado.');
-      router.push('/cliente');
+      router.push(user?.role === 'admin' ? '/admin/dashboard' : '/conta');
     } catch (submitError) {
       setError(submitError.message || 'Não foi possível ativar sua conta.');
     } finally {
@@ -165,4 +165,3 @@ export default function SetupPasswordPageClient() {
     </div>
   );
 }
-

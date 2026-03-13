@@ -1,9 +1,8 @@
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-const DEFAULT_API_BASE =
-  process.env.NODE_ENV === 'development' ? 'http://localhost:8787/api' : '/api';
-
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE;
+// Always use same-origin proxy (/api/*). The route handler in `src/app/api/[...path]/route.js`
+// forwards requests to the real backend (Worker or local wrangler).
+export const API_BASE = '/api';
 
 export class ApiError extends Error {
   constructor(message, status, payload) {
@@ -110,4 +109,3 @@ export async function request(endpoint, options = {}) {
 
   return parseResponse(response, 'Erro na requisição');
 }
-

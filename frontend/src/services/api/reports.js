@@ -7,4 +7,3 @@ export function getDashboard() {
 export function getReport(type) {
   return request(`/reports/${type}`);
 }
-
