@@ -1,42 +1,39 @@
-import HomePageClient from '@/features/marketing/HomePageClient';
+import StorefrontPageClient from '@/features/storefront/StorefrontPageClient';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export const metadata = {
-  title: 'Lojinha do Zé | Produtos naturais e fitoterápicos',
+  title: 'Loja',
   description:
-    'Loja online de produtos fitoterápicos e naturais com catálogo organizado, entrega local e atendimento direto.',
+    'Compre produtos fitoterápicos e naturais com entrega local ou retirada no balcão.',
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'Lojinha do Zé',
+    title: 'Loja | Lojinha do Zé',
     description:
-      'Produtos naturais com experiência de compra mais clara, segura e profissional.',
+      'Catálogo organizado com checkout simples, entrega local e atendimento direto.',
     url: '/',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Lojinha do Zé',
+    title: 'Loja | Lojinha do Zé',
     description:
-      'Produtos naturais com experiência de compra mais clara, segura e profissional.',
+      'Catálogo organizado com checkout simples, entrega local e atendimento direto.',
   },
 };
 
 export default function HomePage() {
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'Store',
-    name: 'Lojinha do Zé',
+    '@type': 'CollectionPage',
+    name: 'Loja - Lojinha do Zé',
     url: siteUrl,
-    description:
-      'Loja de produtos fitoterápicos e naturais com compra online, retirada e entrega local.',
-    areaServed: 'Brasil',
-    availableLanguage: 'pt-BR',
-    brand: {
-      '@type': 'Organization',
+    isPartOf: {
+      '@type': 'WebSite',
       name: 'Lojinha do Zé',
+      url: siteUrl,
     },
   };
 
@@ -46,7 +43,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomePageClient />
+      <StorefrontPageClient />
     </>
   );
 }
