@@ -6,4 +6,3 @@ export function updateProfile(data) {
     body: JSON.stringify(data),
   });
 }
-

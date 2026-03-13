@@ -18,15 +18,23 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Local backend
 
-For local development, this frontend now assumes the backend is running via `wrangler dev` at `http://localhost:8787/api`.
+For local development, this frontend assumes the backend is running via `wrangler dev` at `http://localhost:8787/api`.
 
-If you need to override it, set `NEXT_PUBLIC_API_URL` in `frontend/.env.local`:
+The frontend calls the API via a same-origin proxy at `/api/*` (Next route handler). The proxy forwards requests to the real backend using the `API_PROXY_BASE` environment variable.
+
+### Local dev
+
+No extra config is required if your backend is at `http://localhost:8787/api` (default).
+
+### Production / Vercel
+
+Set `API_PROXY_BASE` to your deployed Worker API base (must include `/api`), for example:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8787/api
+API_PROXY_BASE=https://<your-worker-domain>/api
 ```
 
-For production or remote QA, point `NEXT_PUBLIC_API_URL` to the deployed Worker URL explicitly.
+After switching to the proxy approach, users will need to log in again because session cookies become first-party (frontend domain).
 
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 

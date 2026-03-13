@@ -1,4 +1,5 @@
 import StorefrontPageClient from '@/features/storefront/StorefrontPageClient';
+import { headers } from 'next/headers';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -24,7 +25,43 @@ export const metadata = {
   },
 };
 
-export default function HomePage() {
+function getRequestOrigin() {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) {
+    return explicit.replace(/\/$/, '');
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  const incoming = headers();
+  const host = incoming.get('x-forwarded-host') || incoming.get('host');
+  if (!host) {
+    return 'http://localhost:3000';
+  }
+
+  const proto = incoming.get('x-forwarded-proto') || 'http';
+  return `${proto}://${host}`;
+}
+
+async function loadInitialCatalog() {
+  const origin = getRequestOrigin();
+
+  try {
+    const res = await fetch(`${origin}/api/catalog`, { cache: 'no-store' });
+    if (!res.ok) {
+      return null;
+    }
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export default async function HomePage() {
+  const initialCatalog = await loadInitialCatalog();
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
@@ -43,7 +80,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <StorefrontPageClient />
+      <StorefrontPageClient initialCatalog={initialCatalog} />
     </>
   );
 }

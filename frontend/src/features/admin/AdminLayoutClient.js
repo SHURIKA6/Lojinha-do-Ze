@@ -10,8 +10,17 @@ export default function AdminLayoutClient({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
+    if (loading) {
+      return;
+    }
+
+    if (!user) {
       router.replace('/login');
+      return;
+    }
+
+    if (!isAdmin) {
+      router.replace('/conta');
     }
   }, [user, loading, isAdmin, router]);
 
@@ -31,4 +40,3 @@ export default function AdminLayoutClient({ children }) {
     </div>
   );
 }
-

@@ -28,4 +28,3 @@ export function changePassword(payload) {
     body: JSON.stringify(payload),
   });
 }
-

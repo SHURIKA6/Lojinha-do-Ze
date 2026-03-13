@@ -39,4 +39,3 @@ export function deleteCustomer(id) {
     method: 'DELETE',
   });
 }
-

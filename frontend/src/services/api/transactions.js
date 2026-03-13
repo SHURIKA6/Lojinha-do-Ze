@@ -17,4 +17,3 @@ export function deleteTransaction(id) {
     method: 'DELETE',
   });
 }
-

@@ -31,4 +31,3 @@ export function uploadImage(file) {
     body: formData,
   });
 }
-
