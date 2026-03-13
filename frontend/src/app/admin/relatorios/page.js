@@ -46,7 +46,7 @@ export default function RelatoriosPage() {
       filename = 'relatorio_financeiro.csv';
     } else if (reportType === 'inadimplencia') {
       csv = 'PedidoID,Cliente,Telefone,Status,Total\n';
-      data.payments.forEach(p => { csv += `"${p.id}","${p.customer_name}","${p.customer_phone}","${getStatusLabel(p.status)}",${p.total}\n`; });
+      data.orders.forEach(p => { csv += `"${p.id}","${p.customer_name}","${p.customer_phone}","${getStatusLabel(p.status)}",${p.total}\n`; });
       filename = 'relatorio_inadimplencia.csv';
     }
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -144,7 +144,7 @@ export default function RelatoriosPage() {
             <table>
               <thead><tr><th>Pedido ID</th><th>Cliente</th><th>Telefone</th><th>Status</th><th>Valor Pedido</th></tr></thead>
               <tbody>
-                {data.payments.map(p => (
+                {data.orders.map(p => (
                   <tr key={p.id}>
                     <td>#{p.id}</td>
                     <td style={{ fontWeight: 600 }}>{p.customer_name}</td>
@@ -153,7 +153,7 @@ export default function RelatoriosPage() {
                     <td style={{ fontWeight: 700, color: 'var(--danger-500)' }}>{formatCurrency(p.total)}</td>
                   </tr>
                 ))}
-                {data.payments.length === 0 && <tr><td colSpan={5} className="table-empty">Nenhuma inadimplência 🎉</td></tr>}
+                {data.orders.length === 0 && <tr><td colSpan={5} className="table-empty">Nenhuma inadimplência 🎉</td></tr>}
               </tbody>
             </table>
           </div>
