@@ -3,10 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import pool from '../db.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, getJwtSecret } from '../middleware/auth.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
-import config from '../config.js';
 import { cleanOptionalString } from '../utils/normalize.js';
 
 const router = new Hono();
@@ -23,10 +21,11 @@ router.post('/login', loginLimiter, zValidator('json', loginSchema, (result, c) 
   }
 }), async (c) => {
   try {
+    const db = c.get('db');
     const { email, password } = c.req.valid('json');
     const identifier = email.trim();
 
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       'SELECT * FROM users WHERE email = $1 OR phone = $1 LIMIT 1',
       [identifier]
     );
@@ -46,6 +45,11 @@ router.post('/login', loginLimiter, zValidator('json', loginSchema, (result, c) 
       return c.json({ error: 'E-mail ou senha incorretos' }, 401);
     }
 
+    const jwtSecret = getJwtSecret(c);
+    if (!jwtSecret) {
+      return c.json({ error: 'Erro interno no Servidor' }, 500);
+    }
+
     const token = jwt.sign(
       { 
         id: user.id, 
@@ -55,7 +59,7 @@ router.post('/login', loginLimiter, zValidator('json', loginSchema, (result, c) 
         avatar: user.avatar,
         is_temporary_password: user.is_temporary_password 
       },
-      config.jwtSecret,
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
@@ -103,10 +107,11 @@ router.post('/change-password', authMiddleware, zValidator('json', changePasswor
   }
 }), async (c) => {
   try {
+    const db = c.get('db');
     const authUser = c.get('user');
     const { currentPassword, newPassword } = c.req.valid('json');
 
-    const { rows } = await pool.query('SELECT password FROM users WHERE id = $1', [authUser.id]);
+    const { rows } = await db.query('SELECT password FROM users WHERE id = $1', [authUser.id]);
     if (rows.length === 0) return c.json({ error: 'Usuário não encontrado' }, 404);
     if (!rows[0].password) {
       return c.json({ error: 'Esse cadastro ainda não possui senha definida' }, 400);
@@ -118,7 +123,7 @@ router.post('/change-password', authMiddleware, zValidator('json', changePasswor
     }
 
     const hashedNew = await bcrypt.hash(newPassword, 10);
-    await pool.query('UPDATE users SET password = $1, is_temporary_password = false WHERE id = $2', [hashedNew, authUser.id]);
+    await db.query('UPDATE users SET password = $1, is_temporary_password = false WHERE id = $2', [hashedNew, authUser.id]);
 
     return c.json({ message: 'Senha atualizada com sucesso' });
   } catch (err) {
@@ -130,8 +135,9 @@ router.post('/change-password', authMiddleware, zValidator('json', changePasswor
 // GET /api/auth/me
 router.get('/me', authMiddleware, async (c) => {
   try {
+    const db = c.get('db');
     const user = c.get('user');
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       'SELECT id, name, email, role, phone, cpf, address, avatar, created_at FROM users WHERE id = $1',
       [user.id]
     );

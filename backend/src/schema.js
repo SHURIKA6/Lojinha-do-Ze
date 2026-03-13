@@ -1,29 +1,13 @@
-import pool from './db.js';
 import bcrypt from 'bcryptjs';
-import 'dotenv/config';
-
-// Load .dev.vars for local execution if present
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { createDb } from './db.js';
+import { getRequiredEnv, loadLocalEnv } from './load-local-env.js';
 import { fileURLToPath } from 'url';
+loadLocalEnv();
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const devVarsPath = join(__dirname, '..', '.dev.vars');
-
-if (existsSync(devVarsPath)) {
-  const content = readFileSync(devVarsPath, 'utf8');
-  content.split('\n').forEach(line => {
-    const [key, ...value] = line.split('=');
-    if (key && value.length) {
-      process.env[key.trim()] = value.join('=').trim().replace(/^["']|["']$/g, '');
-    }
-  });
-}
-
-async function createTables() {
+async function createTables(db) {
   console.log('📦 Criando tabelas...');
 
-  await pool.query(`
+  await db.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
@@ -120,9 +104,9 @@ async function createTables() {
   console.log('✅ Tabelas criadas com sucesso!');
 }
 
-async function seedData() {
+async function seedData(db) {
   // Check if already seeded
-  const { rows } = await pool.query('SELECT COUNT(*) FROM users');
+  const { rows } = await db.query('SELECT COUNT(*) FROM users');
   if (parseInt(rows[0].count) > 0) {
     console.log('ℹ️  Banco já possui dados, pulando seed.');
     return;
@@ -137,7 +121,7 @@ async function seedData() {
     console.warn("⚠️ ADMIN_PASSWORD não fornecido nas variáveis de ambiente. Pulando criação de Administrador.");
   } else {
     const adminPass = await bcrypt.hash(adminPassStr, 10);
-    await pool.query(`
+    await db.query(`
       INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, avatar) VALUES
       ('José Silva', 'jose@lojinha.com', $1, false, 'admin', '(11) 99999-1234', NULL, NULL, 'JS')
     `, [adminPass]);
@@ -160,7 +144,7 @@ async function seedData() {
   const c5Pass = await getClientPass();
 
   // --- Users ---
-  await pool.query(`
+  await db.query(`
     INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, avatar) VALUES
     ('Maria Oliveira', 'maria@email.com', $1, true, 'customer', '(11) 98765-4321', '123.456.789-00', 'Rua das Flores, 123 - São Paulo/SP', 'MO'),
     ('Carlos Santos', 'carlos@email.com', $2, true, 'customer', '(11) 91234-5678', '987.654.321-00', 'Av. Brasil, 456 - São Paulo/SP', 'CS'),
@@ -170,7 +154,7 @@ async function seedData() {
   `, [c1Pass, c2Pass, c3Pass, c4Pass, c5Pass]);
 
   // --- Products (Fitoterápicos e Naturais) ---
-  await pool.query(`
+  await db.query(`
     INSERT INTO products (code, name, category, quantity, min_stock, cost_price, sale_price, supplier) VALUES
     ('FIT-001', 'Óleo Essencial de Lavanda (10ml)', 'Óleos Essenciais', 20, 5, 15.00, 45.00, 'Natureza Viva'),
     ('FIT-002', 'Óleo Essencial de Melaleuca (10ml)', 'Óleos Essenciais', 15, 5, 18.00, 52.00, 'Natureza Viva'),
@@ -184,7 +168,7 @@ async function seedData() {
   `);
 
   // --- Transactions ---
-  await pool.query(`
+  await db.query(`
     INSERT INTO transactions (type, category, description, value, date) VALUES
     ('receita', 'Venda', 'Venda avulsa balcão', 120.00, NOW()),
     ('despesa', 'Fornecedor', 'Reposição de estoque produtos naturais', 350.00, NOW()),
@@ -192,7 +176,7 @@ async function seedData() {
   `);
 
   // --- Inventory Log ---
-  await pool.query(`
+  await db.query(`
     INSERT INTO inventory_log (product_id, product_name, type, quantity, reason, date) VALUES
     (1, 'Óleo Essencial de Lavanda (10ml)', 'entrada', 20, 'Estoque inicial', NOW()),
     (5, 'Mel Silvestre Orgânico (500g)', 'entrada', 30, 'Estoque inicial', NOW())
@@ -202,15 +186,15 @@ async function seedData() {
 }
 
 async function run() {
+  const db = createDb(getRequiredEnv('DATABASE_URL'));
   try {
-    pool.init(process.env.DATABASE_URL);
-    await createTables();
-    await seedData();
+    await createTables(db);
+    await seedData(db);
     console.log('\n🎉 Banco de dados pronto!');
   } catch (err) {
     console.error('❌ Erro:', err.message);
   } finally {
-    await pool.end();
+    await db.close();
   }
 }
 

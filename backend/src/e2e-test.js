@@ -53,7 +53,7 @@ async function runTests() {
 
   // 4. Teste de Estoque Atômico (Baseado no fluxo esperado)
   console.log('\\n--- 4. Concorrência e Estoque Atômico (Teórico) ---');
-  console.log('✅ Agora o db.js usa Pool do WebSockets. As rotas mandam BEGIN, descontam com "UPDATE WHERE quantity >= $1" atômico, retornando rowCount 0 em falhas, e dão COMMIT/ROLLBACK seguro.');
+  console.log('✅ Agora cada request cria sua própria conexão Neon. As rotas mandam BEGIN, descontam com "UPDATE WHERE quantity >= $1" atômico, retornando rowCount 0 em falhas, e dão COMMIT/ROLLBACK seguro.');
 
   console.log('\\n✅✅ Testes básicos concluídos (Para full-E2E, obtenha os JWTs com senhas reais!).');
 }

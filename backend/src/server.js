@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import { authMiddleware, adminOnly } from './middleware/auth.js';
+import { createDb } from './db.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -16,21 +16,45 @@ import dashboardRoutes from './routes/dashboard.js';
 import profileRoutes from './routes/profile.js';
 
 const app = new Hono();
+const DBLESS_PATH_PREFIXES = ['/api/health', '/api/upload'];
 
 // Middleware
 app.use('*', cors());
 
-import pool from './db.js';
-app.use('*', async (c, next) => {
-  if (c.env && c.env.DATABASE_URL) {
-    pool.init(c.env.DATABASE_URL);
-  }
-  await next();
-});
-
 // Health check
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', message: 'Lojinha do Zé API' });
+});
+
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    await next();
+    return;
+  }
+
+  const connectionString = c.env?.DATABASE_URL;
+  if (!connectionString) {
+    console.error('CRITICAL: DATABASE_URL is not configured for this request.');
+    return c.json({ error: 'Erro interno no Servidor' }, 500);
+  }
+
+  const db = createDb(connectionString);
+  c.set('db', db);
+
+  try {
+    await next();
+  } finally {
+    const closePromise = db.close().catch((err) => {
+      console.error('DB close error:', err);
+    });
+
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(closePromise);
+    } else {
+      await closePromise;
+    }
+  }
 });
 
 // Global Error Handler to avoid leaking internal DB data

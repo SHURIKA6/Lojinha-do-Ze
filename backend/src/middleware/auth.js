@@ -1,5 +1,13 @@
 import jwt from 'jsonwebtoken';
-import config from '../config.js';
+
+export function getJwtSecret(c) {
+  const jwtSecret = c.env?.JWT_SECRET;
+  if (!jwtSecret) {
+    console.error('CRITICAL: JWT_SECRET is not configured for this request.');
+    return null;
+  }
+  return jwtSecret;
+}
 
 function decodeToken(c) {
   const authHeader = c.req.header('authorization');
@@ -7,9 +15,14 @@ function decodeToken(c) {
     return { user: null };
   }
 
+  const jwtSecret = getJwtSecret(c);
+  if (!jwtSecret) {
+    return { error: c.json({ error: 'Erro interno no Servidor' }, 500) };
+  }
+
   const token = authHeader.split(' ')[1];
   try {
-    return { user: jwt.verify(token, config.jwtSecret) };
+    return { user: jwt.verify(token, jwtSecret) };
   } catch (err) {
     return { error: c.json({ error: 'Token inválido' }, 401) };
   }

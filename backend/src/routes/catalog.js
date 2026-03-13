@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import pool from '../db.js';
 import { orderLimiter } from '../middleware/rateLimit.js';
 import { optionalAuthMiddleware } from '../middleware/auth.js';
 import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize.js';
@@ -48,7 +47,8 @@ const orderSchema = z.object({
 // GET /api/catalog — Public, no auth required
 router.get('/', async (c) => {
   try {
-    const { rows } = await pool.query(
+    const db = c.get('db');
+    const { rows } = await db.query(
       'SELECT id, code, name, description, photo, category, sale_price, quantity FROM products WHERE quantity > 0 ORDER BY category, name'
     );
 
@@ -75,8 +75,10 @@ router.get('/', async (c) => {
 router.post('/orders', optionalAuthMiddleware, orderLimiter, zValidator('json', orderSchema, (result, c) => {
   if (!result.success) return c.json({ error: result.error.issues[0].message }, 400);
 }), async (c) => {
-  const client = await pool.connect();
+  const db = c.get('db');
+  let client;
   try {
+    client = await db.connect();
     await client.query('BEGIN');
 
     const {
@@ -182,11 +184,13 @@ router.post('/orders', optionalAuthMiddleware, orderLimiter, zValidator('json', 
       message: `Pedido #${orderRows[0].id} criado com sucesso!`,
     }, 201);
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
     console.error('Catalog Orders POST error:', err.message);
     return c.json({ error: 'Erro interno no Servidor' }, 500);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 

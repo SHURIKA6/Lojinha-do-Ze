@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import pool from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -27,6 +26,7 @@ router.put('/', zValidator('json', profileSchema, (result, c) => {
   }
 }), async (c) => {
   try {
+    const db = c.get('db');
     const { name, email, phone, address } = c.req.valid('json');
     const user = c.get('user');
     const cleanName = cleanOptionalString(name);
@@ -36,7 +36,7 @@ router.put('/', zValidator('json', profileSchema, (result, c) => {
     const avatar = cleanName
       ? cleanName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
       : undefined;
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       `UPDATE users SET name=COALESCE($1,name), email=$2,
        phone=$3, address=$4, avatar=COALESCE($5,avatar), updated_at=NOW()
        WHERE id=$6 RETURNING id, name, email, phone, cpf, address, avatar, role, created_at`,

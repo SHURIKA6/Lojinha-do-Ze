@@ -1,16 +1,18 @@
-const pool = require('./db');
+import { createDb } from './db.js';
+import { getRequiredEnv, loadLocalEnv } from './load-local-env.js';
+
+loadLocalEnv();
 
 async function clearAllData() {
   console.log('🗑️  Limpando todos os dados do banco...\n');
+  const db = createDb(getRequiredEnv('DATABASE_URL'));
 
   try {
     // Disable FK constraints temporarily and truncate all tables
-    await pool.query(`
+    await db.query(`
       TRUNCATE TABLE 
         inventory_log,
         transactions,
-        payments,
-        services,
         orders,
         products,
         users
@@ -18,11 +20,9 @@ async function clearAllData() {
     `);
 
     // Reset all sequences (auto-increment IDs)
-    await pool.query(`
+    await db.query(`
       ALTER SEQUENCE users_id_seq RESTART WITH 1;
       ALTER SEQUENCE products_id_seq RESTART WITH 1;
-      ALTER SEQUENCE services_id_seq RESTART WITH 1;
-      ALTER SEQUENCE payments_id_seq RESTART WITH 1;
       ALTER SEQUENCE transactions_id_seq RESTART WITH 1;
       ALTER SEQUENCE inventory_log_id_seq RESTART WITH 1;
       ALTER SEQUENCE orders_id_seq RESTART WITH 1;
@@ -33,7 +33,7 @@ async function clearAllData() {
   } catch (err) {
     console.error('❌ Erro ao limpar dados:', err.message);
   } finally {
-    await pool.end();
+    await db.close();
   }
 }
 
