@@ -387,6 +387,17 @@
   gap: var(--space-4);
 }
 
+.login-card__footer {
+  margin-top: var(--space-5);
+  color: var(--gray-500);
+  font-size: var(--font-sm);
+}
+
+.login-card__footer a {
+  color: var(--primary-700);
+  font-weight: 700;
+}
+
 .login-note {
   display: flex;
   gap: var(--space-3);
@@ -487,6 +498,14 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.sidebar__toggle:focus-visible,
+.sidebar__link:focus-visible,
+.sidebar__user:focus-visible,
+.customer-topbar__link:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 .sidebar__link.active {
   color: white;
   background: linear-gradient(135deg, rgba(115, 144, 114, 0.22), rgba(212, 155, 84, 0.18));
@@ -511,10 +530,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  width: 100%;
   padding: var(--space-4);
+  border: none;
   border-radius: 1.35rem;
   background: rgba(255, 255, 255, 0.06);
+  color: inherit;
   cursor: pointer;
+  text-align: left;
 }
 
 .sidebar__avatar {

@@ -11,11 +11,14 @@ async function updateSchema() {
     const client = await db.connect();
     
     // Drop the old tables entirely to rebuild cleanly
+    await client.query('DROP TABLE IF EXISTS password_setup_tokens CASCADE');
+    await client.query('DROP TABLE IF EXISTS auth_sessions CASCADE');
     await client.query('DROP TABLE IF EXISTS inventory_log CASCADE');
     await client.query('DROP TABLE IF EXISTS transactions CASCADE');
     await client.query('DROP TABLE IF EXISTS orders CASCADE');
     await client.query('DROP TABLE IF EXISTS products CASCADE');
     await client.query('DROP TABLE IF EXISTS users CASCADE');
+    await client.query('DROP TABLE IF EXISTS schema_migrations CASCADE');
     
     console.log('🗑️ Tabelas antigas dropadas. O server.js ou schema.js irá recriá-las.');
     client.release();

@@ -7,9 +7,36 @@ export function cleanOptionalString(value) {
   return trimmed === '' ? null : trimmed;
 }
 
+export function cleanRequiredString(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim();
+}
+
 export function normalizePhoneDigits(value) {
   if (typeof value !== 'string') return '';
   return value.replace(/\D/g, '');
+}
+
+export function normalizeCpfDigits(value) {
+  if (typeof value !== 'string') return '';
+  return value.replace(/\D/g, '');
+}
+
+export function normalizeEmail(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().toLowerCase();
+  return trimmed || null;
+}
+
+export function buildAvatar(name) {
+  if (typeof name !== 'string' || !name.trim()) return 'U';
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 export function isUniqueViolation(err) {

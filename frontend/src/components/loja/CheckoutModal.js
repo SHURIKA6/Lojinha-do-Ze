@@ -1,7 +1,7 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
-import AddressPicker from '@/components/AddressPicker';
 import { formatCurrency } from '@/lib/api';
 import {
   FiCheckCircle,
@@ -13,6 +13,10 @@ import {
   FiTruck,
   FiUser,
 } from 'react-icons/fi';
+
+const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
+  loading: () => <div className="loja-profile-card__note">Carregando mapa...</div>,
+});
 
 function ChoiceCard({ active, icon, label, meta, onClick }) {
   return (
@@ -88,7 +92,7 @@ export default function CheckoutModal({
             <p>Um comprovante do pedido foi enviado para a loja via WhatsApp.</p>
           </div>
 
-          <button className="btn btn--primary btn--full" onClick={() => setOrderResult(null)}>
+          <button type="button" className="btn btn--primary btn--full" onClick={() => setOrderResult(null)}>
             Continuar comprando
           </button>
         </div>
@@ -108,6 +112,7 @@ export default function CheckoutModal({
       footer={
         <>
           <button
+            type="button"
             className="btn btn--secondary"
             onClick={() => {
               setCheckoutOpen(false);
@@ -116,14 +121,23 @@ export default function CheckoutModal({
           >
             Voltar
           </button>
-          <button className="btn btn--primary btn--lg" onClick={handleCheckout} disabled={submitting}>
+          <button
+            type="button"
+            className="btn btn--primary btn--lg"
+            onClick={handleCheckout}
+            disabled={submitting}
+          >
             {submitting ? 'Enviando...' : `Confirmar ${formatCurrency(checkoutTotal)}`}
           </button>
         </>
       }
     >
       <div className="loja-checkout">
-        {error && <div className="login-card__error">{error}</div>}
+        {error ? (
+          <div className="login-card__error" role="alert" aria-live="assertive">
+            {error}
+          </div>
+        ) : null}
 
         <div className="loja-summary">
           <h4 className="loja-summary__title">Resumo do pedido</h4>
@@ -197,6 +211,7 @@ export default function CheckoutModal({
                 Nome completo *
               </label>
               <input
+                id="checkout-name"
                 className="form-input"
                 value={customerForm.name}
                 onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
@@ -210,6 +225,7 @@ export default function CheckoutModal({
                 Telefone / WhatsApp *
               </label>
               <input
+                id="checkout-phone"
                 className="form-input"
                 value={customerForm.phone}
                 onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
@@ -272,6 +288,7 @@ export default function CheckoutModal({
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Observações</label>
             <textarea
+              id="checkout-notes"
               className="form-input"
               rows={3}
               value={customerForm.notes}

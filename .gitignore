@@ -126,7 +126,7 @@ out.log
 
 .env.local
 tail.json
-*.json
+backend/tail.jsonl
 !package.json
 !tsconfig.json
 !jsconfig.json

@@ -3,6 +3,8 @@ import './experience.css';
 import './storefront.css';
 
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 import { Fraunces, Manrope } from 'next/font/google';
 
 const fraunces = Fraunces({
@@ -17,18 +19,49 @@ const manrope = Manrope({
   weight: ['400', '500', '600', '700', '800'],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
 export const metadata = {
-  title: 'Lojinha do Zé',
-  description: 'Produtos fitoterápicos e naturais com vitrine, pedidos e gestão em uma experiência premium.',
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: 'Lojinha do Zé',
+    template: '%s | Lojinha do Zé',
+  },
+  description:
+    'Produtos fitoterápicos e naturais com vitrine, pedidos e gestão em uma experiência premium.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Lojinha do Zé',
+    description:
+      'Compre produtos fitoterápicos e naturais com uma experiência clara, rápida e confiável.',
+    url: siteUrl,
+    siteName: 'Lojinha do Zé',
+    locale: 'pt_BR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Lojinha do Zé',
+    description:
+      'Compre produtos fitoterápicos e naturais com uma experiência clara, rápida e confiável.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR" className={`${fraunces.variable} ${manrope.variable}`}>
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ToastProvider>
+          <ConfirmDialogProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ConfirmDialogProvider>
+        </ToastProvider>
       </body>
     </html>
   );

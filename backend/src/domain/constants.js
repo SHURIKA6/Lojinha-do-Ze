@@ -1,0 +1,37 @@
+export const ROLE_VALUES = ['admin', 'customer'];
+
+export const DELIVERY_TYPE_VALUES = ['entrega', 'retirada'];
+
+export const ORDER_STATUS_VALUES = [
+  'novo',
+  'recebido',
+  'em_preparo',
+  'saiu_entrega',
+  'concluido',
+  'cancelado',
+];
+
+export const PAYMENT_METHOD_VALUES = ['pix', 'maquininha'];
+
+export const PRODUCT_CATEGORY_VALUES = [
+  'Óleos Essenciais',
+  'Chás e Infusões',
+  'Naturais',
+  'Cosméticos Naturais',
+  'Suplementos',
+  'Cápsulas',
+  'Chás',
+  'Tinturas',
+  'Cremes',
+  'Cosméticos',
+  'Outros',
+];
+
+export const SESSION_COOKIE_NAME = 'lz_session';
+export const CSRF_COOKIE_NAME = 'lz_csrf';
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+export const PASSWORD_SETUP_TTL_HOURS = 48;
+export const PASSWORD_SETUP_CODE_LENGTH = 8;
+
+export const SAFE_HTTP_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+

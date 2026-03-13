@@ -1,6 +1,7 @@
 'use client';
 
 import { FiPackage, FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import AppImage from '@/components/ui/AppImage';
 import { formatCurrency, getImageUrl } from '@/lib/api';
 
 export default function ProductGrid({
@@ -40,14 +41,29 @@ export default function ProductGrid({
             <article
               key={product.id}
               className="loja-product"
+              role="button"
+              tabIndex={0}
               onClick={() => openProductModal(product)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  openProductModal(product);
+                }
+              }}
+              aria-label={`Ver detalhes de ${product.name}`}
             >
               <div className="loja-product__image">
                 <div className="loja-product__stock">
                   {hasStock ? `${availableStock} un.` : 'Sem estoque'}
                 </div>
                 {product.photo ? (
-                  <img src={getImageUrl(product.photo)} alt={product.name} />
+                  <AppImage
+                    src={getImageUrl(product.photo)}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    style={{ objectFit: 'cover' }}
+                  />
                 ) : (
                   <FiPackage />
                 )}
@@ -69,9 +85,11 @@ export default function ProductGrid({
                   </div>
 
                   <button
+                    type="button"
                     className={`loja-product__add ${cartItem ? 'in-cart' : ''}`}
                     onClick={(e) => handleQuickAdd(e, product)}
                     disabled={!hasStock || cartItem?.quantity >= availableStock}
+                    aria-label={cartItem ? `${cartItem.quantity} de ${product.name} no carrinho` : `Adicionar ${product.name}`}
                   >
                     {cartItem ? <span className="loja-product__qty">{cartItem.quantity}</span> : <FiPlus />}
                   </button>

@@ -1,54 +1,60 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth.js';
-import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { authMiddleware, csrfMiddleware } from '../middleware/auth.js';
+import { profileUpdateSchema } from '../domain/schemas.js';
 import {
+  buildAvatar,
   cleanOptionalString,
   isUniqueViolation,
+  normalizeEmail,
   uniqueFieldLabel,
 } from '../utils/normalize.js';
+import { jsonError } from '../utils/http.js';
 
 const router = new Hono();
-const profileSchema = z.object({
-  name: z.string().trim().min(2, 'Nome é obrigatório').optional(),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-});
 
-// All routes here require authentication
+function validationError(result, c) {
+  if (!result.success) {
+    return jsonError(c, 400, result.error.issues[0].message);
+  }
+
+  return undefined;
+}
+
 router.use('*', authMiddleware);
 
-// User profile update
-router.put('/', zValidator('json', profileSchema, (result, c) => {
-  if (!result.success) {
-    return c.json({ error: result.error.issues[0].message }, 400);
-  }
-}), async (c) => {
+router.put('/', csrfMiddleware, zValidator('json', profileUpdateSchema, validationError), async (c) => {
   try {
     const db = c.get('db');
-    const { name, email, phone, address } = c.req.valid('json');
+    const payload = c.req.valid('json');
     const user = c.get('user');
-    const cleanName = cleanOptionalString(name);
-    const cleanEmail = cleanOptionalString(email);
-    const cleanPhone = cleanOptionalString(phone);
-    const cleanAddress = cleanOptionalString(address);
-    const avatar = cleanName
-      ? cleanName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-      : undefined;
+    const name = payload.name ? payload.name.trim() : undefined;
+    const email = payload.email !== undefined ? normalizeEmail(payload.email) : undefined;
+    const phone = payload.phone !== undefined ? cleanOptionalString(payload.phone) : undefined;
+    const address = payload.address !== undefined ? cleanOptionalString(payload.address) : undefined;
+    const avatar = name ? buildAvatar(name) : undefined;
+
     const { rows } = await db.query(
-      `UPDATE users SET name=COALESCE($1,name), email=$2,
-       phone=$3, address=$4, avatar=COALESCE($5,avatar), updated_at=NOW()
-       WHERE id=$6 RETURNING id, name, email, phone, cpf, address, avatar, role, created_at`,
-      [cleanName, cleanEmail, cleanPhone, cleanAddress, avatar, user.id]
+      `UPDATE users
+       SET name = COALESCE($1, name),
+           email = COALESCE($2, email),
+           phone = COALESCE($3, phone),
+           address = COALESCE($4, address),
+           avatar = COALESCE($5, avatar),
+           updated_at = NOW()
+       WHERE id = $6
+       RETURNING id, name, email, phone, cpf, address, avatar, role, created_at`,
+      [name, email, phone, address, avatar, user.id]
     );
+
     return c.json(rows[0]);
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      return c.json({ error: `${uniqueFieldLabel(err)} já cadastrado` }, 409);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
     }
-    console.error('Profile PUT error:', err.message);
-    return c.json({ error: 'Erro interno no Servidor' }, 500);
+
+    console.error('Profile PUT error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 

@@ -1,26 +1,117 @@
 'use client';
 
-export default function Modal({ isOpen, onClose, title, children, size = '', footer }) {
+import { useEffect, useId, useRef } from 'react';
+
+function getFocusableElements(container) {
+  if (!container) return [];
+
+  return Array.from(
+    container.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'));
+}
+
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = '',
+  footer,
+  description,
+}) {
+  const dialogId = useId();
+  const descriptionId = useId();
+  const dialogRef = useRef(null);
+  const previousFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    previousFocusRef.current = document.activeElement;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusableElements = getFocusableElements(dialogRef.current);
+    focusableElements[0]?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const elements = getFocusableElements(dialogRef.current);
+      if (!elements.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const firstElement = elements[0];
+      const lastElement = elements[elements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const sizeClass = size === 'lg' ? 'modal--lg' : size === 'xl' ? 'modal--xl' : '';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className={`modal ${sizeClass}`} onClick={e => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={`modal ${sizeClass}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogId}
+        aria-describedby={description ? descriptionId : undefined}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modal__header">
-          <h3 className="modal__title">{title}</h3>
-          <button className="modal__close" onClick={onClose}>×</button>
-        </div>
-        <div className="modal__body">
-          {children}
-        </div>
-        {footer && (
-          <div className="modal__footer">
-            {footer}
+          <div className="modal__header-copy">
+            <h3 id={dialogId} className="modal__title">
+              {title}
+            </h3>
+            {description ? (
+              <p id={descriptionId} className="modal__description">
+                {description}
+              </p>
+            ) : null}
           </div>
-        )}
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Fechar modal">
+            ×
+          </button>
+        </div>
+        <div className="modal__body">{children}</div>
+        {footer ? <div className="modal__footer">{footer}</div> : null}
       </div>
     </div>
   );
 }
+

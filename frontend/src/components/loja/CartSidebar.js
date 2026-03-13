@@ -26,7 +26,7 @@ export default function CartSidebar({
             <h2>Seu carrinho</h2>
             <p>{cart.length} produto(s) selecionado(s)</p>
           </div>
-          <button onClick={() => setCartOpen(false)}>
+          <button type="button" onClick={() => setCartOpen(false)} aria-label="Fechar carrinho">
             <FiX />
           </button>
         </div>
@@ -45,11 +45,15 @@ export default function CartSidebar({
                     </div>
 
                     <div className="loja-cart-item__controls">
-                      <button onClick={() => updateCartItem(item.productId, item.quantity - 1)}>
+                      <button
+                        type="button"
+                        onClick={() => updateCartItem(item.productId, item.quantity - 1)}
+                      >
                         <FiMinus />
                       </button>
                       <span>{item.quantity}</span>
                       <button
+                        type="button"
                         onClick={() => updateCartItem(item.productId, item.quantity + 1)}
                         disabled={item.quantity >= availableStock}
                       >
@@ -59,7 +63,12 @@ export default function CartSidebar({
 
                     <div className="loja-cart-item__subtotal">
                       <span>{formatCurrency(item.price * item.quantity)}</span>
-                      <button className="loja-cart-item__remove" onClick={() => removeFromCart(item.productId)}>
+                      <button
+                        type="button"
+                        className="loja-cart-item__remove"
+                        onClick={() => removeFromCart(item.productId)}
+                        aria-label={`Remover ${item.name} do carrinho`}
+                      >
                         <FiTrash2 />
                       </button>
                     </div>
@@ -75,6 +84,7 @@ export default function CartSidebar({
               </div>
 
               <button
+                type="button"
                 className="btn btn--primary btn--full btn--lg"
                 onClick={() => {
                   setCartOpen(false);
@@ -91,7 +101,7 @@ export default function CartSidebar({
               <FiShoppingCart />
             </div>
             <p>Seu carrinho está vazio.</p>
-            <button className="btn btn--secondary" onClick={() => setCartOpen(false)}>
+            <button type="button" className="btn btn--secondary" onClick={() => setCartOpen(false)}>
               Continuar comprando
             </button>
           </div>
