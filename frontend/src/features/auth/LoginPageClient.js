@@ -4,25 +4,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { FiArrowRight, FiClock, FiInfo, FiLock, FiMail, FiShield, FiUser } from 'react-icons/fi';
-
-const benefits = [
-  {
-    icon: FiShield,
-    title: 'Acesso mais seguro',
-    text: 'O login por identificador e senha substitui o fluxo improvisado e protege clientes e operação.',
-  },
-  {
-    icon: FiClock,
-    title: 'Acompanhamento fácil',
-    text: 'Clientes acompanham pedidos e perfil no mesmo idioma visual da loja.',
-  },
-  {
-    icon: FiUser,
-    title: 'Administração centralizada',
-    text: 'Admin entra no painel com o mesmo sistema de autenticação da experiência pública.',
-  },
-];
 
 export default function LoginPageClient() {
   const [identifier, setIdentifier] = useState('');
@@ -47,59 +28,31 @@ export default function LoginPageClient() {
     setError('');
     setSubmitting(true);
 
-    const result = await login(identifier, password);
-    setSubmitting(false);
+    try {
+      const result = await login(identifier, password);
+      setSubmitting(false);
 
-    if (result?.success) {
-      router.push(result.user.role === 'admin' ? '/admin/dashboard' : '/conta');
-      return;
+      if (result?.success) {
+        router.push(result.user.role === 'admin' ? '/admin/dashboard' : '/conta');
+        return;
+      }
+
+      setError(result?.error || 'Erro ao fazer login. Verifique seus dados.');
+    } catch (error) {
+      setSubmitting(false);
+      setError('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
-
-    setError(result?.error || 'Erro ao fazer login');
   };
 
   return (
     <div className="login-page">
       <div className="login-shell animate-fadeIn">
-        <section className="login-panel">
-          <div className="login-panel__copy">
-            <span className="landing-eyebrow">
-              <FiShield />
-              Acesso autenticado
-            </span>
-            <h1>Entre com segurança na nova experiência da Lojinha do Zé.</h1>
-            <p>
-              Um login mais profissional para clientes e operação, mantendo o fluxo simples e direto.
-            </p>
-          </div>
-
-          <div className="login-panel__list">
-            {benefits.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="login-panel__item">
-                <Icon />
-                <div>
-                  <strong>{title}</strong>
-                  <p>{text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         <section className="login-card">
-          <div className="login-card__header">
+          <header className="login-card__header">
             <div className="login-card__logo">LZ</div>
             <h1 className="login-card__title">Entrar</h1>
-            <p className="login-card__subtitle">Use e-mail ou telefone com a senha cadastrada.</p>
-          </div>
-
-          <div className="login-note">
-            <FiInfo />
-            <span>
-              Se você ainda não ativou sua conta, peça um novo convite para a loja ou use o link de
-              ativação recebido.
-            </span>
-          </div>
+            <p className="login-card__subtitle">Acesse sua conta com e-mail ou telefone</p>
+          </header>
 
           <form onSubmit={handleSubmit} className="login-card__form">
             {error ? (
@@ -110,7 +63,6 @@ export default function LoginPageClient() {
 
             <div className="form-group">
               <label className="form-label" htmlFor="login-identifier">
-                <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
                 E-mail ou telefone
               </label>
               <input
@@ -127,7 +79,6 @@ export default function LoginPageClient() {
 
             <div className="form-group">
               <label className="form-label" htmlFor="login-password">
-                <FiLock style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
                 Senha
               </label>
               <input
@@ -142,21 +93,25 @@ export default function LoginPageClient() {
               />
             </div>
 
-            <button className="btn btn--primary btn--full btn--lg" type="submit" disabled={submitting}>
-              {submitting ? (
-                'Entrando...'
-              ) : (
-                <>
-                  <FiArrowRight />
-                  Acessar conta
-                </>
-              )}
+            <button
+              className="btn btn--primary btn--full btn--lg"
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? 'Entrando...' : 'Acessar conta'}
             </button>
           </form>
 
-          <p className="login-card__footer">
-            Recebeu um convite? <Link href="/ativar-conta">Ativar conta</Link>
-          </p>
+          <footer className="login-card__footer">
+            <p>
+              Recebeu um convite? <Link href="/ativar-conta">Ativar conta</Link>
+            </p>
+            <p>
+              <Link href="/recuperar-senha" style={{ opacity: 0.7, fontWeight: 400 }}>
+                Esqueci minha senha
+              </Link>
+            </p>
+          </footer>
         </section>
       </div>
     </div>
