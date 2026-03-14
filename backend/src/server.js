@@ -13,10 +13,13 @@ import reportsRoutes from './routes/reports.js';
 import transactionsRoutes from './routes/transactions.js';
 import uploadRoutes from './routes/upload.js';
 
+import { apiLimiter } from './middleware/rateLimit.js';
+
 const app = new Hono();
 const DBLESS_PATH_PREFIXES = ['/api/health'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
 
+app.use('/api/*', apiLimiter);
 app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
 app.use('/api/*', originGuardMiddleware);
@@ -46,6 +49,9 @@ app.use('/api/*', async (c, next) => {
 
   try {
     await next();
+  } catch (error) {
+    console.error('API Request Error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     const closePromise = db.close().catch((error) => {
       console.error('DB close error:', error);
@@ -60,7 +66,7 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.onError((error, c) => {
-  console.error('Unhandled Server Error:', error);
+  console.error('Unhandled Global Error:', error);
   return jsonError(c, 500, 'Erro interno no servidor');
 });
 

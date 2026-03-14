@@ -7,6 +7,8 @@ const loginMap = new Map();
 const setupPasswordMap = new Map();
 const orderMap = new Map();
 
+const apiMap = new Map();
+
 export function createRateLimiter(store, limit, windowMs) {
   return async (c, next) => {
     // Trust only the platform-provided client IP.
@@ -44,3 +46,4 @@ export function createRateLimiter(store, limit, windowMs) {
 export const loginLimiter = createRateLimiter(loginMap, 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
 export const setupPasswordLimiter = createRateLimiter(setupPasswordMap, 5, 15 * 60 * 1000); // 5 setup attempts per 15 minutes
 export const orderLimiter = createRateLimiter(orderMap, 10, 60 * 60 * 1000); // 10 orders per 1 hour
+export const apiLimiter = createRateLimiter(apiMap, 60, 60 * 1000); // 60 requests per minute

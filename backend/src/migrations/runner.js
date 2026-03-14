@@ -1,7 +1,8 @@
 import * as migration001 from './001_initial.js';
 import * as migration002 from './002_fix_transactions_schema.js';
+import * as migration003 from './003_add_performance_indexes.js';
 
-const migrations = [migration001, migration002];
+const migrations = [migration001, migration002, migration003];
 
 export async function runMigrations(db) {
   const client = await db.connect();
