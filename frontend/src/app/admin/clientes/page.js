@@ -188,15 +188,6 @@ export default function ClientesPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="app-loader" style={{ minHeight: '60vh' }}>
-        <div className="app-loader__spinner" />
-        <p>Carregando clientes...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="animate-fadeIn surface-stack">
       <div className="page-header">
@@ -207,7 +198,7 @@ export default function ClientesPage() {
           </span>
           <h1>Clientes</h1>
           <p className="page-header__subtitle">
-            {customers.length} clientes cadastrados com histórico e convites de acesso controlados.
+            {loading ? 'Carregando clientes...' : `${customers.length} clientes cadastrados com histórico e convites de acesso controlados.`}
           </p>
         </div>
 
@@ -243,7 +234,15 @@ export default function ClientesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((customer) => (
+              {loading && customers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="table-empty">
+                    <div className="app-loader" style={{ padding: 'var(--space-8)' }}>
+                      <div className="app-loader__spinner" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.map((customer) => (
                 <tr key={customer.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
@@ -309,7 +308,7 @@ export default function ClientesPage() {
                 </tr>
               ))}
 
-              {filtered.length === 0 ? (
+              {!loading && filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="table-empty">
                     Nenhum cliente encontrado.

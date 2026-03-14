@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   FiDollarSign,
@@ -42,17 +42,10 @@ const navItems = [
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
-
-  const handleNavigate = (href) => {
-    router.push(href);
-    setMobileOpen(false);
-  };
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
   };
 
   return (
@@ -84,17 +77,17 @@ export default function Sidebar() {
                 const isActive = pathname === item.href;
 
                 return (
-                  <button
+                  <Link
                     key={item.href}
-                    type="button"
+                    href={item.href}
                     className={`sidebar__link ${isActive ? 'active' : ''}`}
-                    onClick={() => handleNavigate(item.href)}
+                    onClick={() => setMobileOpen(false)}
                   >
                     <span className="sidebar__link-icon">
                       <Icon />
                     </span>
                     <span>{item.label}</span>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -102,14 +95,14 @@ export default function Sidebar() {
         </nav>
 
         <div className="sidebar__footer">
-          <button type="button" className="sidebar__user" onClick={handleLogout} title="Sair">
+          <Link href="/login" className="sidebar__user" onClick={handleLogout} title="Sair">
             <div className="sidebar__avatar">{user?.avatar || 'U'}</div>
             <div className="sidebar__user-info">
               <div className="sidebar__user-name">{user?.name || 'Usuário'}</div>
               <div className="sidebar__user-role">Administrador</div>
             </div>
             <FiLogOut style={{ marginLeft: 'auto', opacity: 0.7, flexShrink: 0 }} />
-          </button>
+          </Link>
         </div>
       </aside>
 
