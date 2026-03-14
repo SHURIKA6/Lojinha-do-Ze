@@ -1,0 +1,9 @@
+node_modules
+.next
+.wrangler
+dist
+*.log
+package-lock.json
+public
+.env*
+build
