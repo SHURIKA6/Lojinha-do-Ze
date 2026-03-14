@@ -28,10 +28,11 @@ function isSecureRequest(c) {
 }
 
 function sessionCookieOptions(c, maxAge = SESSION_TTL_SECONDS, httpOnly = true) {
+  const isProd = c.env?.ENVIRONMENT === 'production';
   return {
     path: '/',
     sameSite: 'Lax',
-    secure: isSecureRequest(c),
+    secure: isProd || isSecureRequest(c),
     httpOnly,
     maxAge,
   };
