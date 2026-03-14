@@ -51,9 +51,9 @@ router.get('/:type', async (c) => {
 
       case 'financeiro': {
         const { rows: transactions } = await db.query(
-          `SELECT id, type, category, description, value, date
+          `SELECT id, type, category, description, value, date, order_id, created_at
            FROM transactions
-           ORDER BY date DESC`
+           ORDER BY date DESC, created_at DESC`
         );
         const { rows: incomeRow } = await db.query(
           "SELECT COALESCE(SUM(value), 0) AS total FROM transactions WHERE type = 'receita'"

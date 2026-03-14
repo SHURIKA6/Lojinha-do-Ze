@@ -37,8 +37,13 @@ router.get('/', async (c) => {
     const { rows } = await db.query(query, params);
     return c.json(rows);
   } catch (error) {
-    console.error('Transactions GET error:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
+    console.error('Transactions GET error details:', {
+      message: error.message,
+      stack: error.stack,
+      query: error.query,
+      hint: error.hint
+    });
+    return jsonError(c, 500, `Erro interno no servidor: ${error.message}`);
   }
 });
 
@@ -64,8 +69,12 @@ router.post(
       );
       return c.json(rows[0], 201);
     } catch (error) {
-      console.error('Transactions POST error:', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      console.error('Transactions POST error details:', {
+        message: error.message,
+        stack: error.stack,
+        payload
+      });
+      return jsonError(c, 500, `Erro interno no servidor: ${error.message}`);
     }
   }
 );
@@ -79,8 +88,12 @@ router.delete('/:id', csrfMiddleware, async (c) => {
     }
     return c.json({ message: 'Transação excluída' });
   } catch (error) {
-    console.error('Transactions DELETE error:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
+    console.error('Transactions DELETE error details:', {
+      message: error.message,
+      stack: error.stack,
+      id: c.req.param('id')
+    });
+    return jsonError(c, 500, `Erro interno no servidor: ${error.message}`);
   }
 });
 
