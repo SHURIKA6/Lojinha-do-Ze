@@ -38,7 +38,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
 
   const router = useRouter();
   const toast = useToast();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
 
   useEffect(() => {
     let active = true;
@@ -321,10 +321,15 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
   const portalLabel = isAdmin ? 'Painel Admin' : user ? 'Minha conta' : 'Login';
   const PortalIcon = isAdmin ? FiGrid : user ? FiUser : FiLock;
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="loja">
       <Header
         cartCount={cartCount}
+        onLogout={user ? handleLogout : undefined}
         onPortalClick={() => router.push(portalHref)}
         portalLabel={portalLabel}
         PortalIcon={PortalIcon}

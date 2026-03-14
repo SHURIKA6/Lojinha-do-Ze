@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { FiSearch, FiShoppingCart, FiX } from 'react-icons/fi';
+import { FiLogOut, FiSearch, FiShoppingCart, FiX } from 'react-icons/fi';
 
 export default function StorefrontNavbar({
   cartCount,
+  onLogout,
   onPortalClick,
   portalLabel,
   PortalIcon,
@@ -69,9 +70,21 @@ export default function StorefrontNavbar({
             <PortalIcon />
             <span className="loja-header__portal-label">{portalLabel}</span>
           </button>
+
+          {onLogout ? (
+            <button
+              type="button"
+              className="loja-header__portal loja-header__logout"
+              onClick={onLogout}
+              title="Sair"
+              aria-label="Sair"
+            >
+              <FiLogOut />
+              <span className="loja-header__portal-label">Sair</span>
+            </button>
+          ) : null}
         </div>
       </div>
     </header>
   );
 }
-
