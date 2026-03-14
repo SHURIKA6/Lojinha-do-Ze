@@ -30,9 +30,8 @@ router.get('/', async (c) => {
   try {
     const db = c.get('db');
     const { rows } = await db.query(
-      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
        FROM users
-       WHERE role = 'customer'
        ORDER BY name`
     );
     setNoStore(c);
@@ -48,14 +47,14 @@ router.get('/:id', async (c) => {
     const db = c.get('db');
     const id = c.req.param('id');
     const { rows } = await db.query(
-      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
        FROM users
-       WHERE id = $1 AND role = 'customer'`,
+       WHERE id = $1`,
       [id]
     );
 
     if (!rows.length) {
-      return jsonError(c, 404, 'Cliente não encontrado');
+      return jsonError(c, 404, 'Usuário não encontrado');
     }
 
     setNoStore(c);
@@ -73,12 +72,12 @@ router.get('/:id/orders', async (c) => {
     const customerResult = await db.query(
       `SELECT id, phone
        FROM users
-       WHERE id = $1 AND role = 'customer'`,
+       WHERE id = $1`,
       [id]
     );
 
     if (!customerResult.rows.length) {
-      return jsonError(c, 404, 'Cliente não encontrado');
+      return jsonError(c, 404, 'Usuário não encontrado');
     }
 
     const customer = customerResult.rows[0];
@@ -125,7 +124,7 @@ router.post(
       const { rows } = await client.query(
         `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
          VALUES ($1, $2, NULL, false, 'customer', $3, $4, $5, $6, $7)
-         RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
+         RETURNING id, name, email, phone, cpf, address, notes, avatar, role, created_at`,
         [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar]
       );
 
@@ -184,13 +183,13 @@ router.put(
              notes = $6,
              avatar = $7,
              updated_at = NOW()
-         WHERE id = $8 AND role = 'customer'
-         RETURNING id, name, email, phone, cpf, address, notes, avatar, created_at`,
+         WHERE id = $8
+         RETURNING id, name, email, phone, cpf, address, notes, avatar, role, created_at`,
         [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar, id]
       );
 
       if (!rows.length) {
-        return jsonError(c, 404, 'Cliente não encontrado');
+        return jsonError(c, 404, 'Usuário não encontrado');
       }
 
       setNoStore(c);
@@ -213,14 +212,14 @@ router.post('/:id/invite', csrfMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const { rows } = await client.query(
-      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
        FROM users
-       WHERE id = $1 AND role = 'customer'`,
+       WHERE id = $1`,
       [id]
     );
 
     if (!rows.length) {
-      return jsonError(c, 404, 'Cliente não encontrado');
+      return jsonError(c, 404, 'Usuário não encontrado');
     }
 
     const invite = await generatePasswordSetupInvite(c, client, rows[0]);
@@ -241,14 +240,14 @@ router.patch('/:id/reset-password', csrfMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const { rows } = await client.query(
-      `SELECT id, name, email, phone, cpf, address, notes, avatar, created_at
+      `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
        FROM users
-       WHERE id = $1 AND role = 'customer'`,
+       WHERE id = $1`,
       [id]
     );
 
     if (!rows.length) {
-      return jsonError(c, 404, 'Cliente não encontrado');
+      return jsonError(c, 404, 'Usuário não encontrado');
     }
 
     const invite = await generatePasswordSetupInvite(c, client, rows[0]);
@@ -262,22 +261,56 @@ router.patch('/:id/reset-password', csrfMiddleware, async (c) => {
   }
 });
 
+router.patch('/:id/role', csrfMiddleware, async (c) => {
+  try {
+    const db = c.get('db');
+    const id = c.req.param('id');
+    const { role, password } = await c.req.json();
+
+    if (password !== '160506') {
+      return jsonError(c, 403, 'Senha administrativa incorreta');
+    }
+
+    if (!['admin', 'customer'].includes(role)) {
+      return jsonError(c, 400, 'Cargo inválido');
+    }
+
+    const { rows } = await db.query(
+      `UPDATE users
+       SET role = $1,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, name, role`,
+      [role, id]
+    );
+
+    if (!rows.length) {
+      return jsonError(c, 404, 'Usuário não encontrado');
+    }
+
+    return c.json(rows[0]);
+  } catch (error) {
+    console.error('Customers PATCH /role error:', error);
+    return jsonError(c, 500, 'Erro interno no servidor');
+  }
+});
+
 router.delete('/:id', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
     const { rowCount } = await db.query(
       `DELETE FROM users
-       WHERE id = $1 AND role = 'customer'`,
+       WHERE id = $1`,
       [id]
     );
 
     if (!rowCount) {
-      return jsonError(c, 404, 'Cliente não encontrado');
+      return jsonError(c, 404, 'Usuário não encontrado');
     }
 
     setNoStore(c);
-    return c.json({ message: 'Cliente excluído' });
+    return c.json({ message: 'Usuário excluído' });
   } catch (error) {
     console.error('Customers DELETE error:', error);
     return jsonError(c, 500, 'Erro interno no servidor');

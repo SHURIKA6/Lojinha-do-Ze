@@ -34,6 +34,13 @@ export function resetCustomerPassword(id) {
   });
 }
 
+export function updateUserRole(id, role, password) {
+  return request(`/customers/${id}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role, password }),
+  });
+}
+
 export function deleteCustomer(id) {
   return request(`/customers/${id}`, {
     method: 'DELETE',
