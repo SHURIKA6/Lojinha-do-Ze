@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import AppImage from '@/components/ui/AppImage';
 import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
@@ -86,13 +86,13 @@ export default function EstoquePage() {
   ).length;
   const visibleProducts = products.filter((product) => product.is_active).length;
 
-  const openNew = () => {
+  const openNew = useCallback(() => {
     setEditingProduct(null);
     setForm(initialForm);
     setModalOpen(true);
-  };
+  }, []);
 
-  const openEdit = (product) => {
+  const openEdit = useCallback((product) => {
     setEditingProduct(product);
     setForm({
       code: product.code,
@@ -108,15 +108,15 @@ export default function EstoquePage() {
       is_active: Boolean(product.is_active),
     });
     setModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalOpen(false);
     setEditingProduct(null);
     setForm(initialForm);
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
 
     try {
@@ -136,7 +136,7 @@ export default function EstoquePage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [editingProduct, form, toast, closeModal]);
 
   const handleDelete = async (id, name) => {
     const confirmed = await confirm({
@@ -161,7 +161,7 @@ export default function EstoquePage() {
     }
   };
 
-  const handlePhotoUpload = async (event) => {
+  const handlePhotoUpload = useCallback(async (event) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -179,7 +179,7 @@ export default function EstoquePage() {
       setUploading(false);
       event.target.value = '';
     }
-  };
+  }, [toast]);
 
   if (loading) {
     return (

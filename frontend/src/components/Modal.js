@@ -24,24 +24,26 @@ export default function Modal({
   const dialogId = useId();
   const descriptionId = useId();
   const dialogRef = useRef(null);
-  const previousFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) {
       return undefined;
     }
 
-    previousFocusRef.current = document.activeElement;
+    const previousFocus = document.activeElement;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    // Focus first element only once when opening
     const focusableElements = getFocusableElements(dialogRef.current);
     focusableElements[0]?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -72,11 +74,11 @@ export default function Modal({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = originalOverflow;
-      if (previousFocusRef.current instanceof HTMLElement) {
-        previousFocusRef.current.focus();
+      if (previousFocus instanceof HTMLElement) {
+        previousFocus.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
