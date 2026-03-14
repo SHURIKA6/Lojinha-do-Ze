@@ -15,8 +15,19 @@ import {
   getStatusVariant,
   sendCustomerInvite,
   updateCustomer,
+  updateUserRole,
 } from '@/lib/api';
-import { FiEdit2, FiEye, FiKey, FiLink2, FiPlus, FiSearch, FiTrash2, FiUser } from 'react-icons/fi';
+import {
+  FiEdit2,
+  FiEye,
+  FiKey,
+  FiLink2,
+  FiPlus,
+  FiSearch,
+  FiShield,
+  FiTrash2,
+  FiUser,
+} from 'react-icons/fi';
 
 const initialForm = { name: '', email: '', phone: '', cpf: '', address: '', notes: '' };
 
@@ -25,6 +36,7 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
@@ -33,6 +45,8 @@ export default function ClientesPage() {
   const [inviteData, setInviteData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
+
+  const [roleForm, setRoleForm] = useState({ role: '', password: '' });
 
   const confirm = useConfirm();
   const toast = useToast();
@@ -47,7 +61,7 @@ export default function ClientesPage() {
       setCustomers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Não foi possível carregar os clientes.');
+      toast.error(error.message || 'Não foi possível carregar os usuários.');
     } finally {
       setLoading(false);
     }
@@ -59,7 +73,8 @@ export default function ClientesPage() {
       return (
         customer.name.toLowerCase().includes(term) ||
         customer.email?.toLowerCase().includes(term) ||
-        customer.phone?.includes(search)
+        customer.phone?.includes(search) ||
+        customer.role?.toLowerCase().includes(term)
       );
     });
   }, [customers, search]);
@@ -89,6 +104,38 @@ export default function ClientesPage() {
     setForm(initialForm);
   };
 
+  const openRoleModal = (customer) => {
+    setSelectedCustomer(customer);
+    setRoleForm({ role: customer.role === 'admin' ? 'customer' : 'admin', password: '' });
+    setRoleModalOpen(true);
+  };
+
+  const closeRoleModal = () => {
+    setRoleModalOpen(false);
+    setSelectedCustomer(null);
+    setRoleForm({ role: '', password: '' });
+  };
+
+  const handleUpdateRole = async () => {
+    if (!roleForm.password) {
+      toast.error('Informe a senha administrativa.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateUserRole(selectedCustomer.id, roleForm.role, roleForm.password);
+      toast.success('Cargo atualizado com sucesso.');
+      closeRoleModal();
+      await loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'Não foi possível atualizar o cargo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openDetail = async (customer) => {
     setSelectedCustomer(customer);
     setCustomerOrders([]);
@@ -100,7 +147,7 @@ export default function ClientesPage() {
       setCustomerOrders(Array.isArray(orders) ? orders : []);
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Não foi possível carregar o histórico do cliente.');
+      toast.error(error.message || 'Não foi possível carregar o histórico.');
     } finally {
       setLoadingOrders(false);
     }
@@ -112,7 +159,7 @@ export default function ClientesPage() {
     try {
       if (editingCustomer) {
         await updateCustomer(editingCustomer.id, form);
-        toast.success('Cliente atualizado com sucesso.');
+        toast.success('Usuário atualizado com sucesso.');
       } else {
         const createdCustomer = await createCustomer(form);
         setInviteData({
@@ -122,14 +169,14 @@ export default function ClientesPage() {
           setupCode: createdCustomer.invite?.setupCode || '',
           expiresAt: createdCustomer.invite?.expiresAt || '',
         });
-        toast.success('Cliente criado com convite de ativação.');
+        toast.success('Usuário criado com convite de ativação.');
       }
 
       closeFormModal();
       await loadData();
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Não foi possível salvar o cliente.');
+      toast.error(error.message || 'Não foi possível salvar o usuário.');
     } finally {
       setSaving(false);
     }
@@ -167,8 +214,8 @@ export default function ClientesPage() {
 
   const handleDelete = async (customer) => {
     const confirmed = await confirm({
-      title: 'Excluir cliente',
-      description: 'Esta ação remove o cadastro do cliente.',
+      title: 'Excluir usuário',
+      description: 'Esta ação remove o cadastro do usuário.',
       body: `Tem certeza que deseja excluir ${customer.name}?`,
       confirmLabel: 'Excluir',
       cancelLabel: 'Cancelar',
@@ -180,11 +227,11 @@ export default function ClientesPage() {
 
     try {
       await deleteCustomer(customer.id);
-      toast.success('Cliente excluído com sucesso.');
+      toast.success('Usuário excluído com sucesso.');
       await loadData();
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Não foi possível excluir o cliente.');
+      toast.error(error.message || 'Não foi possível excluir o usuário.');
     }
   };
 
@@ -196,9 +243,11 @@ export default function ClientesPage() {
             <FiUser />
             Relacionamento
           </span>
-          <h1>Clientes</h1>
+          <h1>Usuários e Clientes</h1>
           <p className="page-header__subtitle">
-            {loading ? 'Carregando clientes...' : `${customers.length} clientes cadastrados com histórico e convites de acesso controlados.`}
+            {loading
+              ? 'Carregando usuários...'
+              : `${customers.length} usuários cadastrados (Admins e Clientes) com acesso controlado.`}
           </p>
         </div>
 
@@ -214,19 +263,19 @@ export default function ClientesPage() {
         <div className="table-search">
           <FiSearch className="table-search__icon" />
           <input
-            placeholder="Buscar por nome, telefone ou e-mail..."
+            placeholder="Buscar por nome, telefone, e-mail ou tipo..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
       </div>
-
       <div className="table-container">
         <div className="table-responsive">
           <table>
             <thead>
               <tr>
-                <th>Cliente</th>
+                <th>Nome</th>
+                <th>Tipo</th>
                 <th>Telefone</th>
                 <th>E-mail</th>
                 <th>Desde</th>
@@ -236,7 +285,7 @@ export default function ClientesPage() {
             <tbody>
               {loading && customers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="table-empty">
+                  <td colSpan={6} className="table-empty">
                     <div className="app-loader" style={{ padding: 'var(--space-8)' }}>
                       <div className="app-loader__spinner" />
                     </div>
@@ -265,6 +314,14 @@ export default function ClientesPage() {
                       <span style={{ fontWeight: 700 }}>{customer.name}</span>
                     </div>
                   </td>
+                  <td>
+                    <span
+                      className={`badge badge--${customer.role === 'admin' ? 'primary' : 'secondary'}`}
+                      style={{ textTransform: 'capitalize' }}
+                    >
+                      {customer.role === 'admin' ? 'Administrador' : 'Cliente'}
+                    </span>
+                  </td>
                   <td style={{ fontWeight: 600 }}>{customer.phone || '—'}</td>
                   <td style={{ fontSize: 'var(--font-sm)' }}>{customer.email || '—'}</td>
                   <td style={{ fontSize: 'var(--font-sm)' }}>{formatDate(customer.created_at)}</td>
@@ -285,6 +342,15 @@ export default function ClientesPage() {
                         onClick={() => openEdit(customer)}
                       >
                         <FiEdit2 />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        aria-label={`Alterar cargo de ${customer.name}`}
+                        onClick={() => openRoleModal(customer)}
+                        title="Alterar cargo (Admin/Cliente)"
+                      >
+                        <FiShield />
                       </button>
                       <button
                         type="button"
@@ -310,8 +376,8 @@ export default function ClientesPage() {
 
               {!loading && filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="table-empty">
-                    Nenhum cliente encontrado.
+                  <td colSpan={6} className="table-empty">
+                    Nenhum usuário encontrado.
                   </td>
                 </tr>
               ) : null}
@@ -320,15 +386,80 @@ export default function ClientesPage() {
         </div>
       </div>
 
+      {/* Modal de Alteração de Cargo */}
+      <Modal
+        isOpen={roleModalOpen}
+        onClose={closeRoleModal}
+        title="Alterar Cargo"
+        description={`Defina o novo cargo para ${selectedCustomer?.name}`}
+        footer={
+          <>
+            <button type="button" className="btn btn--secondary" onClick={closeRoleModal}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn--primary" onClick={handleUpdateRole} disabled={saving}>
+              {saving ? 'Atualizando...' : 'Confirmar Alteração'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-group">
+          <label className="form-label">Novo Cargo</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
+            <button
+              type="button"
+              className={`btn ${roleForm.role === 'customer' ? 'btn--primary' : 'btn--secondary'}`}
+              onClick={() => setRoleForm({ ...roleForm, role: 'customer' })}
+            >
+              Cliente
+            </button>
+            <button
+              type="button"
+              className={`btn ${roleForm.role === 'admin' ? 'btn--primary' : 'btn--secondary'}`}
+              onClick={() => setRoleForm({ ...roleForm, role: 'admin' })}
+            >
+              Administrador
+            </button>
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginTop: 'var(--space-4)' }}>
+          <label className="form-label" htmlFor="admin-password">
+            Senha Administrativa
+          </label>
+          <input
+            id="admin-password"
+            type="password"
+            className="form-input"
+            value={roleForm.password}
+            onChange={(e) => setRoleForm({ ...roleForm, password: e.target.value })}
+            placeholder="Digite a senha para confirmar"
+          />
+          <p style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', marginTop: 'var(--space-2)' }}>
+            Esta ação requer autorização elevada.
+          </p>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={detailOpen}
         onClose={() => setDetailOpen(false)}
-        title={selectedCustomer?.name || 'Detalhes do cliente'}
+        title={selectedCustomer?.name || 'Detalhes do usuário'}
         size="lg"
       >
         {selectedCustomer ? (
           <div>
             <div className="grid grid-2" style={{ marginBottom: 'var(--space-6)', gap: 'var(--space-3)' }}>
+              <div>
+                <span style={{ color: 'var(--gray-500)', fontSize: 'var(--font-sm)' }}>Cargo</span>
+                <div style={{ fontWeight: 700, textTransform: 'capitalize' }}>
+                  {selectedCustomer.role === 'admin' ? 'Administrador' : 'Cliente'}
+                </div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--gray-500)', fontSize: 'var(--font-sm)' }}>Pessoa</span>
+                <div style={{ fontWeight: 700 }}>{selectedCustomer.name}</div>
+              </div>
               <div>
                 <span style={{ color: 'var(--gray-500)', fontSize: 'var(--font-sm)' }}>Telefone</span>
                 <div style={{ fontWeight: 700 }}>{selectedCustomer.phone || '—'}</div>
@@ -398,7 +529,7 @@ export default function ClientesPage() {
       <Modal
         isOpen={modalOpen}
         onClose={closeFormModal}
-        title={editingCustomer ? 'Editar cliente' : 'Novo cliente'}
+        title={editingCustomer ? 'Editar usuário' : 'Novo cliente'}
         footer={
           <>
             <button type="button" className="btn btn--secondary" onClick={closeFormModal}>
