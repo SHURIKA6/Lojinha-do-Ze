@@ -102,16 +102,9 @@ export default function LoginPageClient() {
             </button>
           </form>
 
-          <footer className="login-card__footer">
             <p>
               Recebeu um convite? <Link href="/ativar-conta">Ativar conta</Link>
             </p>
-            <p>
-              <Link href="/recuperar-senha" style={{ opacity: 0.7, fontWeight: 400 }}>
-                Esqueci minha senha
-              </Link>
-            </p>
-          </footer>
         </section>
       </div>
     </div>
