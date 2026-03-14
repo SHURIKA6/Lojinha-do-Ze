@@ -111,7 +111,8 @@ export async function bootstrapDatabase() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  bootstrapDatabase().catch(() => {
+  bootstrapDatabase().catch((err) => {
+    console.error('Fatal Database Bootstrap Error:', err);
     process.exitCode = 1;
   });
 }

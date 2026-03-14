@@ -1,5 +1,5 @@
-import { createDb } from './db.js';
-import { getRequiredEnv, loadLocalEnv } from './load-local-env.js';
+import { createDb } from '../src/db.js';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
 
 loadLocalEnv();
 
@@ -20,7 +20,7 @@ async function updateSchema() {
     await client.query('DROP TABLE IF EXISTS users CASCADE');
     await client.query('DROP TABLE IF EXISTS schema_migrations CASCADE');
     
-    console.log('🗑️ Tabelas antigas dropadas. O server.js ou schema.js irá recriá-las.');
+    console.log('🗑️ Tabelas antigas dropadas. O server.js ou db-bootstrap.js irá recriá-las.');
     client.release();
   } catch(err) {
     console.error('Erro:', err);

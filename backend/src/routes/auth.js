@@ -14,7 +14,7 @@ import {
   issueSession,
   resolveSession,
 } from '../services/authService.js';
-import { loginLimiter } from '../middleware/rateLimit.js';
+import { loginLimiter, setupPasswordLimiter } from '../middleware/rateLimit.js';
 import { jsonError, setNoStore } from '../utils/http.js';
 import { normalizeEmail, normalizePhoneDigits } from '../utils/normalize.js';
 
@@ -58,11 +58,7 @@ router.post(
       const user = rows[0];
       if (!user.password) {
         setNoStore(c);
-        return jsonError(
-          c,
-          403,
-          'Esse cadastro ainda não foi ativado. Solicite ou reutilize seu convite de acesso.'
-        );
+        return jsonError(c, 401, 'E-mail, telefone ou senha incorretos');
       }
 
       const validPassword = await bcrypt.compare(payload.password, user.password);
@@ -115,6 +111,7 @@ router.post('/logout', optionalAuthMiddleware, async (c) => {
 
 router.post(
   '/setup-password',
+  setupPasswordLimiter,
   zValidator('json', passwordSetupSchema, validationError),
   async (c) => {
     const db = c.get('db');

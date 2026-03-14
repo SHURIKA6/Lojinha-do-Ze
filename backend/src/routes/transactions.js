@@ -43,7 +43,7 @@ router.get('/', async (c) => {
       query: error.query,
       hint: error.hint
     });
-    return jsonError(c, 500, `Erro interno no servidor: ${error.message}`);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
@@ -74,7 +74,7 @@ router.post(
         stack: error.stack,
         payload
       });
-      return jsonError(c, 500, `Erro interno no servidor: ${error.message}`);
+      return jsonError(c, 500, 'Erro interno no servidor');
     }
   }
 );
@@ -93,7 +93,7 @@ router.delete('/:id', csrfMiddleware, async (c) => {
       stack: error.stack,
       id: c.req.param('id')
     });
-    return jsonError(c, 500, `Erro interno no servidor: ${error.message}`);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
