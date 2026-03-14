@@ -4,6 +4,7 @@
 // However, this provides a solid base MVP against brute-forces on the same edge node.
 
 const loginMap = new Map();
+const setupPasswordMap = new Map();
 const orderMap = new Map();
 
 export function createRateLimiter(store, limit, windowMs) {
@@ -41,4 +42,5 @@ export function createRateLimiter(store, limit, windowMs) {
 }
 
 export const loginLimiter = createRateLimiter(loginMap, 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+export const setupPasswordLimiter = createRateLimiter(setupPasswordMap, 5, 15 * 60 * 1000); // 5 setup attempts per 15 minutes
 export const orderLimiter = createRateLimiter(orderMap, 10, 60 * 60 * 1000); // 10 orders per 1 hour

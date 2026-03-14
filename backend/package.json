@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "seed": "node src/schema.js",
+    "seed": "node src/db-bootstrap.js",
     "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
@@ -20,5 +20,8 @@
   },
   "devDependencies": {
     "wrangler": "^4.72.0"
+  },
+  "overrides": {
+    "undici": "7.24.2"
   }
 }

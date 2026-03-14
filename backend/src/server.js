@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { createDb } from './db.js';
-import { createCorsMiddleware, securityHeadersMiddleware } from './middleware/security.js';
-import { jsonError } from './utils/http.js';
+import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security.js';
+import { isSafeMethod, jsonError } from './utils/http.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
 import customersRoutes from './routes/customers.js';
@@ -14,16 +14,23 @@ import transactionsRoutes from './routes/transactions.js';
 import uploadRoutes from './routes/upload.js';
 
 const app = new Hono();
-const DBLESS_PATH_PREFIXES = ['/api/health', '/api/upload'];
+const DBLESS_PATH_PREFIXES = ['/api/health'];
+const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
 
 app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
+app.use('/api/*', originGuardMiddleware);
 
 app.get('/api/health', (c) => c.json({ status: 'ok', message: 'Lojinha do Zé API' }));
 
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
   if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    await next();
+    return;
+  }
+
+  if (isSafeMethod(c.req.method) && DBLESS_SAFE_PREFIXES.some((prefix) => path.startsWith(prefix))) {
     await next();
     return;
   }

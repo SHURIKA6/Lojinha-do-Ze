@@ -1,5 +1,5 @@
-import { createDb } from './src/db.js';
-import { getRequiredEnv, loadLocalEnv } from './src/load-local-env.js';
+import { createDb } from '../src/db.js';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
 
 async function fixDb() {
   loadLocalEnv();

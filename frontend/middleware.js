@@ -38,10 +38,14 @@ function redirect(request, pathname) {
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Fail-open: if the auth check fails due to network/runtime, let the client-side guards handle it.
+  // Fail-closed: if the auth check fails due to network/runtime, redirect to login for protected routes.
   const result = await fetchMe(request);
   if (result.kind === 'error') {
-    return NextResponse.next();
+    if (pathname === '/login') {
+      return NextResponse.next();
+    }
+
+    return redirect(request, '/login');
   }
 
   if (pathname === '/login') {

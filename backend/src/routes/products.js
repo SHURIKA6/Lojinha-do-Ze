@@ -19,7 +19,9 @@ function validationError(result, c) {
   return undefined;
 }
 
-router.get('/', authMiddleware, async (c) => {
+router.use('*', authMiddleware, adminOnly);
+
+router.get('/', async (c) => {
   try {
     const db = c.get('db');
     const { rows } = await db.query(
@@ -34,7 +36,7 @@ router.get('/', authMiddleware, async (c) => {
   }
 });
 
-router.get('/:id', authMiddleware, async (c) => {
+router.get('/:id', async (c) => {
   try {
     const db = c.get('db');
     const { rows } = await db.query(
@@ -57,8 +59,6 @@ router.get('/:id', authMiddleware, async (c) => {
 
 router.post(
   '/',
-  authMiddleware,
-  adminOnly,
   csrfMiddleware,
   zValidator('json', productCreateSchema, validationError),
   async (c) => {
@@ -97,8 +97,6 @@ router.post(
 
 router.put(
   '/:id',
-  authMiddleware,
-  adminOnly,
   csrfMiddleware,
   zValidator('json', productUpdateSchema, validationError),
   async (c) => {
@@ -151,7 +149,7 @@ router.put(
   }
 );
 
-router.delete('/:id', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
+router.delete('/:id', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const { rowCount } = await db.query('DELETE FROM products WHERE id = $1', [c.req.param('id')]);
