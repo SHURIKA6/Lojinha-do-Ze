@@ -53,15 +53,19 @@ export const metadata = {
   },
 };
 
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR" className={`${fraunces.variable} ${manrope.variable}`}>
       <body>
-        <ToastProvider>
-          <ConfirmDialogProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </ConfirmDialogProvider>
-        </ToastProvider>
+        <ErrorBoundary>
+          <ToastProvider>
+            <ConfirmDialogProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </ConfirmDialogProvider>
+          </ToastProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -15,18 +15,7 @@ import {
   resolveSession,
 } from '../services/authService.js';
 import { loginLimiter, setupPasswordLimiter } from '../middleware/rateLimit.js';
-import { jsonError, setNoStore } from '../utils/http.js';
-import { normalizeEmail, normalizePhoneDigits } from '../utils/normalize.js';
-
-const router = new Hono();
-
-function validationError(result, c) {
-  if (!result.success) {
-    return jsonError(c, 400, result.error.issues[0].message);
-  }
-
-  return undefined;
-}
+import { jsonError, setNoStore, validationError } from '../utils/http.js';
 
 router.post(
   '/login',
@@ -51,12 +40,15 @@ router.post(
       );
 
       if (rows.length === 0) {
+        // Timing attack mitigation: always perform a bcrypt comparison
+        await bcrypt.compare(payload.password, '$2a$12$L7R23YQ6VvW.vG6X7Zf9q.nNl8y6R6R6R6R6R6R6R6R6R6R6R6R6');
         setNoStore(c);
         return jsonError(c, 401, 'E-mail, telefone ou senha incorretos');
       }
 
       const user = rows[0];
       if (!user.password) {
+        await bcrypt.compare(payload.password, '$2a$12$L7R23YQ6VvW.vG6X7Zf9q.nNl8y6R6R6R6R6R6R6R6R6R6R6R6R6');
         setNoStore(c);
         return jsonError(c, 401, 'E-mail, telefone ou senha incorretos');
       }

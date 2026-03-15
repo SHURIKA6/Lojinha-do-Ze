@@ -7,29 +7,35 @@ import {
   isUniqueViolation,
   uniqueFieldLabel,
 } from '../utils/normalize.js';
-import { jsonError } from '../utils/http.js';
+import { jsonError, validationError } from '../utils/http.js';
 
 const router = new Hono();
-
-function validationError(result, c) {
-  if (!result.success) {
-    return jsonError(c, 400, result.error.issues[0].message);
-  }
-
-  return undefined;
-}
 
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
+    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+
+    const countRes = await db.query('SELECT COUNT(*) FROM products');
+    const total = parseInt(countRes.rows[0].count);
+
     const { rows } = await db.query(
       `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
        FROM products
-       ORDER BY name`
+       ORDER BY name
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
-    return c.json(rows);
+
+    return c.json({
+      data: rows,
+      total,
+      limit,
+      offset,
+    });
   } catch (error) {
     console.error('Products GET error:', error);
     return jsonError(c, 500, 'Erro interno no servidor');

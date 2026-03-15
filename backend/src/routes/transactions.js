@@ -3,17 +3,9 @@ import { zValidator } from '@hono/zod-validator';
 import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
 import { transactionCreateSchema } from '../domain/schemas.js';
 import { cleanOptionalString } from '../utils/normalize.js';
-import { jsonError } from '../utils/http.js';
+import { jsonError, validationError } from '../utils/http.js';
 
 const router = new Hono();
-
-function validationError(result, c) {
-  if (!result.success) {
-    return jsonError(c, 400, result.error.issues[0].message);
-  }
-
-  return undefined;
-}
 
 router.use('*', authMiddleware, adminOnly);
 

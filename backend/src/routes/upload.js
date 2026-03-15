@@ -55,7 +55,14 @@ router.post('/', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
 
 router.get('/products/:filename', async (c) => {
   try {
-    const filename = `products/${c.req.param('filename')}`;
+    const paramFilename = c.req.param('filename');
+    
+    // Sanitize filename to prevent path traversal
+    if (!/^[a-zA-Z0-9._-]+$/.test(paramFilename) || paramFilename.includes('..')) {
+      return c.text('Bad Request', 400);
+    }
+
+    const filename = `products/${paramFilename}`;
     const bucket = c.env.BUCKET;
 
     if (!bucket) {

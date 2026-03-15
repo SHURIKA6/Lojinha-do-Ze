@@ -5,9 +5,8 @@ compatibility_date = "2024-10-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-# DATABASE_URL and JWT_SECRET should be set as secrets in Cloudflare Dashboard:
+# DATABASE_URL should be set as a secret in Cloudflare Dashboard:
 # npx wrangler secret put DATABASE_URL
-# npx wrangler secret put JWT_SECRET
 
 [[r2_buckets]]
 binding = "BUCKET"

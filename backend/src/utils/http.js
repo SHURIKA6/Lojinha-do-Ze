@@ -35,3 +35,10 @@ export function setNoStore(c) {
   c.res.headers.set('Cache-Control', 'no-store');
 }
 
+export function validationError(result, c) {
+  if (!result.success) {
+    return jsonError(c, 400, result.error.issues[0].message);
+  }
+
+  return undefined;
+}

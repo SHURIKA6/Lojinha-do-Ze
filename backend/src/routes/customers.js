@@ -12,30 +12,33 @@ import {
   normalizePhoneDigits,
   uniqueFieldLabel,
 } from '../utils/normalize.js';
-import { jsonError, setNoStore } from '../utils/http.js';
-
-const router = new Hono();
-
-function validationError(result, c) {
-  if (!result.success) {
-    return jsonError(c, 400, result.error.issues[0].message);
-  }
-
-  return undefined;
-}
+import { jsonError, setNoStore, validationError } from '../utils/http.js';
 
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
+    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+
+    const countRes = await db.query('SELECT COUNT(*) FROM users');
+    const total = parseInt(countRes.rows[0].count);
+
     const { rows } = await db.query(
       `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
        FROM users
-       ORDER BY name`
+       ORDER BY name
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
     setNoStore(c);
-    return c.json(rows);
+    return c.json({
+      data: rows,
+      total,
+      limit,
+      offset,
+    });
   } catch (error) {
     console.error('Customers GET error:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
@@ -265,11 +268,7 @@ router.patch('/:id/role', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    const { role, password } = await c.req.json();
-
-    if (password !== '160506') {
-      return jsonError(c, 403, 'Senha administrativa incorreta');
-    }
+    const { role } = await c.req.json();
 
     if (!['admin', 'customer'].includes(role)) {
       return jsonError(c, 400, 'Cargo inválido');
