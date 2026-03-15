@@ -55,6 +55,7 @@ export default function CheckoutModal({
   setOrderResult,
   setPaymentMethod,
   submitting,
+  onSendWhatsApp,
 }) {
   const checkoutTotal = deliveryType === 'entrega' ? cartTotal + 5 : cartTotal;
 
@@ -70,7 +71,7 @@ export default function CheckoutModal({
             <FiCheckCircle />
           </div>
           <h2>Pedido #{orderResult.order.id}</h2>
-          <p>Recebemos seu pedido com sucesso e já enviamos o aviso para a loja.</p>
+          <p>Seu pedido foi realizado com sucesso!</p>
 
           <div className="loja-confirmation__card">
             <div className="loja-confirmation__meta">
@@ -89,12 +90,24 @@ export default function CheckoutModal({
               </div>
             </div>
 
-            <p>Um comprovante do pedido foi enviado para a loja via WhatsApp.</p>
+            <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
+              Para agilizar seu atendimento, clique no botão abaixo para enviar o comprovante com os detalhes do seu pedido via WhatsApp.
+            </p>
           </div>
 
-          <button type="button" className="btn btn--primary btn--full" onClick={() => setOrderResult(null)}>
-            Continuar comprando
-          </button>
+          <div style={{ display: 'grid', gap: 'var(--space-3)', marginTop: 'var(--space-6)' }}>
+            <button 
+              type="button" 
+              className="btn btn--primary btn--full btn--lg" 
+              onClick={onSendWhatsApp}
+              style={{ background: '#25D366', borderColor: '#25D366' }}
+            >
+              Enviar para o WhatsApp
+            </button>
+            <button type="button" className="btn btn--secondary btn--full" onClick={() => setOrderResult(null)}>
+              Voltar para a loja
+            </button>
+          </div>
         </div>
       </Modal>
     );
