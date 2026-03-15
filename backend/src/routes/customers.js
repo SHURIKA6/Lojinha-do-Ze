@@ -21,15 +21,40 @@ router.use('*', authMiddleware, adminOnly);
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
-    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+    const limit = Math.min(parseInt(c.req.query('limit')) || 100, 200);
     const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-    const countRes = await db.query('SELECT COUNT(*) FROM users');
+    const countRes = await db.query(`
+      SELECT COUNT(*) FROM (
+        SELECT id FROM users
+        UNION
+        SELECT MIN(id) FROM orders WHERE customer_id IS NULL GROUP BY customer_phone
+      ) as total_customers
+    `);
     const total = parseInt(countRes.rows[0].count);
 
     const { rows } = await db.query(
       `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
-       FROM users
+       FROM (
+         SELECT 
+           id, name, email, phone, cpf, address, notes, avatar, role, created_at
+         FROM users
+         UNION ALL
+         SELECT 
+           MIN(id) as id, 
+           customer_name as name, 
+           NULL as email, 
+           customer_phone as phone, 
+           NULL as cpf, 
+           address, 
+           'Cliente convidado' as notes, 
+           NULL as avatar, 
+           'guest' as role, 
+           MIN(created_at) as created_at
+         FROM orders
+         WHERE customer_id IS NULL
+         GROUP BY customer_name, customer_phone, address
+       ) as combined_customers
        ORDER BY name
        LIMIT $1 OFFSET $2`,
       [limit, offset]

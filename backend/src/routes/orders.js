@@ -82,12 +82,23 @@ router.patch(
       }
 
       const currentOrder = currentRows[0];
+      
+      // If cancelling, restore stock
       if (
         status === 'cancelado' &&
         currentOrder.status !== 'cancelado' &&
         currentOrder.status !== 'concluido'
       ) {
         await restoreOrderStock(client, currentOrder);
+      }
+
+      // If concluding, create a financial transaction
+      if (status === 'concluido' && currentOrder.status !== 'concluido') {
+        await client.query(
+          `INSERT INTO transactions (type, category, description, value, date, order_id)
+           VALUES ($1, $2, $3, $4, NOW(), $5)`,
+          ['receita', 'Venda de produtos', `Pedido #${id} - ${currentOrder.customer_name}`, currentOrder.total, id]
+        );
       }
 
       const { rows } = await client.query(
