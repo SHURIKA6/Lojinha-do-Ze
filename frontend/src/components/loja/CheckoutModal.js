@@ -229,6 +229,7 @@ export default function CheckoutModal({
                 value={customerForm.name}
                 onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
                 placeholder="Seu nome completo"
+                aria-required="true"
               />
             </div>
 
@@ -240,10 +241,17 @@ export default function CheckoutModal({
               <input
                 id="checkout-phone"
                 className="form-input"
+                type="tel"
                 value={customerForm.phone}
                 onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
                 placeholder="(00) 00000-0000"
+                aria-required="true"
               />
+              {customerForm.phone && customerForm.phone.replace(/\D/g, '').length < 10 && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem', display: 'block' }}>
+                  Digite o DDD e o número (mínimo 10 dígitos)
+                </span>
+              )}
             </div>
 
             <div className="form-group">

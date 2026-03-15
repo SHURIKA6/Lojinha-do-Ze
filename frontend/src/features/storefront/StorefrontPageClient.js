@@ -1,200 +1,73 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiGrid, FiLock, FiShoppingBag, FiUser } from 'react-icons/fi';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/services/auth/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 import CartSidebar from '@/components/loja/CartSidebar';
 import CheckoutModal from '@/components/loja/CheckoutModal';
-import Header from '@/components/loja/Header';
-import ProductGrid from '@/components/loja/ProductGrid';
+import Header from '@/components/navbar/StorefrontNavbar';
+import ProductGrid from '@/components/productGrid/ProductGrid';
 import ProductModal from '@/components/loja/ProductModal';
-import { createOrder, getCatalog } from '@/lib/api';
-
-const CUSTOMER_STORAGE_KEY = 'lojinha_customer';
+import { useCatalog } from './hooks/useCatalog';
+import { useCart } from './hooks/useCart';
+import { useCheckout } from './hooks/useCheckout';
 
 export default function StorefrontPageClient({ initialCatalog = null }) {
-  const hasInitialCatalog = Boolean(initialCatalog?.categories);
-  const [catalogData, setCatalogData] = useState(() => initialCatalog || { categories: [], total: 0 });
-  const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [productModal, setProductModal] = useState(null);
   const [productQty, setProductQty] = useState(1);
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState(() => initialCatalog?.categories?.[0]?.name || '');
-  const [loading, setLoading] = useState(() => !hasInitialCatalog);
-  const [orderResult, setOrderResult] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [customerForm, setCustomerForm] = useState({ name: '', phone: '', notes: '' });
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [customerCoords, setCustomerCoords] = useState(null);
-  const [deliveryType, setDeliveryType] = useState('entrega');
-  const [paymentMethod, setPaymentMethod] = useState('pix');
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
   const [error, setError] = useState('');
 
   const router = useRouter();
   const toast = useToast();
   const { user, isAdmin, logout } = useAuth();
 
-  useEffect(() => {
-    let active = true;
-    if (!hasInitialCatalog) {
-      setLoading(true);
+  const {
+    catalogData,
+    activeCategory,
+    setActiveCategory,
+    search,
+    setSearch,
+    filteredProducts,
+    allProducts,
+    loading,
+    error: catalogError,
+  } = useCatalog(initialCatalog);
+
+  const {
+    cart,
+    setCart,
+    cartTotal,
+    cartCount,
+    addToCart,
+    updateCartItem,
+    removeFromCart,
+    getAvailableStock,
+  } = useCart(allProducts);
+
+  const {
+    customerForm, setCustomerForm,
+    customerAddress, setCustomerAddress,
+    customerCoords, setCustomerCoords,
+    deliveryType, setDeliveryType,
+    paymentMethod, setPaymentMethod,
+    isRegistered, setIsRegistered,
+    editingProfile, setEditingProfile,
+    submitting,
+    orderResult, setOrderResult,
+    handleCheckout,
+    sendWhatsAppReceipt
+  } = useCheckout({ cart, cartTotal, setError });
+
+  const onCheckoutClick = async () => {
+    const success = await handleCheckout();
+    if (success) {
+      setCart([]);
+      setCheckoutOpen(false);
     }
-
-    getCatalog()
-      .then((data) => {
-        if (!active) {
-          return;
-        }
-
-        setCatalogData(data || { categories: [], total: 0 });
-        setActiveCategory((previous) => {
-          const categories = data?.categories || [];
-
-          if (previous && categories.some((category) => category.name === previous)) {
-            return previous;
-          }
-
-          return categories[0]?.name || '';
-        });
-      })
-      .catch((catalogError) => {
-        console.error(catalogError);
-        const nextError =
-          'Não foi possível carregar o catálogo. Verifique sua conexão ou as configurações do backend.';
-        if (!hasInitialCatalog) {
-          setError(nextError);
-          toast.error(nextError, 'Catálogo indisponível');
-        }
-      })
-      .finally(() => {
-        if (active && !hasInitialCatalog) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [hasInitialCatalog, toast]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const saved = window.localStorage.getItem(CUSTOMER_STORAGE_KEY);
-    if (!saved) {
-      return;
-    }
-
-    try {
-      const data = JSON.parse(saved);
-      setCustomerForm((previous) => ({
-        ...previous,
-        name: data.name || '',
-        phone: data.phone || '',
-      }));
-      setCustomerAddress(data.address || '');
-      setCustomerCoords(data.coords || null);
-      if (data.name && data.phone) {
-        setIsRegistered(true);
-      }
-    } catch (storageError) {
-      console.error(storageError);
-    }
-  }, []);
-
-  const allProducts = useMemo(
-    () => catalogData.categories.flatMap((category) => category.products),
-    [catalogData]
-  );
-
-  const stockByProductId = useMemo(
-    () => Object.fromEntries(allProducts.map((product) => [product.id, Number(product.quantity) || 0])),
-    [allProducts]
-  );
-
-  const filteredProducts = useMemo(() => {
-    if (search) {
-      return allProducts.filter((product) =>
-        product.name.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    const category = catalogData.categories.find((entry) => entry.name === activeCategory);
-    return category ? category.products : allProducts;
-  }, [activeCategory, allProducts, catalogData, search]);
-
-  useEffect(() => {
-    setCart((previous) =>
-      previous
-        .map((item) => ({
-          ...item,
-          quantity: Math.min(item.quantity, stockByProductId[item.productId] ?? 0),
-        }))
-        .filter((item) => item.quantity > 0)
-    );
-  }, [stockByProductId]);
-
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  const getAvailableStock = (productId) => stockByProductId[productId] ?? 0;
-
-  const addToCart = (product, qty = 1) => {
-    const availableStock = getAvailableStock(product.id);
-
-    if (availableStock <= 0) {
-      toast.info('Este produto está sem estoque no momento.');
-      return;
-    }
-
-    setCart((previous) => {
-      const existing = previous.find((item) => item.productId === product.id);
-      if (existing) {
-        const nextQty = Math.min(availableStock, existing.quantity + qty);
-        return previous.map((item) =>
-          item.productId === product.id ? { ...item, quantity: nextQty } : item
-        );
-      }
-
-      return [
-        ...previous,
-        {
-          productId: product.id,
-          name: product.name,
-          price: parseFloat(product.sale_price),
-          quantity: Math.min(availableStock, qty),
-        },
-      ];
-    });
-  };
-
-  const updateCartItem = (productId, qty) => {
-    const availableStock = getAvailableStock(productId);
-
-    if (qty <= 0 || availableStock <= 0) {
-      setCart((previous) => previous.filter((item) => item.productId !== productId));
-      return;
-    }
-
-    setCart((previous) =>
-      previous.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: Math.min(qty, availableStock) }
-          : item
-      )
-    );
-  };
-
-  const removeFromCart = (productId) => {
-    setCart((previous) => previous.filter((item) => item.productId !== productId));
   };
 
   const handleQuickAdd = (event, product) => {
@@ -208,121 +81,9 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
   };
 
   const handleAddFromModal = () => {
-    if (!productModal) {
-      return;
-    }
-
+    if (!productModal) return;
     addToCart(productModal, Math.min(productQty, getAvailableStock(productModal.id)));
     setProductModal(null);
-  };
-
-  const sendWhatsAppReceipt = (order, items, method) => {
-    const zePhone = process.env.NEXT_PUBLIC_ZE_PHONE;
-    
-    if (!zePhone) {
-      toast.error('Número de WhatsApp não configurado. Por favor, contate o administrador.');
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const methodLabel = method === 'pix' ? 'PIX' : 'Maquininha na entrega';
-    let message = `🛒 *COMPROVANTE DE PEDIDO - LOJINHA DO ZÉ*\n\n`;
-    message += `Olá José! Acabei de finalizar um pedido na loja:\n\n`;
-    message += `🔢 *Pedido:* #${order.id}\n`;
-    message += `👤 *Cliente:* ${order.customer_name}\n`;
-    message += `📱 *Telefone:* ${order.customer_phone}\n`;
-    message += `🚚 *Modalidade:* ${order.delivery_type === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
-    message += `💳 *Pagamento:* ${methodLabel}\n\n`;
-    message += '📦 *Itens:*\n';
-
-    items.forEach((item) => {
-      message += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
-    });
-
-    if (order.delivery_type === 'entrega') {
-      message += '  • Taxa de Entrega — R$ 5,00\n';
-    }
-
-    message += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2).replace('.', ',')}*\n`;
-
-    if (order.delivery_type === 'entrega' && order.address) {
-      message += `\n📍 *Endereço:* ${order.address}\n`;
-    }
-
-    if (order.notes) {
-      message += `\n📝 *Obs:* ${order.notes}`;
-    }
-
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/${zePhone}?text=${encodedMessage}`, '_blank');
-  };
-
-  const handleCheckout = async () => {
-    if (cart.length === 0) {
-      setError('Adicione ao menos um item ao carrinho.');
-      return;
-    }
-
-    if (!customerForm.name.trim() || !customerForm.phone.trim()) {
-      setError('Nome e telefone são obrigatórios.');
-      return;
-    }
-
-    if (deliveryType === 'entrega' && !customerAddress.trim()) {
-      setError('Endereço de entrega é obrigatório.');
-      return;
-    }
-
-    setError('');
-    setSubmitting(true);
-
-    const orderItems = cart.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      name: item.name,
-      price: item.price,
-    }));
-
-    try {
-      const result = await createOrder({
-        customer_name: customerForm.name,
-        customer_phone: customerForm.phone,
-        items: orderItems,
-        delivery_type: deliveryType,
-        address: customerAddress,
-        payment_method: paymentMethod,
-        notes: customerForm.notes,
-      });
-
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(
-          CUSTOMER_STORAGE_KEY,
-          JSON.stringify({
-            name: customerForm.name,
-            phone: customerForm.phone,
-            address: customerAddress,
-            coords: customerCoords,
-          })
-        );
-      }
-
-      setIsRegistered(true);
-      setEditingProfile(false);
-      setOrderResult({ ...result, _paymentMethod: paymentMethod });
-      sendWhatsAppReceipt(result.order, cart, paymentMethod);
-      setCart([]);
-      setCheckoutOpen(false);
-      toast.success('Pedido enviado com sucesso.');
-    } catch (checkoutError) {
-      const nextError = checkoutError.message || 'Não foi possível finalizar o pedido.';
-      setError(nextError);
-      toast.error(nextError, 'Falha no pedido');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const portalHref = isAdmin ? '/admin/dashboard' : user ? '/conta' : '/login';
@@ -370,7 +131,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
 
       <ProductGrid
         cart={cart}
-        error={error}
+        error={error || catalogError}
         filteredProducts={filteredProducts}
         getAvailableStock={getAvailableStock}
         handleQuickAdd={handleQuickAdd}
@@ -432,7 +193,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
         deliveryType={deliveryType}
         editingProfile={editingProfile}
         error={error}
-        handleCheckout={handleCheckout}
+        handleCheckout={onCheckoutClick}
         isRegistered={isRegistered}
         orderResult={orderResult}
         paymentMethod={paymentMethod}

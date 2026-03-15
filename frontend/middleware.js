@@ -37,9 +37,15 @@ function redirect(request, pathname) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+  const hasSession = request.cookies.has('lz_session');
+
+  // Skip fetch if no session and hitting protected routes
+  if (!hasSession && (pathname.startsWith('/admin') || pathname.startsWith('/conta'))) {
+    return redirect(request, '/login');
+  }
 
   // Fail-closed: if the auth check fails due to network/runtime, redirect to login for protected routes.
-  const result = await fetchMe(request);
+  const result = hasSession ? await fetchMe(request) : { kind: 'unauth' };
   if (result.kind === 'error') {
     if (pathname === '/login') {
       return NextResponse.next();

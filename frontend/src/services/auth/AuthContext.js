@@ -1,7 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getMe, login as apiLogin, logout as apiLogout } from '@/lib/api';
+import { getMe } from '@/services/api/auth';
+import { login as apiLogin, logout as apiLogout } from '@/services/api/auth';
+import { useToast } from '@/components/ui/ToastProvider';
 
 const AuthContext = createContext(null);
 
@@ -23,15 +25,20 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const toast = useToast();
+  
   useEffect(() => {
     const handleExpiredSession = () => {
+      if (user) {
+        toast.info('Sua sessão expirou. Faça login novamente.', 'Sessão Expirada');
+      }
       setUser(null);
       setLoading(false);
     };
 
     window.addEventListener('auth:expired', handleExpiredSession);
     return () => window.removeEventListener('auth:expired', handleExpiredSession);
-  }, []);
+  }, [user, toast]);
 
   const login = async (identifier, password) => {
     try {

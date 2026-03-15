@@ -4,7 +4,7 @@ import { csrfMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 import { orderCreateSchema } from '../domain/schemas.js';
 import { orderLimiter } from '../middleware/rateLimit.js';
 import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize.js';
-import { jsonError } from '../utils/http.js';
+import { jsonError, validationError } from '../utils/http.js';
 
 const router = new Hono();
 
@@ -22,22 +22,22 @@ function mergeOrderItems(items) {
   }));
 }
 
-function validationError(result, c) {
-  if (!result.success) {
-    return jsonError(c, 400, result.error.issues[0].message);
-  }
-
-  return undefined;
-}
-
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
+    const limit = Math.min(parseInt(c.req.query('limit')) || 100, 200);
+    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+
+    const countRes = await db.query('SELECT COUNT(*) FROM products WHERE is_active = TRUE AND quantity > 0');
+    const totalCount = parseInt(countRes.rows[0].count);
+
     const { rows } = await db.query(
       `SELECT id, code, name, description, photo, category, sale_price, quantity
        FROM products
        WHERE is_active = TRUE AND quantity > 0
-       ORDER BY category, name`
+       ORDER BY category, name
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
 
     const categories = {};
@@ -54,7 +54,9 @@ router.get('/', async (c) => {
 
     return c.json({
       categories: Object.values(categories),
-      total: rows.length,
+      total: totalCount,
+      limit,
+      offset,
     });
   } catch (error) {
     console.error('Catalog GET error:', error);
