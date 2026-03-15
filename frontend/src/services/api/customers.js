@@ -4,6 +4,10 @@ export function getCustomers() {
   return request('/customers');
 }
 
+export function getCustomer(id) {
+  return request(`/customers/${id}`);
+}
+
 export function getCustomerOrders(id) {
   return request(`/customers/${id}/orders`);
 }

@@ -9,6 +9,7 @@ import {
   deleteCustomer,
   formatCurrency,
   formatDate,
+  getCustomer,
   getCustomerOrders,
   getCustomers,
   getStatusLabel,
@@ -143,11 +144,16 @@ export default function ClientesPage() {
     setLoadingOrders(true);
 
     try {
+      // Fetch full customer details (with total_spent/order_count)
+      const fullCustomer = await getCustomer(customer.id);
+      setSelectedCustomer(fullCustomer);
+
+      // Fetch orders
       const orders = await getCustomerOrders(customer.id);
       setCustomerOrders(Array.isArray(orders) ? orders : []);
     } catch (error) {
       console.error(error);
-      toast.error(error.message || 'Não foi possível carregar o histórico.');
+      toast.error(error.message || 'Não foi possível carregar os detalhes.');
     } finally {
       setLoadingOrders(false);
     }
@@ -474,10 +480,25 @@ export default function ClientesPage() {
                 </span>
                 <div style={{ fontWeight: 700 }}>{selectedCustomer.address || '—'}</div>
               </div>
+
+              <div className="card" style={{ background: 'var(--primary-50)', borderColor: 'var(--primary-200)', margin: 0 }}>
+                <span style={{ color: 'var(--primary-700)', fontSize: 'var(--font-xs)', fontWeight: 700, textTransform: 'uppercase' }}>Total Gasto</span>
+                <div style={{ fontSize: 'var(--font-xl)', fontWeight: 800, color: 'var(--primary-900)' }}>
+                  {formatCurrency(selectedCustomer.total_spent || 0)}
+                </div>
+              </div>
+
+              <div className="card" style={{ background: 'var(--gray-50)', borderColor: 'var(--gray-200)', margin: 0 }}>
+                <span style={{ color: 'var(--gray-600)', fontSize: 'var(--font-xs)', fontWeight: 700, textTransform: 'uppercase' }}>Pedidos Concluídos</span>
+                <div style={{ fontSize: 'var(--font-xl)', fontWeight: 800, color: 'var(--gray-900)' }}>
+                  {selectedCustomer.order_count || 0}
+                </div>
+              </div>
             </div>
 
-            <h2 style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--font-lg)' }}>
-              Histórico de pedidos ({customerOrders.length})
+            <h2 style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--font-lg)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              Histórico de pedidos 
+              <span className="badge badge--secondary">{customerOrders.length}</span>
             </h2>
 
             <div className="table-responsive" style={{ maxHeight: 320, overflowY: 'auto' }}>
@@ -500,11 +521,21 @@ export default function ClientesPage() {
                   ) : customerOrders.length > 0 ? (
                     customerOrders.map((order) => (
                       <tr key={order.id}>
-                        <td>{formatDate(order.created_at)}</td>
-                        <td style={{ fontSize: 'var(--font-sm)' }}>
-                          {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{formatDate(order.created_at)}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--gray-500)' }}>ID: {order.id.slice(0, 8)}</div>
                         </td>
-                        <td style={{ fontWeight: 700 }}>{formatCurrency(order.total)}</td>
+                        <td>
+                          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>
+                            {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
+                          </div>
+                          {order.items && (
+                            <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-600)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 700, color: 'var(--primary-700)' }}>{formatCurrency(order.total)}</td>
                         <td>
                           <span className={`badge badge--${getStatusVariant(order.status)}`}>
                             {getStatusLabel(order.status)}
