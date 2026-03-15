@@ -218,13 +218,20 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
 
   const sendWhatsAppReceipt = (order, items, method) => {
     const zePhone = process.env.NEXT_PUBLIC_ZE_PHONE;
-    if (!zePhone || typeof window === 'undefined') {
-      console.error('NEXT_PUBLIC_ZE_PHONE is not defined in environment variables.');
+    
+    if (!zePhone) {
+      toast.error('Número de WhatsApp não configurado. Por favor, contate o administrador.');
+      return;
+    }
+
+    if (typeof window === 'undefined') {
       return;
     }
 
     const methodLabel = method === 'pix' ? 'PIX' : 'Maquininha na entrega';
-    let message = `🛒 *NOVO PEDIDO #${order.id}*\n\n`;
+    let message = `🛒 *COMPROVANTE DE PEDIDO - LOJINHA DO ZÉ*\n\n`;
+    message += `Olá José! Acabei de finalizar um pedido na loja:\n\n`;
+    message += `🔢 *Pedido:* #${order.id}\n`;
     message += `👤 *Cliente:* ${order.customer_name}\n`;
     message += `📱 *Telefone:* ${order.customer_phone}\n`;
     message += `🚚 *Modalidade:* ${order.delivery_type === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
@@ -232,14 +239,14 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
     message += '📦 *Itens:*\n';
 
     items.forEach((item) => {
-      message += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2)}\n`;
+      message += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
     });
 
     if (order.delivery_type === 'entrega') {
-      message += '  • Taxa de Entrega — R$ 5.00\n';
+      message += '  • Taxa de Entrega — R$ 5,00\n';
     }
 
-    message += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2)}*\n`;
+    message += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2).replace('.', ',')}*\n`;
 
     if (order.delivery_type === 'entrega' && order.address) {
       message += `\n📍 *Endereço:* ${order.address}\n`;
@@ -249,7 +256,8 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
       message += `\n📝 *Obs:* ${order.notes}`;
     }
 
-    window.open(`https://wa.me/${zePhone}?text=${encodeURIComponent(message)}`, '_blank');
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${zePhone}?text=${encodedMessage}`, '_blank');
   };
 
   const handleCheckout = async () => {
@@ -437,6 +445,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
         setOrderResult={setOrderResult}
         setPaymentMethod={setPaymentMethod}
         submitting={submitting}
+        onSendWhatsApp={() => sendWhatsAppReceipt(orderResult.order, orderResult.order.items, orderResult._paymentMethod)}
       />
     </div>
   );
