@@ -16,6 +16,9 @@ import {
 } from '../services/authService.js';
 import { loginLimiter, setupPasswordLimiter } from '../middleware/rateLimit.js';
 import { jsonError, setNoStore, validationError } from '../utils/http.js';
+import { normalizeEmail, normalizePhoneDigits } from '../utils/normalize.js';
+
+const router = new Hono();
 
 router.post(
   '/login',

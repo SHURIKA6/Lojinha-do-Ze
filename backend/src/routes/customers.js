@@ -14,6 +14,8 @@ import {
 } from '../utils/normalize.js';
 import { jsonError, setNoStore, validationError } from '../utils/http.js';
 
+const router = new Hono();
+
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
