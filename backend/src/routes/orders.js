@@ -26,7 +26,7 @@ router.get('/', authMiddleware, async (c) => {
          LIMIT $2 OFFSET $3`,
         [user.id, limit, offset]
       );
-      return c.json({ data: rows, total, limit, offset });
+      return c.json(rows);
     }
 
     const params = [];
@@ -46,7 +46,7 @@ router.get('/', authMiddleware, async (c) => {
     const total = parseInt(countRes.rows[0].count);
 
     const { rows } = await db.query(query, [...params, limit, offset]);
-    return c.json({ data: rows, total, limit, offset });
+    return c.json(rows);
   } catch (error) {
     console.error('Orders GET error:', error);
     return jsonError(c, 500, 'Erro interno no servidor');

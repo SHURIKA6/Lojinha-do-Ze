@@ -35,12 +35,7 @@ router.get('/', async (c) => {
       [limit, offset]
     );
     setNoStore(c);
-    return c.json({
-      data: rows,
-      total,
-      limit,
-      offset,
-    });
+    return c.json(rows);
   } catch (error) {
     console.error('Customers GET error:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
