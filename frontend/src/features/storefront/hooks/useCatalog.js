@@ -46,19 +46,21 @@ export function useCatalog(initialCatalog = null) {
     };
   }, [hasInitialCatalog, toast]);
 
-  const allProducts = useMemo(
-    () => catalogData.categories.flatMap((c) => c.products),
-    [catalogData]
-  );
+  const allProducts = useMemo(() => {
+    const categories = Array.isArray(catalogData?.categories) ? catalogData.categories : [];
+    return categories.flatMap((c) => Array.isArray(c?.products) ? c.products : []);
+  }, [catalogData]);
 
   const filteredProducts = useMemo(() => {
+    const products = Array.isArray(allProducts) ? allProducts : [];
     if (search) {
-      return allProducts.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase())
+      return products.filter((p) =>
+        p?.name?.toLowerCase().includes(search.toLowerCase())
       );
     }
-    const category = catalogData.categories.find((c) => c.name === activeCategory);
-    return category ? category.products : allProducts;
+    const categories = Array.isArray(catalogData?.categories) ? catalogData.categories : [];
+    const category = categories.find((c) => c.name === activeCategory);
+    return Array.isArray(category?.products) ? category.products : products;
   }, [activeCategory, allProducts, catalogData, search]);
 
   return {
