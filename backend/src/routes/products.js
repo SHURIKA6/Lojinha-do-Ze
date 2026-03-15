@@ -63,10 +63,14 @@ router.post(
   csrfMiddleware,
   zValidator('json', productCreateSchema, validationError),
   async (c) => {
+    const db = c.get('db');
+    const client = await db.connect();
+
     try {
-      const db = c.get('db');
+      await client.query('BEGIN');
+
       const payload = c.req.valid('json');
-      const { rows } = await db.query(
+      const { rows } = await client.query(
         `INSERT INTO products (code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at`,
@@ -84,14 +88,31 @@ router.post(
           payload.is_active ?? true,
         ]
       );
-      return c.json(rows[0], 201);
+
+      const product = rows[0];
+
+      // If there's initial stock and a cost price, register as expense
+      if (product.quantity > 0 && product.cost_price > 0) {
+        const totalCost = product.quantity * product.cost_price;
+        await client.query(
+          `INSERT INTO transactions (type, category, description, value, date)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          ['despesa', 'Compra de estoque', `Estoque inicial: ${product.name} (${product.quantity} un)`, totalCost]
+        );
+      }
+
+      await client.query('COMMIT');
+      return c.json(product, 201);
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
       if (isUniqueViolation(error)) {
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
 
       console.error('Products POST error:', error);
       return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
     }
   }
 );
@@ -101,9 +122,27 @@ router.put(
   csrfMiddleware,
   zValidator('json', productUpdateSchema, validationError),
   async (c) => {
+    const db = c.get('db');
+    const client = await db.connect();
+
     try {
-      const db = c.get('db');
+      await client.query('BEGIN');
+
+      const id = c.req.param('id');
       const data = c.req.valid('json');
+
+      // Fetch current state for comparison
+      const { rows: currentRows } = await client.query(
+        'SELECT name, quantity, cost_price FROM products WHERE id = $1 FOR UPDATE',
+        [id]
+      );
+
+      if (!currentRows.length) {
+        await client.query('ROLLBACK');
+        return jsonError(c, 404, 'Produto não encontrado');
+      }
+
+      const oldProduct = currentRows[0];
       const fields = [];
       const values = [];
 
@@ -124,9 +163,9 @@ router.put(
       if (data.supplier !== undefined) setField('supplier', cleanOptionalString(data.supplier) || '');
       if (data.is_active !== undefined) setField('is_active', data.is_active);
 
-      values.push(c.req.param('id'));
+      values.push(id);
 
-      const { rows } = await db.query(
+      const { rows } = await client.query(
         `UPDATE products
          SET ${fields.join(', ')}, updated_at = NOW()
          WHERE id = $${values.length}
@@ -134,18 +173,35 @@ router.put(
         values
       );
 
-      if (!rows.length) {
-        return jsonError(c, 404, 'Produto não encontrado');
+      const updatedProduct = rows[0];
+
+      // If quantity increased, register it as a restock expense
+      if (data.quantity !== undefined && data.quantity > oldProduct.quantity) {
+        const diff = data.quantity - oldProduct.quantity;
+        const currentCostPrice = data.cost_price !== undefined ? data.cost_price : oldProduct.cost_price;
+        
+        if (currentCostPrice > 0) {
+          const totalCost = diff * currentCostPrice;
+          await client.query(
+            `INSERT INTO transactions (type, category, description, value, date)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            ['despesa', 'Compra de estoque', `Reposição: ${updatedProduct.name} (+${diff} un)`, totalCost]
+          );
+        }
       }
 
-      return c.json(rows[0]);
+      await client.query('COMMIT');
+      return c.json(updatedProduct);
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
       if (isUniqueViolation(error)) {
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
 
       console.error('Products PUT error:', error);
       return jsonError(c, 500, 'Erro interno no servidor');
+    } finally {
+      client.release();
     }
   }
 );

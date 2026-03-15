@@ -71,19 +71,63 @@ router.get('/:id', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    const { rows } = await db.query(
+
+    // Fetch user first
+    const { rows: userRows } = await db.query(
       `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
        FROM users
        WHERE id = $1`,
       [id]
     );
 
-    if (!rows.length) {
-      return jsonError(c, 404, 'Usuário não encontrado');
+    let customer;
+
+    if (userRows.length) {
+      customer = userRows[0];
+    } else {
+      // If not in users, check if it's a guest from orders
+      const { rows: guestRows } = await db.query(
+        `SELECT 
+           MIN(id) as id, 
+           customer_name as name, 
+           null as email, 
+           customer_phone as phone, 
+           null as cpf, 
+           address, 
+           'Cliente convidado' as notes, 
+           null as avatar, 
+           'guest' as role, 
+           MIN(created_at) as created_at
+         FROM orders
+         WHERE customer_id IS NULL AND id::text = $1
+         GROUP BY customer_name, customer_phone, address`,
+        [id]
+      );
+
+      if (!guestRows.length) {
+        return jsonError(c, 404, 'Cliente não encontrado');
+      }
+      customer = guestRows[0];
     }
 
+    // Calculate metrics
+    const normalizedPhone = normalizePhoneDigits(customer.phone || '');
+    const { rows: stats } = await db.query(
+      `SELECT 
+         COALESCE(SUM(total), 0) as total_spent,
+         COUNT(*) as order_count
+       FROM orders
+       WHERE (customer_id = $1 OR (customer_id IS NULL AND REGEXP_REPLACE(customer_phone, '\\D', '', 'g') = $2))
+         AND status = 'concluido'`,
+      [customer.id, normalizedPhone]
+    );
+
     setNoStore(c);
-    return c.json(rows[0]);
+    return c.json({
+      ...customer,
+      total_spent: parseFloat(stats[0].total_spent),
+      order_count: parseInt(stats[0].order_count, 10),
+    });
   } catch (error) {
     console.error('Customers GET /:id error:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
@@ -94,25 +138,29 @@ router.get('/:id/orders', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    const customerResult = await db.query(
-      `SELECT id, phone
-       FROM users
-       WHERE id = $1`,
-      [id]
-    );
 
-    if (!customerResult.rows.length) {
-      return jsonError(c, 404, 'Usuário não encontrado');
+    // First, find the customer to get their phone
+    let phone = '';
+    
+    const { rows: userRows } = await db.query('SELECT phone FROM users WHERE id = $1', [id]);
+    if (userRows.length) {
+      phone = userRows[0].phone || '';
+    } else {
+      const { rows: orderRows } = await db.query('SELECT customer_phone FROM orders WHERE id::text = $1', [id]);
+      if (orderRows.length) {
+        phone = orderRows[0].customer_phone || '';
+      } else {
+        return jsonError(c, 404, 'Cliente não encontrado');
+      }
     }
 
-    const customer = customerResult.rows[0];
-    const normalizedPhone = normalizePhoneDigits(customer.phone || '');
+    const normalizedPhone = normalizePhoneDigits(phone);
 
     const { rows } = await db.query(
       `SELECT id, customer_name, customer_phone, items, total, status, delivery_type, payment_method, created_at
        FROM orders
        WHERE customer_id = $1
-          OR REGEXP_REPLACE(COALESCE(customer_phone, ''), '\\D', '', 'g') = $2
+          OR (customer_id IS NULL AND REGEXP_REPLACE(customer_phone, '\\D', '', 'g') = $2)
        ORDER BY created_at DESC`,
       [id, normalizedPhone]
     );
