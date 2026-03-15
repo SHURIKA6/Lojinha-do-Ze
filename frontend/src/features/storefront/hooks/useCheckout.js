@@ -40,7 +40,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
   const sendWhatsAppReceipt = (order, items, method) => {
     const zePhone = process.env.NEXT_PUBLIC_ZE_PHONE;
     if (!zePhone) {
-      toast.error('Número de WhatsApp não configurado.');
+      toast.error('Número de WhatsApp não configurado. Por favor, contate o administrador.');
       return;
     }
     const methodLabel = method === 'pix' ? 'PIX' : 'Maquininha na entrega';
