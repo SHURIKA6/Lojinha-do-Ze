@@ -5,10 +5,10 @@ export function useCart(allProducts) {
   const [cart, setCart] = useState([]);
   const toast = useToast();
 
-  const stockByProductId = useMemo(
-    () => Object.fromEntries(allProducts.map((p) => [p.id, Number(p.quantity) || 0])),
-    [allProducts]
-  );
+  const stockByProductId = useMemo(() => {
+    const products = Array.isArray(allProducts) ? allProducts : [];
+    return Object.fromEntries(products.map((p) => [p.id, Number(p.quantity) || 0]));
+  }, [allProducts]);
 
   useEffect(() => {
     setCart((prev) =>

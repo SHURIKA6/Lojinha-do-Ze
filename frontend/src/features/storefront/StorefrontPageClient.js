@@ -110,7 +110,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
 
       <nav className="loja-categories" aria-label="Categorias do catálogo">
         <div className="loja-categories__inner">
-          {catalogData.categories.map((category) => (
+          {(Array.isArray(catalogData?.categories) ? catalogData.categories : []).map((category) => (
             <button
               key={category.name}
               type="button"
