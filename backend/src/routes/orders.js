@@ -4,6 +4,8 @@ import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js
 import { orderStatusSchema } from '../domain/schemas.js';
 import { jsonError, validationError } from '../utils/http.js';
 
+const router = new Hono();
+
 router.get('/', authMiddleware, async (c) => {
   try {
     const db = c.get('db');
