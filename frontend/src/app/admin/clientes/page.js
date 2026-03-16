@@ -281,8 +281,8 @@ export default function ClientesPage() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Tipo</th>
-                <th>Telefone</th>
+                <th className="hide-mobile">Tipo</th>
+                <th className="hide-mobile">Telefone</th>
                 <th>E-mail</th>
                 <th>Desde</th>
                 <th>Ações</th>
@@ -320,7 +320,7 @@ export default function ClientesPage() {
                       <span style={{ fontWeight: 700 }}>{customer.name}</span>
                     </div>
                   </td>
-                  <td>
+                  <td className="hide-mobile">
                     <span
                       className={`badge badge--${customer.role === 'admin' ? 'primary' : 'secondary'}`}
                       style={{ textTransform: 'capitalize' }}
@@ -328,7 +328,7 @@ export default function ClientesPage() {
                       {customer.role === 'admin' ? 'Administrador' : 'Cliente'}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 600 }}>{customer.phone || '—'}</td>
+                  <td className="hide-mobile" style={{ fontWeight: 600 }}>{customer.phone || '—'}</td>
                   <td style={{ fontSize: 'var(--font-sm)' }}>{customer.email || '—'}</td>
                   <td style={{ fontSize: 'var(--font-sm)' }}>{formatDate(customer.created_at)}</td>
                   <td>

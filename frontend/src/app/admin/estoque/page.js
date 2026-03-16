@@ -243,10 +243,10 @@ export default function EstoquePage() {
           <table>
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Foto</th>
+                <th className="hide-mobile">Código</th>
+                <th className="hide-mobile">Foto</th>
                 <th>Produto</th>
-                <th>Categoria</th>
+                <th className="hide-mobile">Categoria</th>
                 <th>Catálogo</th>
                 <th>Estoque</th>
                 <th>Venda</th>
@@ -259,10 +259,10 @@ export default function EstoquePage() {
 
                 return (
                   <tr key={product.id}>
-                    <td>
+                    <td className="hide-mobile">
                       <span className="code-pill">{product.code}</span>
                     </td>
-                    <td>
+                    <td className="hide-mobile">
                       <div className="media-thumb" style={{ position: 'relative' }}>
                         {product.photo ? (
                           <AppImage
@@ -285,7 +285,7 @@ export default function EstoquePage() {
                         </div>
                       ) : null}
                     </td>
-                    <td>
+                    <td className="hide-mobile">
                       <span className="badge badge--neutral">{product.category}</span>
                     </td>
                     <td>
