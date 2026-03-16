@@ -523,7 +523,7 @@ export default function ClientesPage() {
                       <tr key={order.id}>
                         <td>
                           <div style={{ fontWeight: 600 }}>{formatDate(order.created_at)}</div>
-                          <div style={{ fontSize: '10px', color: 'var(--gray-500)' }}>ID: {order.id.slice(0, 8)}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--gray-500)' }}>ID: {String(order.id).slice(0, 8)}</div>
                         </td>
                         <td>
                           <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>
