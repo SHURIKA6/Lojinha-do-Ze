@@ -916,7 +916,9 @@ tbody tr:hover {
 
   .layout__main {
     margin-left: 0;
-    padding: calc(var(--space-12) + 1.5rem) var(--space-4) var(--space-8);
+    padding: calc(var(--space-12) + 1rem) var(--space-3) var(--space-6);
+    width: 100%;
+    max-width: 100vw;
   }
 
   .page-header {
@@ -932,7 +934,7 @@ tbody tr:hover {
   }
 
   .metric-card__value {
-    font-size: 2.2rem;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
   }
 }
 
@@ -945,8 +947,8 @@ tbody tr:hover {
   .card,
   .panel,
   .table-container {
-    padding: var(--space-4);
-    border-radius: 1.2rem;
+    padding: var(--space-3);
+    border-radius: 1rem;
   }
 
   .modal {
@@ -958,13 +960,15 @@ tbody tr:hover {
   .modal__body,
   .modal__footer,
   .page-header {
-    padding-left: var(--space-4);
-    padding-right: var(--space-4);
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
 
   .btn {
     width: 100%;
-    min-height: 3.2rem;
+    min-height: 2.8rem;
+    padding: 0.6rem 1rem;
+    font-size: var(--font-sm);
   }
 
   .page-header__actions,
@@ -984,18 +988,20 @@ tbody tr:hover {
   }
 
   .table-responsive {
-    margin: 0 -1rem;
-    padding: 0 1rem;
-    width: calc(100% + 2rem);
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   /* Tabs refinements */
   .tabs {
     gap: var(--space-1);
-    margin: 0 -1rem var(--space-5);
-    padding: 0 1rem 0.5rem;
-    width: calc(100% + 2rem);
+    margin: 0 0 var(--space-5);
+    padding: 0 0 0.5rem;
+    width: 100%;
+    overflow-x: auto;
     scrollbar-width: none;
   }
 
