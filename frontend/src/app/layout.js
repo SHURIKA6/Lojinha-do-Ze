@@ -53,6 +53,12 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#21362f',
+};
+
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 export default function RootLayout({ children }) {
