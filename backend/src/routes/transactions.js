@@ -2,8 +2,9 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
 import { transactionCreateSchema } from '../domain/schemas.js';
-import { cleanOptionalString } from '../utils/normalize.js';
+import { cleanOptionalString, isValidUuid } from '../utils/normalize.js';
 import { jsonError, validationError } from '../utils/http.js';
+import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 
@@ -29,12 +30,7 @@ router.get('/', async (c) => {
     const { rows } = await db.query(query, params);
     return c.json(rows);
   } catch (error) {
-    console.error('Transactions GET error details:', {
-      message: error.message,
-      stack: error.stack,
-      query: error.query,
-      hint: error.hint
-    });
+    logger.error('Transactions GET error', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
@@ -61,11 +57,7 @@ router.post(
       );
       return c.json(rows[0], 201);
     } catch (error) {
-      console.error('Transactions POST error details:', {
-        message: error.message,
-        stack: error.stack,
-        payload
-      });
+      logger.error('Transactions POST error', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     }
   }
@@ -74,17 +66,19 @@ router.post(
 router.delete('/:id', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
-    const { rowCount } = await db.query('DELETE FROM transactions WHERE id = $1', [c.req.param('id')]);
+    const id = c.req.param('id');
+    
+    if (!isValidUuid(id)) {
+      return jsonError(c, 400, 'ID inválido');
+    }
+
+    const { rowCount } = await db.query('DELETE FROM transactions WHERE id = $1', [id]);
     if (!rowCount) {
       return jsonError(c, 404, 'Transação não encontrada');
     }
     return c.json({ message: 'Transação excluída' });
   } catch (error) {
-    console.error('Transactions DELETE error details:', {
-      message: error.message,
-      stack: error.stack,
-      id: c.req.param('id')
-    });
+    logger.error('Transactions DELETE error', error, { id: c.req.param('id') });
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

@@ -5,6 +5,7 @@ import { orderCreateSchema } from '../domain/schemas.js';
 import { orderLimiter } from '../middleware/rateLimit.js';
 import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize.js';
 import { jsonError, validationError } from '../utils/http.js';
+import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 
@@ -59,7 +60,7 @@ router.get('/', async (c) => {
       offset,
     });
   } catch (error) {
-    console.error('Catalog GET error:', error);
+    logger.error('Catalog GET error', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
@@ -90,7 +91,8 @@ router.post(
         const { rows } = await client.query(
           `SELECT id, name, sale_price, quantity
            FROM products
-           WHERE id = $1 AND is_active = TRUE`,
+           WHERE id = $1 AND is_active = TRUE
+           FOR UPDATE`,
           [item.productId]
         );
 
@@ -177,7 +179,7 @@ router.post(
       );
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      console.error('Catalog Orders POST error:', error);
+      logger.error('Catalog Orders POST error', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();

@@ -17,6 +17,7 @@ import {
 import { loginLimiter, setupPasswordLimiter } from '../middleware/rateLimit.js';
 import { jsonError, setNoStore, validationError } from '../utils/http.js';
 import { normalizeEmail, normalizePhoneDigits } from '../utils/normalize.js';
+import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 
@@ -79,7 +80,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -96,7 +97,7 @@ router.post('/logout', optionalAuthMiddleware, async (c) => {
     setNoStore(c);
     return c.json({ message: 'Sessão encerrada com sucesso' });
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error', error);
     clearSessionCookies(c);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
@@ -143,7 +144,7 @@ router.post(
       return c.json({ user: rows[0] });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      console.error('Setup password error:', error);
+      logger.error('Setup password error', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -203,7 +204,7 @@ router.post(
       return c.json({ message: 'Senha atualizada com sucesso' });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      console.error('Change password error:', error);
+      logger.error('Change password error', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -231,7 +232,7 @@ router.get('/me', authMiddleware, async (c) => {
     setNoStore(c);
     return c.json(rows[0]);
   } catch (error) {
-    console.error('Auth me error:', error);
+    logger.error('Auth me error', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

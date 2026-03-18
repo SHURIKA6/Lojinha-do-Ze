@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
 import { randomToken } from '../utils/crypto.js';
 import { jsonError } from '../utils/http.js';
+import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -31,7 +32,7 @@ router.post('/', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
 
     const bucket = c.env.BUCKET;
     if (!bucket) {
-      console.error('R2 bucket binding is not configured.');
+      logger.error('R2 bucket binding is not configured');
       return jsonError(c, 500, 'R2 Bucket não configurado no servidor.');
     }
 
@@ -48,7 +49,7 @@ router.post('/', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
       message: 'Upload concluído com sucesso',
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    logger.error('Upload error', error);
     return jsonError(c, 500, 'Erro ao fazer upload da imagem');
   }
 });
@@ -57,12 +58,16 @@ router.get('/products/:filename', async (c) => {
   try {
     const paramFilename = c.req.param('filename');
     
-    // Sanitize filename to prevent path traversal
-    if (!/^[a-zA-Z0-9._-]+$/.test(paramFilename) || paramFilename.includes('..')) {
+    // Improved sanitization to prevent path traversal
+    // Only allow alphanumeric, dots, dashes and underscores. 
+    // Specifically block '..' and any slashes.
+    const sanitized = paramFilename.replace(/[^a-zA-Z0-9._-]/g, '');
+    if (sanitized !== paramFilename || paramFilename.includes('..')) {
+      logger.warn('Blocked potential path traversal attempt', { filename: paramFilename });
       return c.text('Bad Request', 400);
     }
 
-    const filename = `products/${paramFilename}`;
+    const filename = `products/${sanitized}`;
     const bucket = c.env.BUCKET;
 
     if (!bucket) {
@@ -82,7 +87,7 @@ router.get('/products/:filename', async (c) => {
 
     return new Response(object.body, { headers });
   } catch (error) {
-    console.error('Upload GET error:', error);
+    logger.error('Upload GET error', error, { filename: c.req.param('filename') });
     return c.text('Internal Error', 500);
   }
 });
