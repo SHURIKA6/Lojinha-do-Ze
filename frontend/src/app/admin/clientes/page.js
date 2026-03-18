@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import {
   createCustomer,
   deleteCustomer,
+  formatCpf,
   formatCurrency,
   formatDate,
   getCustomer,
@@ -14,6 +15,7 @@ import {
   getCustomers,
   getStatusLabel,
   getStatusVariant,
+  isValidCpf,
   sendCustomerInvite,
   updateCustomer,
   updateUserRole,
@@ -160,6 +162,11 @@ export default function ClientesPage() {
   };
 
   const handleSave = async () => {
+    if (form.cpf && !isValidCpf(form.cpf)) {
+      toast.error('O CPF informado é inválido. Verifique os dígitos e tente novamente.');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -599,18 +606,36 @@ export default function ClientesPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="customer-email">
-              E-mail
+            <label className="form-label" htmlFor="customer-cpf">
+              CPF
             </label>
             <input
-              id="customer-email"
-              className="form-input"
-              type="email"
-              value={form.email}
-              onChange={(event) => setForm({ ...form, email: event.target.value })}
-              placeholder="cliente@email.com"
+              id="customer-cpf"
+              className={`form-input ${form.cpf && !isValidCpf(form.cpf) ? 'form-input--error' : ''}`}
+              value={form.cpf}
+              onChange={(event) => setForm({ ...form, cpf: formatCpf(event.target.value) })}
+              placeholder="000.000.000-00"
             />
+            {form.cpf && !isValidCpf(form.cpf) && (
+              <span style={{ fontSize: 'var(--font-xs)', color: 'var(--danger-600)', marginTop: '2px', display: 'block' }}>
+                CPF inválido
+              </span>
+            )}
           </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="customer-email">
+            E-mail
+          </label>
+          <input
+            id="customer-email"
+            className="form-input"
+            type="email"
+            value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            placeholder="cliente@email.com"
+          />
         </div>
 
         <div className="soft-note" style={{ marginBottom: 'var(--space-4)' }}>
