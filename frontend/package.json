@@ -16,6 +16,7 @@
     "recharts": "^3.8.0"
   },
   "devDependencies": {
+    "console-ninja": "^1.0.0",
     "prettier": "^3.8.1"
   }
 }
