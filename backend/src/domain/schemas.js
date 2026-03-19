@@ -217,3 +217,11 @@ export const orderStatusSchema = z.object({
   status: z.enum(ORDER_STATUS_VALUES),
 });
 
+export const pixPaymentSchema = z.object({
+  orderId: z.coerce.number().int('ID de pedido inválido'),
+  email: z.string().email('E-mail inválido'),
+  firstName: z.string().min(2, 'Nome é muito curto'),
+  lastName: z.string().min(2, 'Sobrenome é muito curto'),
+  identificationNumber: z.string().min(11, 'CPF/CNPJ inválido'),
+});
+

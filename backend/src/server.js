@@ -12,6 +12,7 @@ import profileRoutes from './routes/profile.js';
 import reportsRoutes from './routes/reports.js';
 import transactionsRoutes from './routes/transactions.js';
 import uploadRoutes from './routes/upload.js';
+import paymentRoutes from './routes/payments.js';
 
 import { apiLimiter } from './middleware/rateLimit.js';
 import { auditMiddleware } from './middleware/audit.js';
@@ -91,5 +92,6 @@ app.route('/api/profile', profileRoutes);
 app.route('/api/reports', reportsRoutes);
 app.route('/api/transactions', transactionsRoutes);
 app.route('/api/upload', uploadRoutes);
+app.route('/api/payments', paymentRoutes);
 
 export default app;

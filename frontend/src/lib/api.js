@@ -8,3 +8,4 @@ export * from '@/services/api/products';
 export * from '@/services/api/profile';
 export * from '@/services/api/reports';
 export * from '@/services/api/transactions';
+export * from '@/services/api/payments';

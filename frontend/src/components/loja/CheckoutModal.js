@@ -107,28 +107,48 @@ export default function CheckoutModal({
             {isPix && !pixConfirmed ? (
               <div style={{ marginTop: 'var(--space-6)', textAlign: 'center' }}>
                 <p style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-600)', marginBottom: 'var(--space-4)' }}>
-                  Para finalizar, realize a transferência PIX para a chave abaixo:
+                  Aponte o celular para o QR Code abaixo ou utilize o botão "Copia e Cola":
                 </p>
-                <div style={{ 
-                  background: 'var(--gray-100)', 
-                  padding: 'var(--space-4)', 
-                  borderRadius: 'var(--radius-md)',
-                  marginBottom: 'var(--space-4)',
-                  border: '2px dashed var(--gray-300)'
-                }}>
-                  <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Chave CNPJ</div>
-                  <div style={{ fontSize: 'var(--font-lg)', fontWeight: 700, margin: '4px 0' }}>56.885.629/0001-10</div>
-                  <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-600)' }}>J P DA SILVA LTDA - ME</div>
-                </div>
                 
-                <button 
-                  type="button" 
-                  className="btn btn--outline btn--full" 
-                  onClick={copyPixKey}
-                  style={{ marginBottom: 'var(--space-3)' }}
-                >
-                  Copiar Chave Pix
-                </button>
+                {orderResult.pix ? (
+                  <>
+                    <div style={{ 
+                      background: 'white', 
+                      padding: 'var(--space-4)', 
+                      borderRadius: 'var(--radius-md)',
+                      marginBottom: 'var(--space-4)',
+                      display: 'inline-block',
+                      border: '1px solid var(--gray-200)'
+                    }}>
+                      <img 
+                        src={`data:image/jpeg;base64,${orderResult.pix.qr_code_base64}`} 
+                        alt="QR Code Pix" 
+                        style={{ width: '200px', height: '200px' }}
+                      />
+                    </div>
+                    
+                    <button 
+                      type="button" 
+                      className="btn btn--outline btn--full" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(orderResult.pix.qr_code);
+                        alert('Código Pix Copia e Cola copiado!');
+                      }}
+                      style={{ marginBottom: 'var(--space-3)' }}
+                    >
+                      Copiar Código Pix (Copia e Cola)
+                    </button>
+                    
+                    <div className={styles.pollingStatus}>
+                      <span className={styles.spinner}></span>
+                      Aguardando confirmação automática...
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ padding: 'var(--space-10)', color: 'var(--gray-500)' }}>
+                    Gerando seu código Pix...
+                  </div>
+                )}
               </div>
             ) : (
               <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
@@ -291,7 +311,6 @@ export default function CheckoutModal({
                 aria-required="true"
               />
             </div>
-
             <div className="form-group">
               <label className="form-label">
                 <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
@@ -311,6 +330,21 @@ export default function CheckoutModal({
                   Digite o DDD e o número (mínimo 10 dígitos)
                 </span>
               )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <FiCreditCard style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+                CPF (para Pix) *
+              </label>
+              <input
+                id="checkout-cpf"
+                className="form-input"
+                value={customerForm.cpf}
+                onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
+                placeholder="000.000.000-00"
+                aria-required="true"
+              />
             </div>
 
             <div className="form-group">
