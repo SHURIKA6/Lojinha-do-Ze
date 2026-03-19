@@ -28,7 +28,7 @@ export class MercadoPagoService {
           last_name,
           identification: {
             type: identification_type || 'CPF',
-            number: identification_number
+            number: String(identification_number).replace(/\D/g, '')
           }
         },
         installments: 1,
