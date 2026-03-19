@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { createOrder } from '@/lib/api';
+import { createOrder, createPixPayment, getPixPaymentStatus } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
 
 const CUSTOMER_STORAGE_KEY = 'lojinha_customer';
 
 export function useCheckout({ cart, cartTotal, setError }) {
-  const [customerForm, setCustomerForm] = useState({ name: '', phone: '', notes: '' });
+  const [customerForm, setCustomerForm] = useState({ name: '', phone: '', cpf: '', notes: '' });
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCoords, setCustomerCoords] = useState(null);
   const [deliveryType, setDeliveryType] = useState('entrega');
@@ -28,6 +28,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
         ...prev,
         name: data.name || '',
         phone: data.phone || '',
+        cpf: data.cpf || '',
         notes: data.notes || '',
       }));
       setCustomerAddress(data.address || '');
@@ -105,6 +106,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
         localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
           name: customerForm.name,
           phone: customerForm.phone,
+          cpf: customerForm.cpf,
           address: customerAddress,
           coords: customerCoords,
           notes: customerForm.notes,
@@ -116,7 +118,27 @@ export function useCheckout({ cart, cartTotal, setError }) {
       setOrderResult({ ...result, _paymentMethod: paymentMethod });
       setPixConfirmed(false); // Reseta para novos pedidos
 
-      if (paymentMethod !== 'pix') {
+      if (paymentMethod === 'pix') {
+        try {
+          // Extrai primeiro e último nome simple
+          const nameParts = customerForm.name.trim().split(' ');
+          const firstName = nameParts[0];
+          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Silva';
+
+          const payment = await createPixPayment({
+            orderId: result.order.id,
+            email: 'cliente@exemplo.com', // Opcional ou pegar se houver
+            firstName,
+            lastName,
+            identificationNumber: customerForm.cpf.replace(/\D/g, '')
+          });
+          
+          setOrderResult(prev => ({ ...prev, pix: payment }));
+        } catch (paymentErr) {
+          console.error('Erro ao gerar Pix:', paymentErr);
+          toast.error('Pedido criado, mas não conseguimos gerar o QR Code Pix. Tente novamente em "Meus Pedidos".');
+        }
+      } else {
         sendWhatsAppReceipt(result.order, cart, paymentMethod);
       }
       
@@ -131,6 +153,28 @@ export function useCheckout({ cart, cartTotal, setError }) {
       setSubmitting(false);
     }
   };
+
+  // Polling para confirmação de pagamento Pix
+  useEffect(() => {
+    let interval;
+    if (orderResult?.pix?.id && !pixConfirmed) {
+      interval = setInterval(async () => {
+        try {
+          const status = await getPixPaymentStatus(orderResult.pix.id);
+          if (status.status === 'approved') {
+            setPixConfirmed(true);
+            clearInterval(interval);
+            toast.success('Pagamento Pix confirmado!', 'Sucesso');
+            // Envia o WhatsApp automaticamente após confirmação
+            sendWhatsAppReceipt(orderResult.order, cart, 'pix');
+          }
+        } catch (err) {
+          console.error('Erro no polling do Pix:', err);
+        }
+      }, 5000); // 5 segundos
+    }
+    return () => clearInterval(interval);
+  }, [orderResult, pixConfirmed]);
 
   return {
     customerForm, setCustomerForm,
