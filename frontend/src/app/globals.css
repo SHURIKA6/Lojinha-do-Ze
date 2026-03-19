@@ -277,8 +277,8 @@ p {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-6);
+  gap: var(--space-3);
+  padding: var(--space-5);
   border-radius: var(--radius-lg);
   border: 1px solid rgba(64, 57, 47, 0.08);
   background:
@@ -320,10 +320,10 @@ p {
 }
 
 .metric-card__value {
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   color: var(--gray-900);
   font-family: var(--font-display), serif;
-  font-size: clamp(1.9rem, 2vw, 2.6rem);
+  font-size: clamp(1.5rem, 1.6vw, 2.3rem);
   line-height: 1;
 }
 
@@ -549,7 +549,7 @@ td {
 
 th {
   color: var(--gray-500);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1007,7 +1007,7 @@ tbody tr:hover {
   }
 
   th {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
   }
 
   .table-search {
