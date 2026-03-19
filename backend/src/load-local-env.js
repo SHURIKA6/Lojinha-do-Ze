@@ -39,10 +39,15 @@ export function loadLocalEnv() {
   }
 }
 
-export function getRequiredEnv(name) {
-  const value = process.env[name];
+export function getRequiredEnv(c, name) {
+  // Se apenas um argumento for passado, c é o nome
+  const targetName = name || c;
+  const context = name ? c : null;
+  
+  const value = context?.env?.[targetName] || process.env[targetName];
+  
   if (!value) {
-    throw new Error(`${name} não definido nas variáveis de ambiente`);
+    throw new Error(`${targetName} não definido nas variáveis de ambiente`);
   }
   return value;
 }
