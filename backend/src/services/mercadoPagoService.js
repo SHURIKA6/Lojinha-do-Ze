@@ -1,6 +1,17 @@
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { logger } from '../utils/logger.js';
 
+// Polyfill para compatibilidade do SDK do Mercado Pago com Cloudflare Workers
+if (typeof Headers !== 'undefined' && !Headers.prototype.raw) {
+  Headers.prototype.raw = function() {
+    const result = {};
+    for (const [key, value] of this.entries()) {
+      result[key] = [value];
+    }
+    return result;
+  };
+}
+
 export class MercadoPagoService {
   constructor(accessToken) {
     this.client = new MercadoPagoConfig({ 
