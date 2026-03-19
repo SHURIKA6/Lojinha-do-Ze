@@ -83,7 +83,7 @@ export default function CheckoutModal({
       >
         <div className={styles.confirmation}>
           <div className={styles.confirmationIcon}>
-            <FiCheckCircle style={isPix && !pixConfirmed ? { color: 'var(--blue-500)' } : {}} />
+            <FiCheckCircle style={isPix && !pixConfirmed ? { color: 'var(--info-500)' } : {}} />
           </div>
           <h2>Pedido #{orderResult.order.id}</h2>
           
