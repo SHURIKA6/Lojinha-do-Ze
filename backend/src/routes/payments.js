@@ -9,8 +9,8 @@ import { logger } from '../utils/logger.js';
 const router = new Hono();
 
 // Instancia o serviço usando a variável de ambiente
-const getService = () => {
-  const token = getRequiredEnv('MERCADO_PAGO_ACCESS_TOKEN');
+const getService = (c) => {
+  const token = getRequiredEnv(c, 'MERCADO_PAGO_ACCESS_TOKEN');
   return new MercadoPagoService(token);
 };
 
@@ -33,7 +33,7 @@ router.post('/pix', zValidator('json', pixPaymentSchema, validationError), async
     }
 
     const order = orderRows[0];
-    const service = getService();
+    const service = getService(c);
 
     // 2. Cria o pagamento no Mercado Pago
     const payment = await service.createPixPayment({
@@ -59,7 +59,7 @@ router.post('/pix', zValidator('json', pixPaymentSchema, validationError), async
  */
 router.get('/pix/:id', async (c) => {
   const paymentId = c.req.param('id');
-  const service = getService();
+  const service = getService(c);
 
   try {
     const payment = await service.getPayment(paymentId);
@@ -87,7 +87,7 @@ router.post('/webhook', async (c) => {
 
   if (topic === 'payment' && resource) {
     try {
-      const service = getService();
+      const service = getService(c);
       const paymentId = resource.split('/').pop() || resource;
       const payment = await service.getPayment(paymentId);
 
