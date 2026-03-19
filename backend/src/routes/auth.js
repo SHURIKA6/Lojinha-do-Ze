@@ -44,7 +44,7 @@ router.post(
       );
 
       if (rows.length === 0) {
-        // Timing attack mitigation: always perform a bcrypt comparison
+        // Mitigação de ataque de tempo: sempre realiza uma comparação bcrypt
         await bcrypt.compare(payload.password, '$2a$12$L7R23YQ6VvW.vG6X7Zf9q.nNl8y6R6R6R6R6R6R6R6R6R6R6R6R6');
         setNoStore(c);
         return jsonError(c, 401, 'E-mail, telefone ou senha incorretos');
@@ -80,7 +80,7 @@ router.post(
         },
       });
     } catch (error) {
-      logger.error('Login error', error);
+      logger.error('Erro no Login', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -88,7 +88,7 @@ router.post(
   }
 );
 
-router.post('/logout', optionalAuthMiddleware, async (c) => {
+router.post('/logout', async (c) => {
   const db = c.get('db');
   const client = await db.connect();
 
@@ -97,7 +97,7 @@ router.post('/logout', optionalAuthMiddleware, async (c) => {
     setNoStore(c);
     return c.json({ message: 'Sessão encerrada com sucesso' });
   } catch (error) {
-    logger.error('Logout error', error);
+    logger.error('Erro no Logout', error);
     clearSessionCookies(c);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
@@ -144,7 +144,7 @@ router.post(
       return c.json({ user: rows[0] });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      logger.error('Setup password error', error);
+      logger.error('Erro na configuração de senha', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -155,7 +155,6 @@ router.post(
 router.post(
   '/change-password',
   authMiddleware,
-  csrfMiddleware,
   zValidator('json', changePasswordSchema, validationError),
   async (c) => {
     const db = c.get('db');
@@ -204,7 +203,7 @@ router.post(
       return c.json({ message: 'Senha atualizada com sucesso' });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      logger.error('Change password error', error);
+      logger.error('Erro na alteração de senha', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -213,28 +212,23 @@ router.post(
 );
 
 router.get('/me', authMiddleware, async (c) => {
-  try {
-    const db = c.get('db');
-    const user = c.get('user');
-    const { rows } = await db.query(
-      `SELECT id, name, email, role, phone, cpf, address, avatar, created_at
-       FROM users
-       WHERE id = $1`,
-      [user.id]
-    );
+  const db = c.get('db');
+  const user = c.get('user');
+  const { rows } = await db.query(
+    `SELECT id, name, email, role, phone, cpf, address, avatar, created_at
+     FROM users
+     WHERE id = $1`,
+    [user.id]
+  );
 
-    if (rows.length === 0) {
-      clearSessionCookies(c);
-      setNoStore(c);
-      return jsonError(c, 404, 'Usuário não encontrado');
-    }
-
+  if (rows.length === 0) {
+    clearSessionCookies(c);
     setNoStore(c);
-    return c.json(rows[0]);
-  } catch (error) {
-    logger.error('Auth me error', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
+    return jsonError(c, 404, 'Usuário não encontrado');
   }
+
+  setNoStore(c);
+  return c.json(rows[0]);
 });
 
 export default router;

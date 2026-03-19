@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test": "jest",
     "seed": "node src/db-bootstrap.js",
     "create-admin": "node scripts/create-admin.js"
   },
@@ -20,8 +21,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260313.1",
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.0",
     "console-ninja": "^1.0.0",
+    "jest": "^30.3.0",
     "prettier": "^3.8.1",
+    "supertest": "^7.2.2",
     "wrangler": "^4.72.0"
   },
   "overrides": {

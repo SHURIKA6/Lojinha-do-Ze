@@ -45,7 +45,7 @@ router.put('/', csrfMiddleware, zValidator('json', profileUpdateSchema, validati
       return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
     }
 
-    console.error('Profile PUT error:', error);
+    console.error('Erro no PUT de Perfil:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

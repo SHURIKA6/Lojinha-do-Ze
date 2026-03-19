@@ -14,6 +14,9 @@ import transactionsRoutes from './routes/transactions.js';
 import uploadRoutes from './routes/upload.js';
 
 import { apiLimiter } from './middleware/rateLimit.js';
+import { auditMiddleware } from './middleware/audit.js';
+import { csrfMiddleware, optionalAuthMiddleware } from './middleware/auth.js';
+import { logger } from './utils/logger.js';
 
 const app = new Hono();
 const DBLESS_PATH_PREFIXES = ['/api/health'];
@@ -23,6 +26,7 @@ app.use('/api/*', apiLimiter);
 app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
 app.use('/api/*', originGuardMiddleware);
+app.use('/api/*', auditMiddleware);
 
 app.get('/api/health', (c) => c.json({ status: 'ok', message: 'Lojinha do Zé API' }));
 
@@ -48,9 +52,12 @@ app.use('/api/*', async (c, next) => {
   c.set('db', db);
 
   try {
-    await next();
+    // Resolve a sessão (opcional) e aplica o middleware CSRF para métodos não-seguros
+    await optionalAuthMiddleware(c, async () => {
+      await csrfMiddleware(c, next);
+    });
   } catch (error) {
-    console.error('API Request Error:', error);
+    console.error('Erro na Requisição API:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     const closePromise = db.close().catch((error) => {
@@ -66,7 +73,11 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.onError((error, c) => {
-  console.error('Unhandled Global Error:', error);
+  logger.error('Unhandled Global Error', error, {
+    path: c.req.path,
+    method: c.req.method,
+    user: c.get('user')?.id,
+  });
   return jsonError(c, 500, 'Erro interno no servidor');
 });
 

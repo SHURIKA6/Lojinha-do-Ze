@@ -25,8 +25,15 @@ export function applySecurityHeaders(c) {
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Cross-Origin-Opener-Policy', 'same-origin');
 
-  const requestUrl = new URL(c.req.url);
-  if (requestUrl.protocol === 'https:') {
+  let isHttps = false;
+  try {
+    const requestUrl = new URL(c.req.url, 'http://localhost');
+    isHttps = requestUrl.protocol === 'https:';
+  } catch (e) {
+    // Fallback caso a análise da URL falhe
+  }
+
+  if (isHttps) {
     headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
 }

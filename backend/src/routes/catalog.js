@@ -6,6 +6,8 @@ import { orderLimiter } from '../middleware/rateLimit.js';
 import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize.js';
 import { jsonError, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
+import { cacheService } from '../services/cacheService.js';
+import { CATALOG_CACHE_TTL_SECONDS, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants.js';
 
 const router = new Hono();
 
@@ -24,21 +26,45 @@ function mergeOrderItems(items) {
 }
 
 router.get('/', async (c) => {
-  try {
-    const db = c.get('db');
-    const limit = Math.min(parseInt(c.req.query('limit')) || 100, 200);
-    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+  const db = c.get('db');
+  const limit = Math.min(parseInt(c.req.query('limit')) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+  const search = c.req.query('search')?.trim();
+  const category = c.req.query('category')?.trim();
 
-    const countRes = await db.query('SELECT COUNT(*) FROM products WHERE is_active = TRUE AND quantity > 0');
+  const cacheKey = `catalog_${limit}_${offset}_${search || ''}_${category || ''}`;
+
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+
+    const whereClauses = ['is_active = TRUE', 'quantity > 0'];
+    const queryParams = [];
+
+    if (search) {
+      queryParams.push(`%${search}%`);
+      whereClauses.push(`name ILIKE $${queryParams.length}`);
+    }
+
+    if (category) {
+      queryParams.push(category);
+      whereClauses.push(`category = $${queryParams.length}`);
+    }
+
+    const whereSql = whereClauses.join(' AND ');
+
+    const countRes = await db.query(`SELECT COUNT(*) FROM products WHERE ${whereSql}`, queryParams);
     const totalCount = parseInt(countRes.rows[0].count);
 
+    queryParams.push(limit, offset);
     const { rows } = await db.query(
       `SELECT id, code, name, description, photo, category, sale_price, quantity
        FROM products
-       WHERE is_active = TRUE AND quantity > 0
+       WHERE ${whereSql}
        ORDER BY category, name
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+       LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`,
+      queryParams
     );
 
     const categories = {};
@@ -53,22 +79,20 @@ router.get('/', async (c) => {
       categories[product.category].products.push(product);
     }
 
-    return c.json({
-      categories: Object.values(categories),
-      total: totalCount,
-      limit,
-      offset,
-    });
-  } catch (error) {
-    logger.error('Catalog GET error', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
-  }
+  const response = {
+    categories: Object.values(categories),
+    total: totalCount,
+    limit,
+    offset,
+  };
+
+  cacheService.set(cacheKey, response, CATALOG_CACHE_TTL_SECONDS);
+
+  return c.json(response);
 });
 
 router.post(
   '/orders',
-  optionalAuthMiddleware,
-  csrfMiddleware,
   orderLimiter,
   zValidator('json', orderCreateSchema, validationError),
   async (c) => {
@@ -179,7 +203,7 @@ router.post(
       );
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      logger.error('Catalog Orders POST error', error);
+      logger.error('Erro ao processar pedido no catálogo (POST)', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();

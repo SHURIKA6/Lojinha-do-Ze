@@ -137,10 +137,23 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
         filteredProducts={filteredProducts}
         getAvailableStock={getAvailableStock}
         handleQuickAdd={handleQuickAdd}
-        loading={loading}
+        loading={loading && filteredProducts.length === 0}
         openProductModal={openProductModal}
         search={search}
       />
+
+      {hasMore && (
+        <div className={styles.loadMore}>
+          <button 
+            type="button" 
+            className={styles.loadMoreBtn}
+            onClick={loadMore}
+            disabled={loading}
+          >
+            {loading ? 'Carregando...' : 'Carregar mais produtos'}
+          </button>
+        </div>
+      )}
 
       {cartCount > 0 ? (
         <div className={styles.cartBar}>

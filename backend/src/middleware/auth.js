@@ -71,3 +71,29 @@ export async function adminOnly(c, next) {
 
   await next();
 }
+
+/**
+ * Middleware para verificar se o usuário possui um cargo (role) específico.
+ */
+export function hasRole(role) {
+  return async (c, next) => {
+    const user = c.get('user');
+    if (!user || user.role !== role) {
+      return jsonError(c, 403, `Acesso restrito a usuários com perfil ${role}`);
+    }
+    await next();
+  };
+}
+
+/**
+ * Middleware para verificar se o usuário possui qualquer um dos cargos (roles) especificados.
+ */
+export function hasAnyRole(roles) {
+  return async (c, next) => {
+    const user = c.get('user');
+    if (!user || !roles.includes(user.role)) {
+      return jsonError(c, 403, 'Você não tem permissão para realizar esta ação');
+    }
+    await next();
+  };
+}

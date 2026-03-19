@@ -36,7 +36,7 @@ export default function Modal({
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus first element only once when opening
+    // Foca no primeiro elemento apenas uma vez ao abrir
     const focusableElements = getFocusableElements(dialogRef.current);
     focusableElements[0]?.focus();
 

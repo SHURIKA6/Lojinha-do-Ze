@@ -1,7 +1,7 @@
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-// Always use same-origin proxy (/api/*). The route handler in `src/app/api/[...path]/route.js`
-// forwards requests to the real backend (Worker or local wrangler).
+// Sempre usa o proxy de mesma origem (/api/*). O manipulador de rota em `src/app/api/[...path]/route.js`
+// encaminha as requisições para o backend real (Worker ou local wrangler).
 export const API_BASE = '/api';
 
 export class ApiError extends Error {

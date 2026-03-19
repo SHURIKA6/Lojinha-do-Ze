@@ -1,0 +1,17 @@
+export const id = '004_additional_performance_indexes';
+
+export async function up(client) {
+  await client.query(`
+    -- Index for active products with name for catalog sorting
+    CREATE INDEX IF NOT EXISTS idx_products_active_name ON products(is_active, name) WHERE is_active = TRUE;
+
+    -- Index for order status to speed up admin dashboard filtering
+    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+    -- Index for transaction categories
+    CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category);
+    
+    -- Index for inventory log by product and date
+    CREATE INDEX IF NOT EXISTS idx_inventory_log_product_date ON inventory_log(product_id, date DESC);
+  `);
+}
