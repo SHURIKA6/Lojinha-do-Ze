@@ -14,6 +14,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
   const [editingProfile, setEditingProfile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
+  const [pixConfirmed, setPixConfirmed] = useState(false);
   
   const toast = useToast();
 
@@ -113,7 +114,12 @@ export function useCheckout({ cart, cartTotal, setError }) {
       setIsRegistered(true);
       setEditingProfile(false);
       setOrderResult({ ...result, _paymentMethod: paymentMethod });
-      sendWhatsAppReceipt(result.order, cart, paymentMethod);
+      setPixConfirmed(false); // Reset for new orders
+
+      if (paymentMethod !== 'pix') {
+        sendWhatsAppReceipt(result.order, cart, paymentMethod);
+      }
+      
       toast.success('Pedido enviado com sucesso.');
       return true; // Success
     } catch (err) {
@@ -136,6 +142,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
     editingProfile, setEditingProfile,
     submitting,
     orderResult, setOrderResult,
+    pixConfirmed, setPixConfirmed,
     handleCheckout,
     sendWhatsAppReceipt
   };

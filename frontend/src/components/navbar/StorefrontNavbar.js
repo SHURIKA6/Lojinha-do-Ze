@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FiLogOut, FiSearch, FiShoppingCart, FiX } from 'react-icons/fi';
+import styles from './StorefrontNavbar.module.css';
 
 export default function StorefrontNavbar({
   cartCount,
@@ -15,18 +16,18 @@ export default function StorefrontNavbar({
   setSearch,
 }) {
   return (
-    <header className="loja-header">
-      <div className="loja-header__inner">
-        <Link href="/" className="loja-header__brand">
-          <div className="loja-header__logo">LZ</div>
+    <header className={styles.header}>
+      <div className={styles.inner}>
+        <Link href="/" className={styles.brand}>
+          <div className={styles.logo}>LZ</div>
           <div>
-            <h1 className="loja-header__title">Lojinha do Zé</h1>
-            <span className="loja-header__subtitle">Produtos fitoterápicos e naturais</span>
+            <h1 className={styles.title}>Lojinha do Zé</h1>
+            <span className={styles.subtitle}>Produtos fitoterápicos e naturais</span>
           </div>
         </Link>
 
-        <div className="loja-header__search">
-          <FiSearch className="loja-header__search-icon" />
+        <div className={styles.search}>
+          <FiSearch className={styles.searchIcon} />
           <input
             aria-label="Buscar produto"
             placeholder="Buscar produto..."
@@ -41,7 +42,7 @@ export default function StorefrontNavbar({
           {search && (
             <button
               type="button"
-              className="loja-header__search-clear"
+              className={styles.searchClear}
               onClick={() => setSearch('')}
               aria-label="Limpar busca"
             >
@@ -50,37 +51,37 @@ export default function StorefrontNavbar({
           )}
         </div>
 
-        <div className="loja-header__actions">
+        <div className={styles.actions}>
           <button
             type="button"
-            className="loja-header__cart-btn"
+            className={styles.cartBtn}
             onClick={() => setCartOpen(true)}
             title="Abrir carrinho"
           >
             <FiShoppingCart />
-            {cartCount > 0 && <span className="loja-header__cart-badge">{cartCount}</span>}
+            {cartCount > 0 && <span className={styles.cartBadge}>{cartCount}</span>}
           </button>
 
           <button
             type="button"
-            className="loja-header__portal"
+            className={styles.portal}
             onClick={onPortalClick}
             title={portalLabel}
           >
             <PortalIcon />
-            <span className="loja-header__portal-label">{portalLabel}</span>
+            <span className={styles.portalLabel}>{portalLabel}</span>
           </button>
 
           {onLogout ? (
             <button
               type="button"
-              className="loja-header__portal loja-header__logout"
+              className={`${styles.portal} ${styles.logout}`}
               onClick={onLogout}
               title="Sair"
               aria-label="Sair"
             >
               <FiLogOut />
-              <span className="loja-header__portal-label">Sair</span>
+              <span className={styles.portalLabel}>Sair</span>
             </button>
           ) : null}
         </div>

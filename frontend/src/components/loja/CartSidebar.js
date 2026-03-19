@@ -2,6 +2,7 @@
 
 import { FiMinus, FiPlus, FiShoppingCart, FiTrash2, FiX } from 'react-icons/fi';
 import { formatCurrency } from '@/lib/api';
+import styles from './CartSidebar.module.css';
 
 export default function CartSidebar({
   cart,
@@ -19,9 +20,9 @@ export default function CartSidebar({
 
   return (
     <>
-      <div className="loja-overlay" onClick={() => setCartOpen(false)} />
-      <aside className="loja-cart-sidebar">
-        <div className="loja-cart-sidebar__header">
+      <div className={styles.overlay} onClick={() => setCartOpen(false)} />
+      <aside className={styles.sidebar}>
+        <div className={styles.header}>
           <div>
             <h2>Seu carrinho</h2>
             <p>{cart.length} produto(s) selecionado(s)</p>
@@ -33,18 +34,18 @@ export default function CartSidebar({
 
         {cart.length > 0 ? (
           <>
-            <div className="loja-cart-sidebar__items">
+            <div className={styles.items}>
               {cart.map((item) => {
                 const availableStock = getAvailableStock(item.productId);
 
                 return (
-                  <div key={item.productId} className="loja-cart-item">
-                    <div className="loja-cart-item__info">
+                  <div key={item.productId} className={styles.item}>
+                    <div className={styles.info}>
                       <h4>{item.name}</h4>
-                      <span className="loja-cart-item__price">{formatCurrency(item.price)} cada</span>
+                      <span className={styles.price}>{formatCurrency(item.price)} cada</span>
                     </div>
 
-                    <div className="loja-cart-item__controls">
+                    <div className={styles.controls}>
                       <button
                         type="button"
                         onClick={() => updateCartItem(item.productId, item.quantity - 1)}
@@ -61,11 +62,11 @@ export default function CartSidebar({
                       </button>
                     </div>
 
-                    <div className="loja-cart-item__subtotal">
+                    <div className={styles.subtotal}>
                       <span>{formatCurrency(item.price * item.quantity)}</span>
                       <button
                         type="button"
-                        className="loja-cart-item__remove"
+                        className={styles.remove}
                         onClick={() => removeFromCart(item.productId)}
                         aria-label={`Remover ${item.name} do carrinho`}
                       >
@@ -77,8 +78,8 @@ export default function CartSidebar({
               })}
             </div>
 
-            <div className="loja-cart-sidebar__footer">
-              <div className="loja-cart-sidebar__total">
+            <div className={styles.footer}>
+              <div className={styles.total}>
                 <span>Total</span>
                 <strong>{formatCurrency(cartTotal)}</strong>
               </div>
@@ -96,8 +97,8 @@ export default function CartSidebar({
             </div>
           </>
         ) : (
-          <div className="loja-cart-sidebar__empty">
-            <div className="empty-state__icon">
+          <div className={styles.empty}>
+            <div className={styles.emptyIcon}>
               <FiShoppingCart />
             </div>
             <p>Seu carrinho está vazio.</p>

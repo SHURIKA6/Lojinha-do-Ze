@@ -3,6 +3,7 @@
 import { FiPackage, FiPlus } from 'react-icons/fi';
 import AppImage from '@/components/ui/AppImage';
 import { formatCurrency, getImageUrl } from '@/lib/api';
+import styles from './ProductCard.module.css';
 
 export default function ProductCard({
   product,
@@ -15,7 +16,7 @@ export default function ProductCard({
 
   return (
     <article
-      className="loja-product"
+      className={styles.product}
       role="button"
       tabIndex={0}
       onClick={() => onOpen(product)}
@@ -27,8 +28,8 @@ export default function ProductCard({
       }}
       aria-label={`Ver detalhes de ${product.name}`}
     >
-      <div className="loja-product__image">
-        <div className="loja-product__stock">
+      <div className={styles.image}>
+        <div className={styles.stock}>
           {hasStock ? `${availableStock} un.` : 'Sem estoque'}
         </div>
         {product.photo ? (
@@ -44,17 +45,17 @@ export default function ProductCard({
         )}
       </div>
 
-      <div className="loja-product__info">
-        <span className="loja-product__category">{product.category}</span>
-        <h3 className="loja-product__name">{product.name}</h3>
-        <p className="loja-product__desc">
+      <div className={styles.info}>
+        <span className={styles.category}>{product.category}</span>
+        <h3 className={styles.name}>{product.name}</h3>
+        <p className={styles.desc}>
           {product.description || 'Produto natural selecionado para uma compra rápida e segura.'}
         </p>
 
-        <div className="loja-product__footer">
+        <div className={styles.footer}>
           <div>
-            <span className="loja-product__price">{formatCurrency(product.sale_price)}</span>
-            <div className="loja-product__subinfo">
+            <span className={styles.price}>{formatCurrency(product.sale_price)}</span>
+            <div className={styles.subinfo}>
               {cartItem
                 ? `${cartItem.quantity} no carrinho`
                 : hasStock
@@ -65,7 +66,7 @@ export default function ProductCard({
 
           <button
             type="button"
-            className={`loja-product__add ${cartItem ? 'in-cart' : ''}`}
+            className={`${styles.add} ${cartItem ? styles.inCart : ''}`}
             onClick={(event) => onQuickAdd(event, product)}
             disabled={!hasStock || cartItem?.quantity >= availableStock}
             aria-label={
@@ -74,7 +75,7 @@ export default function ProductCard({
                 : `Adicionar ${product.name}`
             }
           >
-            {cartItem ? <span className="loja-product__qty">{cartItem.quantity}</span> : <FiPlus />}
+            {cartItem ? <span className={styles.qty}>{cartItem.quantity}</span> : <FiPlus />}
           </button>
         </div>
       </div>

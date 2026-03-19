@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import styles from './Sidebar.module.css';
 import {
   FiDollarSign,
   FiFileText,
@@ -53,26 +54,26 @@ export default function Sidebar() {
     <>
       <button
         type="button"
-        className="sidebar__toggle"
+        className={styles.toggle}
         onClick={() => setMobileOpen((value) => !value)}
         aria-label={mobileOpen ? 'Fechar navegação' : 'Abrir navegação'}
       >
         {mobileOpen ? <FiX /> : <FiMenu />}
       </button>
 
-      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar__brand">
-          <div className="sidebar__logo">LZ</div>
+      <aside className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ''}`}>
+        <div className={styles.brand}>
+          <div className={styles.logo}>LZ</div>
           <div>
-            <div className="sidebar__brand-name">Lojinha do Zé</div>
-            <div className="sidebar__brand-sub">Operação e gestão</div>
+            <div className={styles.brandName}>Lojinha do Zé</div>
+            <div className={styles.brandSub}>Operação e gestão</div>
           </div>
         </div>
 
-        <nav className="sidebar__nav">
+        <nav className={styles.nav}>
           {navItems.map((section) => (
-            <div key={section.section} className="sidebar__section">
-              <div className="sidebar__section-title">{section.section}</div>
+            <div key={section.section} className={styles.section}>
+              <div className={styles.sectionTitle}>{section.section}</div>
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -81,10 +82,10 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`sidebar__link ${isActive ? 'active' : ''}`}
+                    className={`${styles.link} ${isActive ? styles.active : ''}`}
                     onClick={() => setMobileOpen(false)}
                   >
-                    <span className="sidebar__link-icon">
+                    <span className={styles.linkIcon}>
                       <Icon />
                     </span>
                     <span>{item.label}</span>
@@ -95,12 +96,12 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        <div className="sidebar__footer">
-          <Link href="/login" className="sidebar__user" onClick={handleLogout} title="Sair">
-            <div className="sidebar__avatar">{user?.avatar || 'U'}</div>
-            <div className="sidebar__user-info">
-              <div className="sidebar__user-name">{user?.name || 'Usuário'}</div>
-              <div className="sidebar__user-role">Administrador</div>
+        <div className={styles.footer}>
+          <Link href="/login" className={styles.user} onClick={handleLogout} title="Sair">
+            <div className={styles.avatar}>{user?.avatar || 'U'}</div>
+            <div>
+              <div className={styles.userName}>{user?.name || 'Usuário'}</div>
+              <div className={styles.userRole}>Administrador</div>
             </div>
             <FiLogOut style={{ marginLeft: 'auto', opacity: 0.7, flexShrink: 0 }} />
           </Link>

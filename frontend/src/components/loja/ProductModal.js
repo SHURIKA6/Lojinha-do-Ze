@@ -4,6 +4,7 @@ import Modal from '@/components/Modal';
 import AppImage from '@/components/ui/AppImage';
 import { formatCurrency, getImageUrl } from '@/lib/api';
 import { FiMinus, FiPackage, FiPlus } from 'react-icons/fi';
+import styles from './ProductModal.module.css';
 
 export default function ProductModal({
   getAvailableStock = () => Number.MAX_SAFE_INTEGER,
@@ -23,8 +24,8 @@ export default function ProductModal({
       size="lg"
     >
       {productModal && (
-        <div className="loja-product-modal">
-          <div className="loja-product-modal__image">
+        <div className={styles.modal}>
+          <div className={styles.image}>
             {productModal.photo ? (
               <AppImage
                 src={getImageUrl(productModal.photo)}
@@ -38,21 +39,21 @@ export default function ProductModal({
             )}
           </div>
 
-          <div className="loja-product-modal__details">
+          <div className={styles.details}>
             <span className="badge badge--neutral">{productModal.category}</span>
             <h3>{productModal.name}</h3>
             {productModal.description && (
-              <p className="loja-product-modal__description">{productModal.description}</p>
+              <p className={styles.description}>{productModal.description}</p>
             )}
-            <div className="loja-product-modal__meta">
+            <div className={styles.meta}>
               <span>Código: {productModal.code}</span>
               <span>Estoque: {productModal.quantity} unidades</span>
             </div>
-            <div className="loja-product-modal__price">{formatCurrency(productModal.sale_price)}</div>
+            <div className={styles.price}>{formatCurrency(productModal.sale_price)}</div>
           </div>
 
-          <div className="loja-product-modal__actions">
-            <div className="loja-product-modal__qty">
+          <div className={styles.actions}>
+            <div className={styles.qty}>
               <button type="button" onClick={() => setProductQty(Math.max(1, productQty - 1))}>
                 <FiMinus />
               </button>

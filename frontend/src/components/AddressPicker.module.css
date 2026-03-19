@@ -1,0 +1,27 @@
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.map {
+  margin-top: var(--space-4);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.canvas {
+  height: 300px;
+  width: 100%;
+}
+
+.hint {
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-200);
+  font-size: var(--font-xs);
+  color: var(--gray-500);
+}
