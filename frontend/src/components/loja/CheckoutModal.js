@@ -13,19 +13,20 @@ import {
   FiTruck,
   FiUser,
 } from 'react-icons/fi';
+import styles from './CheckoutModal.module.css';
 
 const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
-  loading: () => <div className="loja-profile-card__note">Carregando mapa...</div>,
+  loading: () => <div className={styles.profileCardNote}>Carregando mapa...</div>,
 });
 
 function ChoiceCard({ active, icon, label, meta, onClick }) {
   return (
     <button
       type="button"
-      className={`loja-payment-option ${active ? 'active' : ''}`}
+      className={`${styles.paymentOption} ${active ? styles.active : ''}`}
       onClick={onClick}
     >
-      <span className="loja-payment-option__icon">{icon}</span>
+      <span className={styles.paymentOptionIcon}>{icon}</span>
       <strong>{label}</strong>
       <span>{meta}</span>
     </button>
@@ -55,29 +56,42 @@ export default function CheckoutModal({
   setOrderResult,
   setPaymentMethod,
   submitting,
+  pixConfirmed,
+  setPixConfirmed,
   onSendWhatsApp,
 }) {
   const checkoutTotal = deliveryType === 'entrega' ? cartTotal + 5 : cartTotal;
 
   if (orderResult) {
+    const isPix = orderResult._paymentMethod === 'pix';
+    const showWhatsApp = !isPix || pixConfirmed;
+
+    const copyPixKey = () => {
+      const key = '56.885.629/0001-10'; // J P DA SILVA LTDA - ME
+      navigator.clipboard.writeText(key.replace(/\D/g, ''));
+      alert('Chave PIX copiada!');
+    };
+
     return (
       <Modal
         isOpen={!!orderResult}
-        onClose={() => setOrderResult(null)}
-        title="Pedido confirmado"
+        onClose={() => {
+          setOrderResult(null);
+          setPixConfirmed(false);
+        }}
+        title={isPix && !pixConfirmed ? 'Aguardando Pagamento' : 'Pedido confirmado'}
       >
-        <div className="loja-confirmation">
-          <div className="loja-confirmation__icon">
-            <FiCheckCircle />
+        <div className={styles.confirmation}>
+          <div className={styles.confirmationIcon}>
+            <FiCheckCircle style={isPix && !pixConfirmed ? { color: 'var(--blue-500)' } : {}} />
           </div>
           <h2>Pedido #{orderResult.order.id}</h2>
-          <p>Seu pedido foi realizado com sucesso!</p>
-
-          <div className="loja-confirmation__card">
-            <div className="loja-confirmation__meta">
+          
+          <div className={styles.confirmationCard}>
+            <div className={styles.confirmationMeta}>
               <div>
                 <span>Total</span>
-                <div className="loja-confirmation__amount">
+                <div className={styles.confirmationAmount}>
                   {formatCurrency(orderResult.order.total)}
                 </div>
               </div>
@@ -85,26 +99,71 @@ export default function CheckoutModal({
               <div>
                 <span>Pagamento</span>
                 <div style={{ fontWeight: 800 }}>
-                  {orderResult._paymentMethod === 'pix' ? 'PIX' : 'Maquininha'}
+                  {isPix ? 'PIX' : 'Maquininha'}
                 </div>
               </div>
             </div>
 
-            <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
-              Para agilizar seu atendimento, clique no botão abaixo para enviar o comprovante com os detalhes do seu pedido via WhatsApp.
-            </p>
+            {isPix && !pixConfirmed ? (
+              <div style={{ marginTop: 'var(--space-6)', textAlign: 'center' }}>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-600)', marginBottom: 'var(--space-4)' }}>
+                  Para finalizar, realize a transferência PIX para a chave abaixo:
+                </p>
+                <div style={{ 
+                  background: 'var(--gray-100)', 
+                  padding: 'var(--space-4)', 
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: 'var(--space-4)',
+                  border: '2px dashed var(--gray-300)'
+                }}>
+                  <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Chave CNPJ</div>
+                  <div style={{ fontSize: 'var(--font-lg)', fontWeight: 700, margin: '4px 0' }}>56.885.629/0001-10</div>
+                  <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-600)' }}>J P DA SILVA LTDA - ME</div>
+                </div>
+                
+                <button 
+                  type="button" 
+                  className="btn btn--outline btn--full" 
+                  onClick={copyPixKey}
+                  style={{ marginBottom: 'var(--space-3)' }}
+                >
+                  Copiar Chave Pix
+                </button>
+              </div>
+            ) : (
+              <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
+                Seu pedido foi realizado com sucesso! Para agilizar seu atendimento, envie o comprovante via WhatsApp.
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'grid', gap: 'var(--space-3)', marginTop: 'var(--space-6)' }}>
+            {isPix && !pixConfirmed ? (
+              <button 
+                type="button" 
+                className="btn btn--primary btn--full btn--lg" 
+                onClick={() => setPixConfirmed(true)}
+              >
+                Já realizei o pagamento
+              </button>
+            ) : (
+              <button 
+                type="button" 
+                className="btn btn--primary btn--full btn--lg" 
+                onClick={onSendWhatsApp}
+                style={{ background: '#25D366', borderColor: '#25D366' }}
+              >
+                Enviar para o WhatsApp
+              </button>
+            )}
             <button 
               type="button" 
-              className="btn btn--primary btn--full btn--lg" 
-              onClick={onSendWhatsApp}
-              style={{ background: '#25D366', borderColor: '#25D366' }}
+              className="btn btn--secondary btn--full" 
+              onClick={() => {
+                setOrderResult(null);
+                setPixConfirmed(false);
+              }}
             >
-              Enviar para o WhatsApp
-            </button>
-            <button type="button" className="btn btn--secondary btn--full" onClick={() => setOrderResult(null)}>
               Voltar para a loja
             </button>
           </div>
@@ -145,17 +204,17 @@ export default function CheckoutModal({
         </>
       }
     >
-      <div className="loja-checkout">
+      <div className={styles.checkout}>
         {error ? (
           <div className="login-card__error" role="alert" aria-live="assertive">
             {error}
           </div>
         ) : null}
 
-        <div className="loja-summary">
-          <h4 className="loja-summary__title">Resumo do pedido</h4>
+        <div className={styles.summary}>
+          <h4 className={styles.summaryTitle}>Resumo do pedido</h4>
           {cart.map((item) => (
-            <div key={item.productId} className="loja-summary__row">
+            <div key={item.productId} className={styles.summaryRow}>
               <span>
                 {item.quantity}x {item.name}
               </span>
@@ -163,45 +222,45 @@ export default function CheckoutModal({
             </div>
           ))}
 
-          <div className="loja-summary__row">
+          <div className={styles.summaryRow}>
             <span>Subtotal</span>
             <span>{formatCurrency(cartTotal)}</span>
           </div>
 
           {deliveryType === 'entrega' && (
-            <div className="loja-summary__row">
+            <div className={styles.summaryRow}>
               <span>Taxa de entrega</span>
               <span>{formatCurrency(5)}</span>
             </div>
           )}
 
-          <div className="loja-summary__row loja-summary__row--total">
+          <div className={`${styles.summaryRow} ${styles.summaryRowTotal}`}>
             <span>Total a pagar</span>
             <span>{formatCurrency(checkoutTotal)}</span>
           </div>
         </div>
 
         {isRegistered && !editingProfile ? (
-          <div className="loja-profile-card">
-            <div className="loja-profile-card__header">
-              <h4 className="loja-profile-card__title">Seus dados</h4>
+          <div className={styles.profileCard}>
+            <div className={styles.profileCardHeader}>
+              <h4 className={styles.profileCardTitle}>Seus dados</h4>
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => setEditingProfile(true)}>
                 <FiEdit3 />
                 Editar
               </button>
             </div>
 
-            <div className="loja-profile-card__list">
-              <div className="loja-profile-card__item">
+            <div className={styles.profileCardList}>
+              <div className={styles.profileCardItem}>
                 <FiUser />
                 <strong>{customerForm.name}</strong>
               </div>
-              <div className="loja-profile-card__item">
+              <div className={styles.profileCardItem}>
                 <FiPhone />
                 <span>{customerForm.phone}</span>
               </div>
               {customerAddress && (
-                <div className="loja-profile-card__item">
+                <div className={styles.profileCardItem}>
                   <FiMapPin />
                   <span>{customerAddress}</span>
                 </div>
@@ -209,11 +268,11 @@ export default function CheckoutModal({
             </div>
           </div>
         ) : (
-          <div className="loja-profile-card">
+          <div className={styles.profileCard}>
             {isRegistered ? (
-              <div className="loja-profile-card__note">Você está editando seus dados salvos.</div>
+              <div className={styles.profileCardNote}>Você está editando seus dados salvos.</div>
             ) : (
-              <div className="loja-profile-card__note">
+              <div className={styles.profileCardNote}>
                 Primeira compra? Preencha seus dados uma vez e reaproveite nas próximas.
               </div>
             )}
@@ -256,7 +315,7 @@ export default function CheckoutModal({
 
             <div className="form-group">
               <label className="form-label">Como deseja receber?</label>
-              <div className="loja-choice-grid">
+              <div className={styles.choiceGrid}>
                 <ChoiceCard
                   active={deliveryType === 'entrega'}
                   icon={<FiTruck />}
@@ -285,10 +344,10 @@ export default function CheckoutModal({
           </div>
         )}
 
-        <div className="loja-profile-card">
+        <div className={styles.profileCard}>
           <div className="form-group">
             <label className="form-label">Forma de pagamento</label>
-            <div className="loja-choice-grid">
+            <div className={styles.choiceGrid}>
               <ChoiceCard
                 active={paymentMethod === 'pix'}
                 icon={<FiCheckCircle />}

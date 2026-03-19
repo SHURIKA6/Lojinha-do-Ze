@@ -2,6 +2,7 @@
 
 import { FiSearch, FiX } from 'react-icons/fi';
 import ProductCard from '@/components/productCard/ProductCard';
+import styles from './ProductGrid.module.css';
 
 export default function ProductGrid({
   cart,
@@ -15,22 +16,22 @@ export default function ProductGrid({
 }) {
   if (loading) {
     return (
-      <div className="loja-loading">
-        <div className="loja-loading__spinner" />
+      <div className={styles.loading}>
+        <div className={styles.spinner} />
         <p>Carregando catálogo...</p>
       </div>
     );
   }
 
   return (
-    <main className="loja-main">
+    <main className={styles.main}>
       {search && (
-        <p className="loja-main__search-info">
+        <p className={styles.searchInfo}>
           {filteredProducts.length} resultado(s) para "{search}"
         </p>
       )}
 
-      <div className="loja-grid">
+      <div className={styles.grid}>
         {filteredProducts.map((product) => {
           const cartItem = cart.find((item) => item.productId === product.id);
           const availableStock = getAvailableStock(product.id);
@@ -49,17 +50,17 @@ export default function ProductGrid({
       </div>
 
       {filteredProducts.length === 0 && !loading && (
-        <div className="loja-empty">
+        <div className={styles.empty}>
           {error ? (
             <>
-              <div className="empty-state__icon">
+              <div className={styles.emptyIcon}>
                 <FiX />
               </div>
               <p>{error}</p>
             </>
           ) : (
             <>
-              <div className="empty-state__icon">
+              <div className={styles.emptyIcon}>
                 <FiSearch />
               </div>
               <p>Nenhum produto encontrado.</p>

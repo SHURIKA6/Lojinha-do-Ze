@@ -32,8 +32,7 @@
 
 .brand-mark,
 .customer-topbar__logo,
-.login-card__logo,
-.sidebar__logo {
+.login-card__logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -52,8 +51,7 @@
 }
 
 .brand-copy__name,
-.customer-topbar__name,
-.sidebar__brand-name {
+.customer-topbar__name {
   font-family: var(--font-display), serif;
   font-size: 1.35rem;
   color: var(--gray-900);

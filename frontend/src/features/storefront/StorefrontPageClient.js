@@ -13,6 +13,7 @@ import ProductModal from '@/components/loja/ProductModal';
 import { useCatalog } from './hooks/useCatalog';
 import { useCart } from './hooks/useCart';
 import { useCheckout } from './hooks/useCheckout';
+import styles from './Storefront.module.css';
 
 export default function StorefrontPageClient({ initialCatalog = null }) {
   const [cartOpen, setCartOpen] = useState(false);
@@ -58,6 +59,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
     editingProfile, setEditingProfile,
     submitting,
     orderResult, setOrderResult,
+    pixConfirmed, setPixConfirmed,
     handleCheckout,
     sendWhatsAppReceipt
   } = useCheckout({ cart, cartTotal, setError });
@@ -95,7 +97,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
   };
 
   return (
-    <div className="loja">
+    <div className={styles.wrapper}>
       <Header
         cartCount={cartCount}
         onLogout={user ? handleLogout : undefined}
@@ -108,14 +110,14 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
         setSearch={setSearch}
       />
 
-      <nav className="loja-categories" aria-label="Categorias do catálogo">
-        <div className="loja-categories__inner">
+      <nav className={styles.categories} aria-label="Categorias do catálogo">
+        <div className={styles.categoriesInner}>
           {(Array.isArray(catalogData?.categories) ? catalogData.categories : []).map((category) => (
             <button
               key={category.name}
               type="button"
-              className={`loja-categories__tab ${
-                activeCategory === category.name && !search ? 'active' : ''
+              className={`${styles.categoriesTab} ${
+                activeCategory === category.name && !search ? styles.active : ''
               }`}
               onClick={() => {
                 setActiveCategory(category.name);
@@ -123,7 +125,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
               }}
             >
               {category.name}
-              <span className="loja-categories__count">{category.products.length}</span>
+              <span className={styles.categoriesCount}>{category.products.length}</span>
             </button>
           ))}
         </div>
@@ -141,19 +143,19 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
       />
 
       {cartCount > 0 ? (
-        <div className="loja-cart-bar">
-          <div className="loja-cart-bar__info">
-            <span className="loja-cart-bar__total">Total sem entrega</span>
-            <span className="loja-cart-bar__amount">
+        <div className={styles.cartBar}>
+          <div className={styles.cartBarInfo}>
+            <span className={styles.cartBarTotal}>Total sem entrega</span>
+            <span className={styles.cartBarAmount}>
               {cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
-            <span className="loja-cart-bar__items">
+            <span className={styles.cartBarItems}>
               {cartCount} {cartCount === 1 ? 'item' : 'itens'}
             </span>
           </div>
           <button
             type="button"
-            className="loja-cart-bar__btn"
+            className={styles.cartBarBtn}
             onClick={() => setCartOpen(true)}
             aria-label={`Abrir carrinho com ${cartCount} ${cartCount === 1 ? 'item' : 'itens'}`}
           >
@@ -206,6 +208,8 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
         setOrderResult={setOrderResult}
         setPaymentMethod={setPaymentMethod}
         submitting={submitting}
+        pixConfirmed={pixConfirmed}
+        setPixConfirmed={setPixConfirmed}
         onSendWhatsApp={() => sendWhatsAppReceipt(orderResult.order, orderResult.order.items, orderResult._paymentMethod)}
       />
     </div>

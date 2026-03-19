@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FiMapPin, FiNavigation } from 'react-icons/fi';
 import { useToast } from '@/components/ui/ToastProvider';
+import styles from './AddressPicker.module.css';
 
 export default function AddressPicker({
   address,
@@ -158,7 +159,7 @@ export default function AddressPicker({
         />
       </div>
 
-      <div className="address-picker__actions">
+      <div className={styles.actions}>
         <button type="button" className="btn btn--ghost btn--sm" onClick={handleUseMyLocation}>
           <FiNavigation />
           Usar minha localização
@@ -170,9 +171,9 @@ export default function AddressPicker({
       </div>
 
       {showMap && (
-        <div className="address-picker__map">
-          <div ref={mapRef} className="address-picker__canvas" />
-          <div className="address-picker__hint">
+        <div className={styles.map}>
+          <div ref={mapRef} className={styles.canvas} />
+          <div className={styles.hint}>
             Clique no mapa ou arraste o marcador para ajustar o endereço.
           </div>
         </div>
