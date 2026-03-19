@@ -47,8 +47,12 @@ export class MercadoPagoService {
         external_reference: result.external_reference
       };
     } catch (error) {
-      logger.error('Erro ao criar pagamento no Mercado Pago', error);
-      throw error;
+      console.error('Detailed Mercado Pago Error:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+      throw new Error(error.message || 'Erro ao criar pagamento no Mercado Pago');
     }
   }
 
