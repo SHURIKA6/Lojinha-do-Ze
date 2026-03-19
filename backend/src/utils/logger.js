@@ -1,5 +1,5 @@
 /**
- * Logger utility to sanitize and mask sensitive data before logging.
+ * Utilitário de log para sanitizar e mascarar dados sensíveis antes do registro.
  */
 
 const SENSITIVE_FIELDS = ['password', 'token', 'code', 'cpf', 'address', 'phone', 'email'];

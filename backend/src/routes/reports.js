@@ -99,7 +99,7 @@ router.get('/:type', async (c) => {
     setNoStore(c);
     return c.json(data);
   } catch (error) {
-    console.error('Reports GET error:', error);
+    console.error('Erro no GET de Relatórios:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

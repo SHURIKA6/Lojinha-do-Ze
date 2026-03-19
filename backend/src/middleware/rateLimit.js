@@ -1,7 +1,7 @@
-// In-memory rate limiter logic
-// Because Cloudflare Workers run in isolated environments, this memory is per-isolate.
-// For a fully global rate limiter, Cloudflare's Paid Rate Limiter or Redis/KV should be used.
-// However, this provides a solid base MVP against brute-forces on the same edge node.
+// Lógica de limitador de taxa (rate limiter) em memória
+// Como as Cloudflare Workers rodam em ambientes isolados, esta memória é por isolado.
+// Para um limitador totalmente global, deve-se usar o Rate Limiter pago da Cloudflare ou Redis/KV.
+// No entanto, isso fornece uma base MVP sólida contra ataques de força bruta no mesmo nó de borda (edge node).
 
 const loginMap = new Map();
 const setupPasswordMap = new Map();
@@ -11,7 +11,7 @@ const apiMap = new Map();
 
 export function createRateLimiter(store, limit, windowMs) {
   return async (c, next) => {
-    // Trust only the platform-provided client IP.
+    // Confia apenas no IP do cliente fornecido pela plataforma.
     const ip = c.req.header('cf-connecting-ip') || '127.0.0.1';
     const now = Date.now();
     
@@ -30,7 +30,7 @@ export function createRateLimiter(store, limit, windowMs) {
       }
     }
     
-    // Prevent memory leaks in long-lived isolates without dropping all protections.
+    // Evita vazamentos de memória em isolados de longa duração sem descartar todas as proteções.
     if (store.size > 5000) {
       for (const [key, state] of store.entries()) {
         if (now > state.resetAt) {
@@ -43,7 +43,7 @@ export function createRateLimiter(store, limit, windowMs) {
   };
 }
 
-export const loginLimiter = createRateLimiter(loginMap, 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
-export const setupPasswordLimiter = createRateLimiter(setupPasswordMap, 5, 15 * 60 * 1000); // 5 setup attempts per 15 minutes
-export const orderLimiter = createRateLimiter(orderMap, 10, 60 * 60 * 1000); // 10 orders per 1 hour
-export const apiLimiter = createRateLimiter(apiMap, 60, 60 * 1000); // 60 requests per minute
+export const loginLimiter = createRateLimiter(loginMap, 5, 15 * 60 * 1000); // 5 tentativas a cada 15 minutos
+export const setupPasswordLimiter = createRateLimiter(setupPasswordMap, 5, 15 * 60 * 1000); // 5 tentativas de configuração a cada 15 minutos
+export const orderLimiter = createRateLimiter(orderMap, 10, 60 * 60 * 1000); // 10 pedidos por 1 hora
+export const apiLimiter = createRateLimiter(apiMap, 60, 60 * 1000); // 60 requisições por minuto

@@ -94,7 +94,7 @@ router.get('/', async (c) => {
       categoryChart: catData.map((item) => ({ name: item.name, value: parseFloat(item.value) })),
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
+    console.error('Erro no Dashboard:', error);
     return jsonError(c, 500, 'Erro interno no dashboard');
   }
 });

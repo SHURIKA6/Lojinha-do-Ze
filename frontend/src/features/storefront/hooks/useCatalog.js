@@ -11,57 +11,81 @@ export function useCatalog(initialCatalog = null) {
   const [error, setError] = useState('');
   const toast = useToast();
 
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 50;
+
+  useEffect(() => {
+    setPage(1); // Reseta a página em caso de busca ou mudança de categoria
+  }, [search, activeCategory]);
+
   useEffect(() => {
     let active = true;
-    if (!hasInitialCatalog) {
+    if (!hasInitialCatalog && page === 1) {
       setLoading(true);
     }
 
-    getCatalog()
-      .then((data) => {
-        if (!active) return;
-        setCatalogData(data || { categories: [], total: 0 });
-        setActiveCategory((prev) => {
-          const categories = data?.categories || [];
-          if (prev && categories.some((c) => c.name === prev)) return prev;
-          return categories[0]?.name || '';
+    const offset = (page - 1) * itemsPerPage;
+    const timer = setTimeout(() => {
+      getCatalog({ search, category: activeCategory, limit: itemsPerPage, offset })
+        .then((data) => {
+          if (!active) return;
+          
+          if (page === 1) {
+            setCatalogData(data || { categories: [], total: 0 });
+          } else {
+            setCatalogData(prev => {
+              const newCategories = [...(prev?.categories || [])];
+              (data?.categories || []).forEach(cat => {
+                const existing = newCategories.find(c => c.name === cat.name);
+                if (existing) {
+                  existing.products = [...existing.products, ...cat.products];
+                } else {
+                  newCategories.push(cat);
+                }
+              });
+              return { ...prev, categories: newCategories, total: data.total };
+            });
+          }
+
+          if (!activeCategory && data?.categories?.length > 0 && page === 1) {
+            setActiveCategory(data.categories[0].name);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          const nextError = 'Não foi possível carregar o catálogo.';
+          if (page === 1) {
+            setError(nextError);
+            toast.error(nextError, 'Erro no catálogo');
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setLoading(false);
+          }
         });
-      })
-      .catch((err) => {
-        console.error(err);
-        const nextError = 'Não foi possível carregar o catálogo. Verifique sua conexão.';
-        if (!hasInitialCatalog) {
-          setError(nextError);
-          toast.error(nextError, 'Catálogo indisponível');
-        }
-      })
-      .finally(() => {
-        if (active && !hasInitialCatalog) {
-          setLoading(false);
-        }
-      });
+    }, search ? 500 : 0);
 
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [hasInitialCatalog, toast]);
+  }, [hasInitialCatalog, toast, search, activeCategory, page]);
+
+  const hasMore = catalogData.total > (page * itemsPerPage);
+
+  const loadMore = () => {
+    if (hasMore && !loading) {
+      setPage(prev => prev + 1);
+    }
+  };
 
   const allProducts = useMemo(() => {
     const categories = Array.isArray(catalogData?.categories) ? catalogData.categories : [];
     return categories.flatMap((c) => Array.isArray(c?.products) ? c.products : []);
   }, [catalogData]);
 
-  const filteredProducts = useMemo(() => {
-    const products = Array.isArray(allProducts) ? allProducts : [];
-    if (search) {
-      return products.filter((p) =>
-        p?.name?.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-    const categories = Array.isArray(catalogData?.categories) ? catalogData.categories : [];
-    const category = categories.find((c) => c.name === activeCategory);
-    return Array.isArray(category?.products) ? category.products : products;
-  }, [activeCategory, allProducts, catalogData, search]);
+  const filteredProducts = allProducts; 
 
   return {
     catalogData,
@@ -73,6 +97,8 @@ export function useCatalog(initialCatalog = null) {
     allProducts,
     loading,
     error,
-    setError
+    setError,
+    hasMore,
+    loadMore
   };
 }

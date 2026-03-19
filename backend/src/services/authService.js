@@ -124,7 +124,7 @@ export async function resolveSession(c, client) {
   c.set('session', session);
 
   void touchSession(client, session.id).catch((error) => {
-    console.error('Session touch error:', error);
+    console.error('Erro ao atualizar sessão (touch):', error);
   });
 
   return session;

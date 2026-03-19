@@ -14,53 +14,42 @@ const router = new Hono();
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
-  try {
-    const db = c.get('db');
-    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
-    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+  const db = c.get('db');
+  const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-    const countRes = await db.query('SELECT COUNT(*) FROM products');
-    const total = parseInt(countRes.rows[0].count);
+  const countRes = await db.query('SELECT COUNT(*) FROM products');
+  const total = parseInt(countRes.rows[0].count);
 
-    const { rows } = await db.query(
-      `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
-       FROM products
-       ORDER BY name
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
+  const { rows } = await db.query(
+    `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
+     FROM products
+     ORDER BY name
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
 
-    return c.json(rows);
-  } catch (error) {
-    console.error('Products GET error:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
-  }
+  return c.json(rows);
 });
 
 router.get('/:id', async (c) => {
-  try {
-    const db = c.get('db');
-    const { rows } = await db.query(
-      `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
-       FROM products
-       WHERE id = $1`,
-      [c.req.param('id')]
-    );
+  const db = c.get('db');
+  const { rows } = await db.query(
+    `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
+     FROM products
+     WHERE id = $1`,
+    [c.req.param('id')]
+  );
 
-    if (!rows.length) {
-      return jsonError(c, 404, 'Produto não encontrado');
-    }
-
-    return c.json(rows[0]);
-  } catch (error) {
-    console.error('Products GET /:id error:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
+  if (!rows.length) {
+    return jsonError(c, 404, 'Produto não encontrado');
   }
+
+  return c.json(rows[0]);
 });
 
 router.post(
   '/',
-  csrfMiddleware,
   zValidator('json', productCreateSchema, validationError),
   async (c) => {
     const db = c.get('db');
@@ -91,7 +80,7 @@ router.post(
 
       const product = rows[0];
 
-      // If there's initial stock and a cost price, register as expense
+      // Se houver estoque inicial e um preço de custo, registra como despesa
       if (product.quantity > 0 && product.cost_price > 0) {
         const totalCost = product.quantity * product.cost_price;
         await client.query(
@@ -109,7 +98,7 @@ router.post(
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
 
-      console.error('Products POST error:', error);
+      console.error('Erro no POST de Produtos:', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -119,7 +108,6 @@ router.post(
 
 router.put(
   '/:id',
-  csrfMiddleware,
   zValidator('json', productUpdateSchema, validationError),
   async (c) => {
     const db = c.get('db');
@@ -131,7 +119,7 @@ router.put(
       const id = c.req.param('id');
       const data = c.req.valid('json');
 
-      // Fetch current state for comparison
+      // Busca o estado atual para comparação
       const { rows: currentRows } = await client.query(
         'SELECT name, quantity, cost_price FROM products WHERE id = $1 FOR UPDATE',
         [id]
@@ -175,7 +163,7 @@ router.put(
 
       const updatedProduct = rows[0];
 
-      // If quantity increased, register it as a restock expense
+      // Se a quantidade aumentou, registra como uma despesa de reposição
       if (data.quantity !== undefined && data.quantity > oldProduct.quantity) {
         const diff = data.quantity - oldProduct.quantity;
         const currentCostPrice = data.cost_price !== undefined ? data.cost_price : oldProduct.cost_price;
@@ -198,7 +186,7 @@ router.put(
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
 
-      console.error('Products PUT error:', error);
+      console.error('Erro no PUT de Produtos:', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -206,7 +194,7 @@ router.put(
   }
 );
 
-router.delete('/:id', csrfMiddleware, async (c) => {
+router.delete('/:id', async (c) => {
   try {
     const db = c.get('db');
     const { rowCount } = await db.query('DELETE FROM products WHERE id = $1', [c.req.param('id')]);
@@ -216,7 +204,7 @@ router.delete('/:id', csrfMiddleware, async (c) => {
 
     return c.json({ message: 'Produto excluído' });
   } catch (error) {
-    console.error('Products DELETE error:', error);
+    console.error('Erro no DELETE de Produtos:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

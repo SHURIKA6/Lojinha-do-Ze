@@ -7,57 +7,51 @@ import { jsonError, validationError } from '../utils/http.js';
 const router = new Hono();
 
 router.get('/', authMiddleware, async (c) => {
-  try {
-    const db = c.get('db');
-    const user = c.get('user');
-    const status = c.req.query('status');
-    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
-    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+  const db = c.get('db');
+  const user = c.get('user');
+  const status = c.req.query('status');
+  const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-    if (user.role === 'customer') {
-      const countRes = await db.query('SELECT COUNT(*) FROM orders WHERE customer_id = $1', [user.id]);
-      const total = parseInt(countRes.rows[0].count);
-
-      const { rows } = await db.query(
-        `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
-         FROM orders
-         WHERE customer_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [user.id, limit, offset]
-      );
-      return c.json(rows);
-    }
-
-    const params = [];
-    let countQuery = 'SELECT COUNT(*) FROM orders';
-    let query = `
-      SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
-      FROM orders
-    `;
-    if (status) {
-      params.push(status);
-      countQuery += ` WHERE status = $1`;
-      query += ` WHERE status = $1`;
-    }
-    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    
-    const countRes = await db.query(countQuery, params);
+  if (user.role === 'customer') {
+    const countRes = await db.query('SELECT COUNT(*) FROM orders WHERE customer_id = $1', [user.id]);
     const total = parseInt(countRes.rows[0].count);
 
-    const { rows } = await db.query(query, [...params, limit, offset]);
+    const { rows } = await db.query(
+      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+       FROM orders
+       WHERE customer_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [user.id, limit, offset]
+    );
     return c.json(rows);
-  } catch (error) {
-    console.error('Orders GET error:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
   }
+
+  const params = [];
+  let countQuery = 'SELECT COUNT(*) FROM orders';
+  let query = `
+    SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+    FROM orders
+  `;
+  if (status) {
+    params.push(status);
+    countQuery += ` WHERE status = $1`;
+    query += ` WHERE status = $1`;
+  }
+  query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+  
+  const countRes = await db.query(countQuery, params);
+  const total = parseInt(countRes.rows[0].count);
+
+  const { rows } = await db.query(query, [...params, limit, offset]);
+  return c.json(rows);
 });
 
 router.patch(
   '/:id/status',
   authMiddleware,
   adminOnly,
-  csrfMiddleware,
   zValidator('json', orderStatusSchema, validationError),
   async (c) => {
     const db = c.get('db');
@@ -83,7 +77,7 @@ router.patch(
 
       const currentOrder = currentRows[0];
       
-      // If cancelling, restore stock
+      // Se cancelar, restaura o estoque
       if (
         status === 'cancelado' &&
         currentOrder.status !== 'cancelado' &&
@@ -92,7 +86,7 @@ router.patch(
         await restoreOrderStock(client, currentOrder);
       }
 
-      // If concluding, create a financial transaction
+      // Se concluir, cria uma transação financeira
       if (status === 'concluido' && currentOrder.status !== 'concluido') {
         await client.query(
           `INSERT INTO transactions (type, category, description, value, date, order_id)
@@ -113,7 +107,7 @@ router.patch(
       return c.json(rows[0]);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      console.error('Orders PATCH error:', error);
+      console.error('Erro no PATCH de Pedidos:', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -121,7 +115,7 @@ router.patch(
   }
 );
 
-router.delete('/:id', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
+router.delete('/:id', authMiddleware, adminOnly, async (c) => {
   const db = c.get('db');
   const client = await db.connect();
 
@@ -152,7 +146,7 @@ router.delete('/:id', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
     return c.json({ message: 'Pedido excluído' });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('Orders DELETE error:', error);
+    console.error('Erro no DELETE de Pedidos:', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     client.release();

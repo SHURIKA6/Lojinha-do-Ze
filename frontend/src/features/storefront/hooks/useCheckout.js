@@ -34,7 +34,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
       setCustomerCoords(data.coords || null);
       if (data.name && data.phone) setIsRegistered(true);
     } catch (err) {
-      console.error('Storage error:', err);
+      console.error('Erro no armazenamento:', err);
     }
   }, []);
 
@@ -114,14 +114,14 @@ export function useCheckout({ cart, cartTotal, setError }) {
       setIsRegistered(true);
       setEditingProfile(false);
       setOrderResult({ ...result, _paymentMethod: paymentMethod });
-      setPixConfirmed(false); // Reset for new orders
+      setPixConfirmed(false); // Reseta para novos pedidos
 
       if (paymentMethod !== 'pix') {
         sendWhatsAppReceipt(result.order, cart, paymentMethod);
       }
       
       toast.success('Pedido enviado com sucesso.');
-      return true; // Success
+      return true; // Sucesso
     } catch (err) {
       const msg = err.message || 'Não foi possível finalizar o pedido.';
       setError(msg);

@@ -16,101 +16,92 @@ import {
 } from '../utils/normalize.js';
 import { jsonError, setNoStore, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants.js';
 
 const router = new Hono();
 
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
-  try {
-    const db = c.get('db');
-    const limit = Math.min(parseInt(c.req.query('limit')) || 100, 200);
-    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+  const db = c.get('db');
+  const limit = Math.min(parseInt(c.req.query('limit')) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-    const countRes = await db.query(`
-      SELECT COUNT(*) FROM (
-        SELECT id FROM users
-        UNION
-        SELECT MIN(id) FROM orders WHERE customer_id IS NULL GROUP BY customer_phone
-      ) as total_customers
-    `);
-    const total = parseInt(countRes.rows[0].count);
+  const countRes = await db.query(`
+    SELECT COUNT(*) FROM (
+      SELECT id FROM users
+      UNION
+      SELECT MIN(id) FROM orders WHERE customer_id IS NULL GROUP BY customer_phone
+    ) as total_customers
+  `);
+  const total = parseInt(countRes.rows[0].count);
 
-    const { rows } = await db.query(
-      `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
-       FROM (
-         SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at FROM users
-         UNION ALL
-         SELECT 
-           MIN(id) as id, customer_name as name, NULL as email, customer_phone as phone, 
-           NULL as cpf, address, 'Cliente convidado' as notes, NULL as avatar, 'guest' as role, 
-           MIN(created_at) as created_at
-         FROM orders
-         WHERE customer_id IS NULL
-         GROUP BY customer_name, customer_phone, address
-       ) as combined_customers
-       ORDER BY name
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
-    setNoStore(c);
-    return c.json(rows);
-  } catch (error) {
-    logger.error('Customers GET error', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
-  }
+  const { rows } = await db.query(
+    `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
+     FROM (
+       SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at FROM users
+       UNION ALL
+       SELECT 
+         MIN(id) as id, customer_name as name, NULL as email, customer_phone as phone, 
+         NULL as cpf, address, 'Cliente convidado' as notes, NULL as avatar, 'guest' as role, 
+         MIN(created_at) as created_at
+       FROM orders
+       WHERE customer_id IS NULL
+       GROUP BY customer_name, customer_phone, address
+     ) as combined_customers
+     ORDER BY name
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  setNoStore(c);
+  return c.json(rows);
 });
 
 router.get('/:id', async (c) => {
-  try {
-    const db = c.get('db');
-    const id = c.req.param('id');
+  const db = c.get('db');
+  const id = c.req.param('id');
 
-    if (!isValidUuid(id) && !/^\d+$/.test(id)) {
-      return jsonError(c, 400, 'ID inválido');
-    }
-
-    const { rows: userRows } = await db.query(
-      `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
-       FROM users WHERE id = $1`, [id]
-    );
-
-    let customer;
-    if (userRows.length) {
-      customer = userRows[0];
-    } else {
-      const { rows: guestRows } = await db.query(
-        `SELECT MIN(id) as id, customer_name as name, null as email, customer_phone as phone, 
-           null as cpf, address, 'Cliente convidado' as notes, null as avatar, 'guest' as role, 
-           MIN(created_at) as created_at
-         FROM orders
-         WHERE customer_id IS NULL AND id::text = $1
-         GROUP BY customer_name, customer_phone, address`,
-        [id]
-      );
-      if (!guestRows.length) return jsonError(c, 404, 'Cliente não encontrado');
-      customer = guestRows[0];
-    }
-
-    const normalizedPhone = normalizePhoneDigits(customer.phone || '');
-    const { rows: stats } = await db.query(
-      `SELECT COALESCE(SUM(total), 0) as total_spent, COUNT(*) as order_count
-       FROM orders
-       WHERE (customer_id = $1 OR (customer_id IS NULL AND REGEXP_REPLACE(customer_phone, '\\D', '', 'g') = $2))
-         AND status = 'concluido'`,
-      [customer.id, normalizedPhone]
-    );
-
-    setNoStore(c);
-    return c.json({
-      ...customer,
-      total_spent: parseFloat(stats[0].total_spent),
-      order_count: parseInt(stats[0].order_count, 10),
-    });
-  } catch (error) {
-    logger.error('Customers GET /:id error', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
+  if (!isValidUuid(id) && !/^\d+$/.test(id)) {
+    return jsonError(c, 400, 'ID inválido');
   }
+
+  const { rows: userRows } = await db.query(
+    `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
+     FROM users WHERE id = $1`, [id]
+  );
+
+  let customer;
+  if (userRows.length) {
+    customer = userRows[0];
+  } else {
+    const { rows: guestRows } = await db.query(
+      `SELECT MIN(id) as id, customer_name as name, null as email, customer_phone as phone, 
+         null as cpf, address, 'Cliente convidado' as notes, null as avatar, 'guest' as role, 
+         MIN(created_at) as created_at
+       FROM orders
+       WHERE customer_id IS NULL AND id::text = $1
+       GROUP BY customer_name, customer_phone, address`,
+      [id]
+    );
+    if (!guestRows.length) return jsonError(c, 404, 'Cliente não encontrado');
+    customer = guestRows[0];
+  }
+
+  const normalizedPhone = normalizePhoneDigits(customer.phone || '');
+  const { rows: stats } = await db.query(
+    `SELECT COALESCE(SUM(total), 0) as total_spent, COUNT(*) as order_count
+     FROM orders
+     WHERE (customer_id = $1 OR (customer_id IS NULL AND REGEXP_REPLACE(customer_phone, '\\D', '', 'g') = $2))
+       AND status = 'concluido'`,
+    [customer.id, normalizedPhone]
+  );
+
+  setNoStore(c);
+  return c.json({
+    ...customer,
+    total_spent: parseFloat(stats[0].total_spent),
+    order_count: parseInt(stats[0].order_count, 10),
+  });
 });
 
 router.get('/:id/orders', async (c) => {
@@ -143,14 +134,13 @@ router.get('/:id/orders', async (c) => {
     setNoStore(c);
     return c.json(rows);
   } catch (error) {
-    logger.error('Customers GET /:id/orders error', error, { id: c.req.param('id') });
+    logger.error('Erro ao buscar pedidos do cliente (GET /:id/orders)', error, { id: c.req.param('id') });
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
 router.post(
   '/',
-  csrfMiddleware,
   zValidator('json', customerCreateSchema, validationError),
   async (c) => {
     const db = c.get('db');
@@ -186,7 +176,7 @@ router.post(
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       if (isUniqueViolation(error)) return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
-      logger.error('Customer POST error', error);
+      logger.error('Erro ao criar cliente (POST)', error);
       return jsonError(c, 500, 'Erro interno no servidor');
     } finally {
       client.release();
@@ -196,7 +186,6 @@ router.post(
 
 router.put(
   '/:id',
-  csrfMiddleware,
   zValidator('json', customerUpdateSchema, validationError),
   async (c) => {
     try {
@@ -225,13 +214,13 @@ router.put(
       return c.json(rows[0]);
     } catch (error) {
       if (isUniqueViolation(error)) return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
-      logger.error('Customers PUT error', error, { id: c.req.param('id') });
+      logger.error('Erro ao atualizar cliente (PUT)', error, { id: c.req.param('id') });
       return jsonError(c, 500, 'Erro interno no servidor');
     }
   }
 );
 
-router.post('/:id/invite', csrfMiddleware, async (c) => {
+router.post('/:id/invite', async (c) => {
   const db = c.get('db');
   const client = await db.connect();
   try {
@@ -242,14 +231,14 @@ router.post('/:id/invite', csrfMiddleware, async (c) => {
     const invite = await generatePasswordSetupInvite(c, client, rows[0]);
     return c.json({ ...rows[0], invite });
   } catch (error) {
-    logger.error('Customers invite error', error, { id: c.req.param('id') });
+    logger.error('Erro ao enviar convite ao cliente', error, { id: c.req.param('id') });
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     client.release();
   }
 });
 
-router.patch('/:id/reset-password', csrfMiddleware, async (c) => {
+router.patch('/:id/reset-password', async (c) => {
   const db = c.get('db');
   const client = await db.connect();
   try {
@@ -260,14 +249,14 @@ router.patch('/:id/reset-password', csrfMiddleware, async (c) => {
     const invite = await generatePasswordSetupInvite(c, client, rows[0]);
     return c.json({ ...rows[0], invite });
   } catch (error) {
-    logger.error('Customers reset-password error', error, { id: c.req.param('id') });
+    logger.error('Erro ao resetar senha do cliente', error, { id: c.req.param('id') });
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     client.release();
   }
 });
 
-router.patch('/:id/role', csrfMiddleware, async (c) => {
+router.patch('/:id/role', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
@@ -281,12 +270,12 @@ router.patch('/:id/role', csrfMiddleware, async (c) => {
     if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
     return c.json(rows[0]);
   } catch (error) {
-    logger.error('Customers PATCH role error', error, { id: c.req.param('id') });
+    logger.error('Erro ao atualizar cargo do cliente (PATCH role)', error, { id: c.req.param('id') });
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-router.delete('/:id', csrfMiddleware, async (c) => {
+router.delete('/:id', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
@@ -295,7 +284,7 @@ router.delete('/:id', csrfMiddleware, async (c) => {
     if (!rowCount) return jsonError(c, 404, 'Usuário não encontrado');
     return c.json({ message: 'Usuário excluído' });
   } catch (error) {
-    logger.error('Customers DELETE error', error, { id: c.req.param('id') });
+    logger.error('Erro ao excluir cliente (DELETE)', error, { id: c.req.param('id') });
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

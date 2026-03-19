@@ -1,4 +1,4 @@
-export const ROLE_VALUES = ['admin', 'customer'];
+export const ROLE_VALUES = ['admin', 'editor', 'customer'];
 
 export const DELIVERY_TYPE_VALUES = ['entrega', 'retirada'];
 
@@ -34,4 +34,7 @@ export const PASSWORD_SETUP_TTL_HOURS = 48;
 export const PASSWORD_SETUP_CODE_LENGTH = 8;
 
 export const SAFE_HTTP_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+export const DEFAULT_PAGE_SIZE = 12;
+export const MAX_PAGE_SIZE = 100;
+export const CATALOG_CACHE_TTL_SECONDS = 300; // 5 minutos
 
