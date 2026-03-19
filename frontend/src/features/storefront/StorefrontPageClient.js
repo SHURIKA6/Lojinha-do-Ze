@@ -36,6 +36,8 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
     allProducts,
     loading,
     error: catalogError,
+    hasMore,
+    loadMore
   } = useCatalog(initialCatalog);
 
   const {
