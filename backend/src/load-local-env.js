@@ -3,11 +3,20 @@ import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-const backendRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const devVarsPath = join(backendRoot, '.dev.vars');
+let devVarsPath = null;
+try {
+  const currentUrl = import.meta.url;
+  if (currentUrl) {
+    const backendRoot = join(dirname(fileURLToPath(currentUrl)), '..');
+    devVarsPath = join(backendRoot, '.dev.vars');
+  }
+} catch (e) {
+  // Ignora erro em ambientes sem suporte a path/url (como Workers runtime ou build)
+}
 
 export function loadLocalEnv() {
-  if (!existsSync(devVarsPath)) return;
+  try {
+    if (!devVarsPath || !existsSync(devVarsPath)) return;
 
   const content = readFileSync(devVarsPath, 'utf8');
 
@@ -24,6 +33,9 @@ export function loadLocalEnv() {
     if (key && !(key in process.env)) {
       process.env[key] = value;
     }
+    }
+  } catch (e) {
+    // Ignora erros de filesystem em produção
   }
 }
 
