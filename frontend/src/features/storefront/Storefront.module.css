@@ -49,23 +49,39 @@
 }
 
 .categoriesTab:hover {
-  border-color: var(--blue-300);
-  color: var(--blue-600);
+  border-color: var(--primary-300);
+  color: var(--primary-600);
 }
 
 .categoriesTab.active {
-  background: var(--blue-600);
+  background: var(--forest-600);
   color: white;
-  border-color: var(--blue-600);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  border-color: var(--forest-600);
+  box-shadow: 0 4px 12px rgba(41, 68, 58, 0.2);
 }
 
 .categoriesCount {
-  font-size: var(--font-xs);
-  opacity: 0.7;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 0 6px;
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  background: rgba(41, 68, 58, 0.08);
+  color: var(--primary-600);
+  transition: all 0.2s;
+}
+
+.categoriesTab:hover .categoriesCount {
+  background: rgba(41, 68, 58, 0.15);
+}
+
+.categoriesTab.active .categoriesCount {
+  background: white;
+  color: var(--forest-600);
 }
 
 .cartBar {
@@ -110,12 +126,12 @@
 .cartBarItems {
   grid-area: items;
   font-size: var(--font-xs);
-  color: var(--blue-400);
+  color: var(--sage-400);
   font-weight: 500;
 }
 
 .cartBarBtn {
-  background: var(--blue-600);
+  background: var(--forest-600);
   color: white;
   border: none;
   padding: var(--space-2) var(--space-5);
@@ -129,7 +145,7 @@
 }
 
 .cartBarBtn:hover {
-  background: var(--blue-700);
+  background: var(--forest-700);
   transform: translateY(-2px);
 }
 
@@ -153,8 +169,8 @@
 
 .loadMoreBtn:hover:not(:disabled) {
   background: var(--gray-50);
-  border-color: var(--blue-400);
-  color: var(--blue-600);
+  border-color: var(--primary-400);
+  color: var(--primary-600);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
