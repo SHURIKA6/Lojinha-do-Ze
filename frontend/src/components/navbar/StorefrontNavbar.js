@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { FiLogOut, FiSearch, FiShoppingCart, FiX } from 'react-icons/fi';
+import { useToast } from '@/components/ui/ToastProvider';
 import styles from './StorefrontNavbar.module.css';
 
 export default function StorefrontNavbar({
@@ -15,16 +17,30 @@ export default function StorefrontNavbar({
   setCartOpen,
   setSearch,
 }) {
+  const [clickCount, setClickCount] = useState(0);
+  const toast = useToast();
+
+  const handleLogoClick = (e) => {
+    // Incrementa contador se clicar no logo
+    const newCount = clickCount + 1;
+    setClickCount(newCount);
+    
+    if (newCount === 5) {
+      toast.success('🌿 "Erva que cura, terra que cuida. Seu Zé te abençoa!"', 'BÊNÇÃO DO ZÉ');
+      setClickCount(0);
+    }
+  };
+
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
-        <Link href="/" className={styles.brand}>
+        <div className={styles.brand} style={{ cursor: 'pointer' }} onClick={handleLogoClick}>
           <div className={styles.logo}>LZ</div>
           <div>
             <h1 className={styles.title}>Lojinha do Zé</h1>
             <span className={styles.subtitle}>Produtos fitoterápicos e naturais</span>
           </div>
-        </Link>
+        </div>
 
         <div className={styles.search}>
           <FiSearch className={styles.searchIcon} />
