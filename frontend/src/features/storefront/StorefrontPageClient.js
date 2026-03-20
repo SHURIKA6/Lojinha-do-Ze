@@ -70,39 +70,55 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
   const konamiTimer = useRef(null);
 
   useEffect(() => {
+    // Sequência do Konami Code (suportando nomes de teclas modernos e legados)
     const sequence = [
-      'arrowup', 'arrowup', 'arrowdown', 'arrowdown', 
-      'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 
-      'b', 'a'
+      ['arrowup', 'up'], ['arrowup', 'up'],
+      ['arrowdown', 'down'], ['arrowdown', 'down'],
+      ['arrowleft', 'left'], ['arrowright', 'right'],
+      ['arrowleft', 'left'], ['arrowright', 'right'],
+      ['b'], ['a']
     ];
+
+    // Sequência alternativa: 'shura'
+    const shuraSeq = ['s', 'h', 'u', 'r', 'a'];
     
     const handleKeyDown = (e) => {
-      // Ignora se estiver digitando em um input ou textarea
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+      // Ignora se estiver em campos de texto
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) {
         return;
       }
 
       const key = e.key.toLowerCase();
       
-      // Reinicia o progresso se demorar mais que 3 segundos entre as teclas
+      // Reseta se demorar muito
       if (konamiTimer.current) clearTimeout(konamiTimer.current);
       konamiTimer.current = setTimeout(() => {
         konamiRef.current = [];
-      }, 3000);
+      }, 5000);
 
       konamiRef.current.push(key);
       konamiRef.current = konamiRef.current.slice(-10);
-      
-      if (konamiRef.current.length === 10 && konamiRef.current.join(',') === sequence.join(',')) {
+
+      // Verifica Konami Code
+      const isKonami = sequence.every((keys, i) => {
+        const lastIndex = konamiRef.current.length - 10 + i;
+        return lastIndex >= 0 && keys.includes(konamiRef.current[lastIndex]);
+      });
+
+      // Verifica "shura" (últimas 5 teclas)
+      const last5 = konamiRef.current.slice(-5).join('');
+      const isShura = last5 === 'shura';
+
+      if ((konamiRef.current.length >= 10 && isKonami) || isShura) {
         toast.info(
           '🌿 "Tudo o que a natureza dá, a gente compartilha. Fica à vontade!" - Seu Zé',
           'SEU ZÉ MODE'
         );
         
-        // Efeito extra: Redirecionar para Shura após 2 segundos
+        // Redireciona com um pequeno delay
         setTimeout(() => {
           router.push('/shura');
-        }, 2000);
+        }, 1500);
         
         konamiRef.current = [];
         if (konamiTimer.current) clearTimeout(konamiTimer.current);
