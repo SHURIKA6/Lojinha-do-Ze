@@ -43,6 +43,7 @@ export class MercadoPagoService {
           }
         },
         installments: 1,
+        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString()
       };
 
       const requestOptions = idempotencyKey ? { idempotencyKey } : {};
@@ -77,6 +78,24 @@ export class MercadoPagoService {
       return await this.payment.get({ id: paymentId });
     } catch (error) {
       logger.error('Erro ao buscar pagamento no Mercado Pago', error, { paymentId });
+    }
+  }
+
+  /**
+   * Cancela um pagamento (Pix ou outro que permita cancelamento)
+   * @param {string} paymentId 
+   * @returns {Promise<Object>}
+   */
+  async cancelPayment(paymentId) {
+    try {
+      return await this.payment.update({
+        id: paymentId,
+        body: {
+          status: 'cancelled'
+        }
+      });
+    } catch (error) {
+      logger.error('Erro ao cancelar pagamento no Mercado Pago', error, { paymentId });
       throw error;
     }
   }
