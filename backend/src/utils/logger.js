@@ -2,7 +2,12 @@
  * Utilitário de log para sanitizar e mascarar dados sensíveis antes do registro.
  */
 
-const SENSITIVE_FIELDS = ['password', 'token', 'code', 'cpf', 'address', 'phone', 'email'];
+const SENSITIVE_FIELDS = [
+  'password', 'currentpassword', 'newpassword', 'confirmpassword',
+  'token', 'code', 'cpf', 'address', 'phone', 'email',
+  'setup_code', 'token_hash', 'csrf_token', 'identifier',
+  'identification_number', 'identificationnumber',
+];
 
 function maskValue(value) {
   if (typeof value !== 'string') return value;

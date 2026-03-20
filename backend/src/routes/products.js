@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireAdmin } from '../middleware/auth.js';
 import { productCreateSchema, productUpdateSchema } from '../domain/schemas.js';
 import {
   cleanOptionalString,
@@ -8,18 +8,16 @@ import {
   uniqueFieldLabel,
 } from '../utils/normalize.js';
 import { jsonError, validationError } from '../utils/http.js';
+import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 
-router.use('*', authMiddleware, adminOnly);
+router.use('*', authMiddleware, requireAdmin);
 
 router.get('/', async (c) => {
   const db = c.get('db');
   const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
   const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
-
-  const countRes = await db.query('SELECT COUNT(*) FROM products');
-  const total = parseInt(countRes.rows[0].count);
 
   const { rows } = await db.query(
     `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
@@ -98,8 +96,8 @@ router.post(
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
 
-      console.error('Erro no POST de Produtos:', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      logger.error('Erro no POST de Produtos', error);
+      return jsonError(c, 500, 'Erro ao cadastrar o novo produto.');
     } finally {
       client.release();
     }
@@ -186,8 +184,8 @@ router.put(
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
 
-      console.error('Erro no PUT de Produtos:', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      logger.error('Erro no PUT de Produtos', error);
+      return jsonError(c, 500, 'Erro ao salvar as edições do produto.');
     } finally {
       client.release();
     }
@@ -204,8 +202,8 @@ router.delete('/:id', async (c) => {
 
     return c.json({ message: 'Produto excluído' });
   } catch (error) {
-    console.error('Erro no DELETE de Produtos:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
+    logger.error('Erro no DELETE de Produtos', error);
+    return jsonError(c, 500, 'Erro ao excluir o produto.');
   }
 });
 

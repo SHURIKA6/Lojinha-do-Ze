@@ -119,7 +119,11 @@ export const customerCreateSchema = z
     }
   });
 
-export const customerUpdateSchema = customerCreateSchema;
+export const customerUpdateSchema = customerCreateSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Informe ao menos um campo para atualização',
+  });
 
 export const productCreateSchema = z.object({
   code: z

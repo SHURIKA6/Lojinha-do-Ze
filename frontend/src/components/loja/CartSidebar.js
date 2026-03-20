@@ -49,16 +49,18 @@ export default function CartSidebar({
                       <button
                         type="button"
                         onClick={() => updateCartItem(item.productId, item.quantity - 1)}
+                        aria-label={`Diminuir quantidade de ${item.name}`}
                       >
-                        <FiMinus />
+                        <FiMinus aria-hidden="true" />
                       </button>
-                      <span>{item.quantity}</span>
+                      <span aria-live="polite">{item.quantity}</span>
                       <button
                         type="button"
                         onClick={() => updateCartItem(item.productId, item.quantity + 1)}
                         disabled={item.quantity >= availableStock}
+                        aria-label={`Aumentar quantidade de ${item.name}`}
                       >
-                        <FiPlus />
+                        <FiPlus aria-hidden="true" />
                       </button>
                     </div>
 

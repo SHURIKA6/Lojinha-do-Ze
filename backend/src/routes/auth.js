@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware, csrfMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import { authMiddleware } from '../middleware/auth.js';
 import {
   changePasswordSchema,
   loginSchema,
@@ -35,7 +35,7 @@ router.post(
       const phoneDigits = normalizePhoneDigits(payload.identifier || payload.email || '');
 
       const { rows } = await client.query(
-        `SELECT *
+        `SELECT id, name, email, password, role, phone, cpf, address, avatar, created_at
          FROM users
          WHERE LOWER(COALESCE(email, '')) = LOWER($1)
             OR REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g') = $2
@@ -81,7 +81,7 @@ router.post(
       });
     } catch (error) {
       logger.error('Erro no Login', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao processar o login. Tente novamente em instantes.');
     } finally {
       client.release();
     }
@@ -99,7 +99,7 @@ router.post('/logout', async (c) => {
   } catch (error) {
     logger.error('Erro no Logout', error);
     clearSessionCookies(c);
-    return jsonError(c, 500, 'Erro interno no servidor');
+    return jsonError(c, 500, 'Erro ao verificar sessão ativa.');
   } finally {
     client.release();
   }
@@ -145,7 +145,7 @@ router.post(
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       logger.error('Erro na configuração de senha', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao encerrar a sessão. Tente novamente.');
     } finally {
       client.release();
     }
@@ -204,7 +204,7 @@ router.post(
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       logger.error('Erro na alteração de senha', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao processar a configuração de senha.');
     } finally {
       client.release();
     }

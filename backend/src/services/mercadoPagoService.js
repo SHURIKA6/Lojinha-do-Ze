@@ -59,7 +59,7 @@ export class MercadoPagoService {
         external_reference: result.external_reference
       };
     } catch (error) {
-      console.error('Detailed Mercado Pago Error:', {
+      logger.error('Detailed Mercado Pago Error', null, {
         message: error.message,
         stack: error.stack,
         cause: error.cause
@@ -78,6 +78,7 @@ export class MercadoPagoService {
       return await this.payment.get({ id: paymentId });
     } catch (error) {
       logger.error('Erro ao buscar pagamento no Mercado Pago', error, { paymentId });
+      throw error;
     }
   }
 

@@ -10,6 +10,7 @@ import {
   uniqueFieldLabel,
 } from '../utils/normalize.js';
 import { jsonError, validationError } from '../utils/http.js';
+import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 
@@ -45,8 +46,8 @@ router.put('/', csrfMiddleware, zValidator('json', profileUpdateSchema, validati
       return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
     }
 
-    console.error('Erro no PUT de Perfil:', error);
-    return jsonError(c, 500, 'Erro interno no servidor');
+    logger.error('Erro no PUT de Perfil', error);
+    return jsonError(c, 500, 'Erro ao atualizar suas informações de perfil.');
   }
 });
 

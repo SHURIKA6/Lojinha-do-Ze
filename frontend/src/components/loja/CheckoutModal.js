@@ -25,6 +25,7 @@ function ChoiceCard({ active, icon, label, meta, onClick }) {
       type="button"
       className={`${styles.paymentOption} ${active ? styles.active : ''}`}
       onClick={onClick}
+      aria-pressed={active}
     >
       <span className={styles.paymentOptionIcon}>{icon}</span>
       <strong>{label}</strong>
@@ -298,8 +299,8 @@ export default function CheckoutModal({
             )}
 
             <div className="form-group">
-              <label className="form-label">
-                <FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+              <label htmlFor="checkout-name" className="form-label">
+                <FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
                 Nome completo *
               </label>
               <input
@@ -312,8 +313,8 @@ export default function CheckoutModal({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">
-                <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+              <label htmlFor="checkout-phone" className="form-label">
+                <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
                 Telefone / WhatsApp *
               </label>
               <input
@@ -333,8 +334,8 @@ export default function CheckoutModal({
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                <FiCreditCard style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
+              <label htmlFor="checkout-cpf" className="form-label">
+                <FiCreditCard style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
                 CPF (para Pix) *
               </label>
               <input
@@ -400,7 +401,7 @@ export default function CheckoutModal({
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Observações</label>
+            <label htmlFor="checkout-notes" className="form-label">Observações</label>
             <textarea
               id="checkout-notes"
               className="form-input"

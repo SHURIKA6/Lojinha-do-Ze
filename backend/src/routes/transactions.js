@@ -13,6 +13,8 @@ router.use('*', authMiddleware, adminOnly);
 router.get('/', async (c) => {
   const db = c.get('db');
   const type = c.req.query('type');
+  const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
   const params = [];
   let query = `
     SELECT id, type, category, description, value, date, order_id, created_at
@@ -25,6 +27,8 @@ router.get('/', async (c) => {
   }
 
   query += ' ORDER BY date DESC, created_at DESC';
+  query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+  params.push(limit, offset);
 
   const { rows } = await db.query(query, params);
   return c.json(rows);
@@ -53,7 +57,7 @@ router.post(
       return c.json(rows[0], 201);
     } catch (error) {
       logger.error('Erro no POST de Transações', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao registrar a transação.');
     }
   }
 );
@@ -74,7 +78,7 @@ router.delete('/:id', csrfMiddleware, async (c) => {
     return c.json({ message: 'Transação excluída' });
   } catch (error) {
     logger.error('Erro no DELETE de Transações', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
+    return jsonError(c, 500, 'Erro ao cancelar a transação.');
   }
 });
 
