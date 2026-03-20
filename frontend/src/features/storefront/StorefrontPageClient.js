@@ -1,4 +1,5 @@
 'use client';
+// Vercel trigger comment: updated easter eggs
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
