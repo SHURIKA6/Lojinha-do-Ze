@@ -3,6 +3,8 @@ import { zValidator } from '@hono/zod-validator';
 import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
 import { orderStatusSchema } from '../domain/schemas.js';
 import { jsonError, validationError } from '../utils/http.js';
+import { MercadoPagoService } from '../services/mercadoPagoService.js';
+import { getRequiredEnv } from '../load-local-env.js';
 
 const router = new Hono();
 
@@ -77,13 +79,25 @@ router.patch(
 
       const currentOrder = currentRows[0];
       
-      // Se cancelar, restaura o estoque
       if (
         status === 'cancelado' &&
         currentOrder.status !== 'cancelado' &&
         currentOrder.status !== 'concluido'
       ) {
         await restoreOrderStock(client, currentOrder);
+
+        // Se houver um pagamento do Mercado Pago, tenta cancelar
+        if (currentOrder.payment_id) {
+          try {
+            const token = getRequiredEnv(c, 'MERCADO_PAGO_ACCESS_TOKEN');
+            const mpService = new MercadoPagoService(token);
+            await mpService.cancelPayment(currentOrder.payment_id);
+            console.log(`Pagamento ${currentOrder.payment_id} cancelado no Mercado Pago`);
+          } catch (mpError) {
+            console.error('Erro ao cancelar no Mercado Pago:', mpError);
+            // Não interrompemos o processo se o cancelamento no MP falhar
+          }
+        }
       }
 
       // Se concluir, cria uma transação financeira
@@ -154,3 +168,24 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
 });
 
 export default router;
+
+async function restoreOrderStock(client, order) {
+  const items = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]');
+  
+  for (const item of items) {
+    // Increment product stock
+    await client.query(
+      `UPDATE products 
+       SET quantity = quantity + $1, updated_at = NOW() 
+       WHERE id = $2`,
+      [item.quantity, item.productId]
+    );
+
+    // Log the entry
+    await client.query(
+      `INSERT INTO inventory_log (product_id, product_name, type, quantity, reason, date)
+       VALUES ($1, $2, 'entrada', $3, $4, NOW())`,
+      [item.productId, item.name, item.quantity, `Cancelamento ou Exclusão do Pedido #${order.id}`]
+    );
+  }
+}
