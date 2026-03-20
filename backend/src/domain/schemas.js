@@ -93,7 +93,7 @@ export const passwordSetupSchema = z
     }
   });
 
-export const customerCreateSchema = z
+const customerBaseSchema = z
   .object({
     name: z
       .string()
@@ -108,7 +108,9 @@ export const customerCreateSchema = z
     cpf: optionalTrimmedString(20, 'CPF'),
     address: optionalTrimmedString(320, 'Endereço'),
     notes: optionalTrimmedString(800, 'Observações'),
-  })
+  });
+
+export const customerCreateSchema = customerBaseSchema
   .superRefine((data, ctx) => {
     if (!data.email && !data.phone) {
       ctx.addIssue({
@@ -119,7 +121,7 @@ export const customerCreateSchema = z
     }
   });
 
-export const customerUpdateSchema = customerCreateSchema
+export const customerUpdateSchema = customerBaseSchema
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Informe ao menos um campo para atualização',
