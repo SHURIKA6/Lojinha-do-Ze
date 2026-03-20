@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FiArrowLeft, FiCode, FiCpu, FiGithub, FiZap } from 'react-icons/fi';
+import { FiArrowLeft, FiBook, FiFeather, FiMap, FiCoffee } from 'react-icons/fi';
 import styles from './Shura.module.css';
 
 export default function ShuraPage() {
@@ -15,58 +15,62 @@ export default function ShuraPage() {
   if (!mounted) return null;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.tavern}>
+      {/* Background Image / POV Effect */}
+      <div className={styles.tavernBg}>
+        <div className={styles.overlay}></div>
+      </div>
+
+      <div className={styles.torchLight}></div>
+
       <div className={styles.content}>
         <div className={styles.header}>
           <Link href="/" className={styles.backLink}>
-            <FiArrowLeft /> Voltar para a Loja
+            <FiArrowLeft /> Deixar a Taverna
           </Link>
-          <div className={styles.titleWrapper}>
-            <h1 className={styles.title}>Mestre Shura</h1>
-            <p className={styles.subtitle}>Engineering the Future, One Line at a Time</p>
+          <div className={styles.scroll}>
+            <h1 className={styles.title}>Grão-Mestre Shura</h1>
+            <p className={styles.subtitle}>Relatos da Alquimia Digital & Feitiçaria de Código</p>
           </div>
         </div>
 
-        <div className={styles.grid}>
-          <div className={styles.card}>
+        <div className={styles.parchmentGrid}>
+          <div className={styles.parchment}>
             <div className={styles.cardHeader}>
-              <FiCode className={styles.icon} />
-              <h2>Full Stack Wizard</h2>
+              <FiFeather className={styles.icon} />
+              <h2>Escrituras de Código</h2>
             </div>
-            <p>Construindo soluções robustas com React, Next.js e Node.js.</p>
+            <p>Forjando algoritmos em pergaminhos de silício, transformando problemas em soluções mágicas.</p>
           </div>
 
-          <div className={styles.card}>
+          <div className={styles.parchment}>
             <div className={styles.cardHeader}>
-              <FiZap className={styles.icon} />
-              <h2>Performance first</h2>
+              <FiBook className={styles.icon} />
+              <h2>Grimório Admin</h2>
             </div>
-            <p>Aplicações leves, seguras e extremamente rápidas.</p>
+            <p>O mestre dos painéis reais, onde cada segredo da gestão é revelado com clareza e poder.</p>
           </div>
 
-          <div className={styles.card}>
+          <div className={styles.parchment}>
             <div className={styles.cardHeader}>
-              <FiCpu className={styles.icon} />
-              <h2>AI Integration</h2>
+              <FiMap className={styles.icon} />
+              <h2>Mapas Imersivos</h2>
             </div>
-            <p>Especialista em fluxos inteligentes e automação moderna.</p>
+            <p>Navegando pelos mares turbulentos do Full Stack, guiando viajantes para destinos seguros.</p>
           </div>
         </div>
 
         <div className={styles.footer}>
-          <p>© 2026 - Lojinha do Zé | Powered by <strong>Shura Architecture</strong></p>
-          <div className={styles.social}>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-              <FiGithub /> Github
-            </a>
+          <p>© Era de 2026 - Lojinha do Zé | Selo do <strong>Grande Clã Shura</strong></p>
+          <div className={styles.tavernBrand}>
+            <FiCoffee /> <span>Toma uma caneca e relaxa!</span>
           </div>
         </div>
       </div>
-      
-      <div className={styles.background}>
-        <div className={styles.blob1}></div>
-        <div className={styles.blob2}></div>
-      </div>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Almendra:ital,wght@0,400;0,700;1,400;1,700&family=MedievalSharp&display=swap');
+      `}</style>
     </div>
   );
 }
