@@ -144,7 +144,7 @@ router.get('/pix/:id', async (c) => {
       status_detail: payment.status_detail,
       external_reference: payment.external_reference,
     });
-  } catch (error) {
+  } catch {
     return jsonError(c, 500, 'Erro ao buscar status do pagamento');
   }
 });

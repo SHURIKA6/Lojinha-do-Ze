@@ -18,7 +18,6 @@ import paymentRoutes from './routes/payments.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { auditMiddleware } from './middleware/audit.js';
 import { csrfMiddleware, optionalAuthMiddleware } from './middleware/auth.js';
-import { logger } from './utils/logger.js';
 
 const app = new Hono();
 const DBLESS_PATH_PREFIXES = ['/api/health'];

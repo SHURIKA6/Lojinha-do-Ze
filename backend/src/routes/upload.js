@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
+import { adminOnly, authMiddleware } from '../middleware/auth.js';
 import { randomToken } from '../utils/crypto.js';
 import { jsonError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';

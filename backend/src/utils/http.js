@@ -29,7 +29,7 @@ export function applySecurityHeaders(c) {
   try {
     const requestUrl = new URL(c.req.url, 'http://localhost');
     isHttps = requestUrl.protocol === 'https:';
-  } catch (e) {
+  } catch {
     // Fallback caso a análise da URL falhe
   }
 
