@@ -20,7 +20,7 @@ export async function createPasswordSetupToken(client, tokenData) {
 
 export async function findOpenSetupToken(client, lookup) {
   const values = [];
-  let whereClause = '';
+  let whereClause;
 
   if (lookup.tokenHash) {
     values.push(lookup.tokenHash);

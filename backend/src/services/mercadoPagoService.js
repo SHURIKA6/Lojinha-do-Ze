@@ -64,7 +64,7 @@ export class MercadoPagoService {
         stack: error.stack,
         cause: error.cause
       });
-      throw new Error(error.message || 'Erro ao criar pagamento no Mercado Pago');
+      throw new Error(error.message || 'Erro ao criar pagamento no Mercado Pago', { cause: error });
     }
   }
 
