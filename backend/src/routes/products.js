@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware, requireAdmin } from '../middleware/auth.js';
+import { authMiddleware, adminOnly } from '../middleware/auth.js';
 import { productCreateSchema, productUpdateSchema } from '../domain/schemas.js';
 import {
   cleanOptionalString,
@@ -12,7 +12,7 @@ import { logger } from '../utils/logger.js';
 
 const router = new Hono();
 
-router.use('*', authMiddleware, requireAdmin);
+router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
   const db = c.get('db');
