@@ -67,36 +67,54 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
   } = useCheckout({ cart, cartTotal, setError });
 
   const konamiRef = useRef([]);
+  const konamiTimer = useRef(null);
+
   useEffect(() => {
-    const konamiCode = [
-      'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 
-      'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 
+    const sequence = [
+      'arrowup', 'arrowup', 'arrowdown', 'arrowdown', 
+      'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 
       'b', 'a'
     ];
     
     const handleKeyDown = (e) => {
+      // Ignora se estiver digitando em um input ou textarea
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        return;
+      }
+
       const key = e.key.toLowerCase();
+      
+      // Reinicia o progresso se demorar mais que 3 segundos entre as teclas
+      if (konamiTimer.current) clearTimeout(konamiTimer.current);
+      konamiTimer.current = setTimeout(() => {
+        konamiRef.current = [];
+      }, 3000);
+
       konamiRef.current.push(key);
       konamiRef.current = konamiRef.current.slice(-10);
-      
-      const sequence = [
-        'arrowup', 'arrowup', 'arrowdown', 'arrowdown', 
-        'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 
-        'b', 'a'
-      ];
       
       if (konamiRef.current.length === 10 && konamiRef.current.join(',') === sequence.join(',')) {
         toast.info(
           '🌿 "Tudo o que a natureza dá, a gente compartilha. Fica à vontade!" - Seu Zé',
           'SEU ZÉ MODE'
         );
+        
+        // Efeito extra: Redirecionar para Shura após 2 segundos
+        setTimeout(() => {
+          router.push('/shura');
+        }, 2000);
+        
         konamiRef.current = [];
+        if (konamiTimer.current) clearTimeout(konamiTimer.current);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toast]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (konamiTimer.current) clearTimeout(konamiTimer.current);
+    };
+  }, [toast, router]);
 
   const onCheckoutClick = async () => {
     const success = await handleCheckout();
