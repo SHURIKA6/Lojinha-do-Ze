@@ -1,40 +1,42 @@
-import 'dotenv/config';
-import { existsSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
+// ARCH-03: Todas as importações Node.js são condicionais para compatibilidade com Workers
 let devVarsPath = null;
+let fsModule = null;
+
 try {
+  fsModule = await import('fs');
+  const { dirname, join } = await import('path');
+  const { fileURLToPath } = await import('url');
+
   const currentUrl = import.meta.url;
   if (currentUrl) {
     const backendRoot = join(dirname(fileURLToPath(currentUrl)), '..');
     devVarsPath = join(backendRoot, '.dev.vars');
   }
-} catch (e) {
-  // Ignora erro em ambientes sem suporte a path/url (como Workers runtime ou build)
+} catch {
+  // Ignora erro em ambientes sem suporte a Node.js (Workers runtime)
 }
 
 export function loadLocalEnv() {
   try {
-    if (!devVarsPath || !existsSync(devVarsPath)) return;
+    if (!devVarsPath || !fsModule || !fsModule.existsSync(devVarsPath)) return;
 
-  const content = readFileSync(devVarsPath, 'utf8');
+    const content = fsModule.readFileSync(devVarsPath, 'utf8');
 
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
 
-    const separatorIndex = line.indexOf('=');
-    if (separatorIndex === -1) continue;
+      const separatorIndex = line.indexOf('=');
+      if (separatorIndex === -1) continue;
 
-    const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1).trim().replace(/^["']|["']$/g, '');
+      const key = line.slice(0, separatorIndex).trim();
+      const value = line.slice(separatorIndex + 1).trim().replace(/^["']|["']$/g, '');
 
-    if (key && !(key in process.env)) {
-      process.env[key] = value;
+      if (key && !(key in process.env)) {
+        process.env[key] = value;
+      }
     }
-    }
-  } catch (e) {
+  } catch {
     // Ignora erros de filesystem em produção
   }
 }
@@ -43,9 +45,9 @@ export function getRequiredEnv(c, name) {
   // Se apenas um argumento for passado, c é o nome
   const targetName = name || c;
   const context = name ? c : null;
-  
+
   const value = context?.env?.[targetName] || process.env[targetName];
-  
+
   if (!value) {
     throw new Error(`${targetName} não definido nas variáveis de ambiente`);
   }

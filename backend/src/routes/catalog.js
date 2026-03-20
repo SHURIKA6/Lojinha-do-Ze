@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { csrfMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+
 import { orderCreateSchema } from '../domain/schemas.js';
 import { orderLimiter } from '../middleware/rateLimit.js';
 import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize.js';
@@ -106,7 +106,9 @@ router.post(
       const authUser = c.get('user');
       const normalizedRequestPhone = normalizePhoneDigits(payload.customer_phone);
       const mergedItems = mergeOrderItems(payload.items);
-      const deliveryFee = payload.delivery_type === 'entrega' ? 5 : 0;
+      // UX-01: Taxa de entrega configurável via env (default R$5)
+      const deliveryFeeValue = parseFloat(c.env?.DELIVERY_FEE || process.env.DELIVERY_FEE || '5');
+      const deliveryFee = payload.delivery_type === 'entrega' ? deliveryFeeValue : 0;
 
       let subtotal = 0;
       const enrichedItems = [];
@@ -173,23 +175,30 @@ router.post(
         ]
       );
 
-      for (const item of enrichedItems) {
+      if (enrichedItems.length > 0) {
+        const productIds = enrichedItems.map((i) => parseInt(i.productId));
+        const quantities = enrichedItems.map((i) => i.quantity);
+        const names = enrichedItems.map((i) => i.name);
+
         const { rowCount } = await client.query(
-          `UPDATE products
-           SET quantity = quantity - $1, updated_at = NOW()
-           WHERE id = $2 AND quantity >= $1`,
-          [item.quantity, item.productId]
+          `UPDATE products AS p
+           SET quantity = p.quantity - u.qty, updated_at = NOW()
+           FROM unnest($1::int[], $2::int[]) AS u(id, qty)
+           WHERE p.id = u.id AND p.quantity >= u.qty
+           RETURNING p.id`,
+          [productIds, quantities]
         );
 
-        if (!rowCount) {
+        if (rowCount !== enrichedItems.length) {
           await client.query('ROLLBACK');
-          return jsonError(c, 400, `Estoque insuficiente ou concorrente para ${item.name}`);
+          return jsonError(c, 400, 'Estoque insuficiente ou concorrente para um dos itens do pedido');
         }
 
         await client.query(
           `INSERT INTO inventory_log (product_id, product_name, type, quantity, reason, date)
-           VALUES ($1, $2, 'saida', $3, $4, NOW())`,
-          [item.productId, item.name, item.quantity, `Pedido #${orderRows[0].id}`]
+           SELECT u.id, u.name, 'saida', u.qty, $1, NOW()
+           FROM unnest($2::int[], $3::text[], $4::int[]) AS u(id, name, qty)`,
+          [`Pedido #${orderRows[0].id}`, productIds, names, quantities]
         );
       }
 
@@ -204,7 +213,7 @@ router.post(
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       logger.error('Erro ao processar pedido no catálogo (POST)', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao processar o seu pedido. Tente novamente em instantes.');
     } finally {
       client.release();
     }

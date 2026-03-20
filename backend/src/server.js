@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { createDb } from './db.js';
 import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security.js';
 import { isSafeMethod, jsonError } from './utils/http.js';
+import { logger } from './utils/logger.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
 import customersRoutes from './routes/customers.js';
@@ -45,7 +46,7 @@ app.use('/api/*', async (c, next) => {
 
   const connectionString = c.env?.DATABASE_URL;
   if (!connectionString) {
-    console.error('CRITICAL: DATABASE_URL is not configured for this request.');
+    logger.error('CRITICAL: DATABASE_URL is not configured for this request.');
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 
@@ -58,11 +59,11 @@ app.use('/api/*', async (c, next) => {
       await csrfMiddleware(c, next);
     });
   } catch (error) {
-    console.error('Erro na Requisição API:', error);
+    logger.error('Erro na Requisição API', error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     const closePromise = db.close().catch((error) => {
-      console.error('DB close error:', error);
+      logger.warn('DB close error', { error: error?.message });
     });
 
     if (c.executionCtx?.waitUntil) {

@@ -7,6 +7,7 @@ import {
   SESSION_TTL_SECONDS,
 } from '../domain/constants.js';
 import { randomCode, randomToken, sha256Hex } from '../utils/crypto.js';
+import { logger } from '../utils/logger.js';
 import {
   createSessionRecord,
   deleteExpiredSessions,
@@ -95,7 +96,10 @@ export async function resolveSession(c, client) {
     return cached;
   }
 
-  await deleteExpiredSessions(client);
+  // PERF-05: Limpeza probabilística — executa apenas ~1% das vezes
+  if (Math.random() < 0.01) {
+    await deleteExpiredSessions(client);
+  }
 
   const sessionToken = getCookie(c, SESSION_COOKIE_NAME);
   if (!sessionToken) {
@@ -124,7 +128,7 @@ export async function resolveSession(c, client) {
   c.set('session', session);
 
   void touchSession(client, session.id).catch((error) => {
-    console.error('Erro ao atualizar sessão (touch):', error);
+    logger.error('Erro ao atualizar sessão (touch)', error);
   });
 
   return session;

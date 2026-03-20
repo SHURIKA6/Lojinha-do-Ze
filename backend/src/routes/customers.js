@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
+import { z } from 'zod';
+import { adminOnly, authMiddleware } from '../middleware/auth.js';
 import { customerCreateSchema, customerUpdateSchema } from '../domain/schemas.js';
 import { generatePasswordSetupInvite } from '../services/authService.js';
 import {
@@ -20,6 +21,44 @@ import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants.js';
 
 const router = new Hono();
 
+const CUSTOMER_SAFE_COLUMNS = 'id, name, email, phone, cpf, address, notes, avatar, role, created_at';
+
+// ARCH-05: Validação consistente para IDs (suporta UUID e integer)
+function isValidId(id) {
+  if (typeof id !== 'string') return false;
+  return isValidUuid(id) || /^\d+$/.test(id);
+}
+
+// SEC-05: Schema Zod para role update
+const roleSchema = z.object({
+  role: z.enum(['admin', 'customer']),
+});
+
+// ARCH-01: Função compartilhada para invite e reset-password
+async function handleInvite(c) {
+  const db = c.get('db');
+  const client = await db.connect();
+  try {
+    const id = c.req.param('id');
+    if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
+
+    // SEC-10: Colunas explícitas — nunca retornar password hash
+    const { rows } = await client.query(
+      `SELECT ${CUSTOMER_SAFE_COLUMNS} FROM users WHERE id = $1`,
+      [id]
+    );
+    if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
+
+    const invite = await generatePasswordSetupInvite(c, client, rows[0]);
+    return c.json({ ...rows[0], invite });
+  } catch (error) {
+    logger.error('Erro ao gerar convite', error, { id: c.req.param('id') });
+    return jsonError(c, 500, 'Erro ao gerar link de convite.');
+  } finally {
+    client.release();
+  }
+}
+
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
@@ -27,14 +66,7 @@ router.get('/', async (c) => {
   const limit = Math.min(parseInt(c.req.query('limit')) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
   const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-  const countRes = await db.query(`
-    SELECT COUNT(*) FROM (
-      SELECT id FROM users
-      UNION
-      SELECT MIN(id) FROM orders WHERE customer_id IS NULL GROUP BY customer_phone
-    ) as total_customers
-  `);
-  const total = parseInt(countRes.rows[0].count);
+  // A paginação é aplicada sem precisar calcular o count total, pois o frontend não exige
 
   const { rows } = await db.query(
     `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
@@ -61,13 +93,13 @@ router.get('/:id', async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
-  if (!isValidUuid(id) && !/^\d+$/.test(id)) {
+  if (!isValidId(id)) {
     return jsonError(c, 400, 'ID inválido');
   }
 
   const { rows: userRows } = await db.query(
-    `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
-     FROM users WHERE id = $1`, [id]
+    `SELECT ${CUSTOMER_SAFE_COLUMNS} FROM users WHERE id = $1`,
+    [id]
   );
 
   let customer;
@@ -108,14 +140,17 @@ router.get('/:id/orders', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    if (!isValidUuid(id) && !/^\d+$/.test(id)) return jsonError(c, 400, 'ID inválido');
+    if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
     let phone = '';
     const { rows: userRows } = await db.query('SELECT phone FROM users WHERE id = $1', [id]);
     if (userRows.length) {
       phone = userRows[0].phone || '';
     } else {
-      const { rows: orderRows } = await db.query('SELECT customer_phone FROM orders WHERE id::text = $1', [id]);
+      const { rows: orderRows } = await db.query(
+        'SELECT customer_phone FROM orders WHERE id::text = $1',
+        [id]
+      );
       if (orderRows.length) {
         phone = orderRows[0].customer_phone || '';
       } else {
@@ -134,8 +169,10 @@ router.get('/:id/orders', async (c) => {
     setNoStore(c);
     return c.json(rows);
   } catch (error) {
-    logger.error('Erro ao buscar pedidos do cliente (GET /:id/orders)', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
+    logger.error('Erro ao buscar pedidos do cliente (GET /:id/orders)', error, {
+      id: c.req.param('id'),
+    });
+    return jsonError(c, 500, 'Erro ao carregar o histórico de pedidos do cliente.');
   }
 });
 
@@ -148,7 +185,7 @@ router.post(
     try {
       await client.query('BEGIN');
       const payload = c.req.valid('json');
-      
+
       if (payload.cpf && !isValidCpf(payload.cpf)) {
         await client.query('ROLLBACK');
         return jsonError(c, 400, 'CPF inválido');
@@ -165,7 +202,7 @@ router.post(
       const { rows } = await client.query(
         `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
          VALUES ($1, $2, NULL, false, 'customer', $3, $4, $5, $6, $7)
-         RETURNING id, name, email, phone, cpf, address, notes, avatar, role, created_at`,
+         RETURNING ${CUSTOMER_SAFE_COLUMNS}`,
         [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar]
       );
 
@@ -175,9 +212,10 @@ router.post(
       return c.json({ ...createdCustomer, invite }, 201);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      if (isUniqueViolation(error)) return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
+      if (isUniqueViolation(error))
+        return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       logger.error('Erro ao criar cliente (POST)', error);
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao cadastrar o novo cliente.');
     } finally {
       client.release();
     }
@@ -191,101 +229,89 @@ router.put(
     try {
       const db = c.get('db');
       const id = c.req.param('id');
-      if (!isValidUuid(id)) return jsonError(c, 400, 'ID inválido');
+      if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
       const payload = c.req.valid('json');
       if (payload.cpf && !isValidCpf(payload.cpf)) return jsonError(c, 400, 'CPF inválido');
 
-      const cleanName = payload.name.trim();
-      const cleanEmail = normalizeEmail(payload.email);
-      const cleanPhone = cleanOptionalString(payload.phone)?.trim() || null;
-      const cleanCpf = payload.cpf ? normalizeCpfDigits(payload.cpf) : null;
-      const cleanAddress = cleanOptionalString(payload.address);
-      const cleanNotes = cleanOptionalString(payload.notes);
-      const avatar = buildAvatar(cleanName);
+      const cleanName = payload.name?.trim();
+      const cleanEmail = payload.email !== undefined ? normalizeEmail(payload.email) : undefined;
+      const cleanPhone =
+        payload.phone !== undefined ? cleanOptionalString(payload.phone)?.trim() || null : undefined;
+      const cleanCpf = payload.cpf ? normalizeCpfDigits(payload.cpf) : undefined;
+      const cleanAddress =
+        payload.address !== undefined ? cleanOptionalString(payload.address) : undefined;
+      const cleanNotes =
+        payload.notes !== undefined ? cleanOptionalString(payload.notes) : undefined;
+      const avatar = cleanName ? buildAvatar(cleanName) : undefined;
 
       const { rows } = await db.query(
-        `UPDATE users SET name = $1, email = $2, phone = $3, cpf = $4, address = $5, notes = $6, avatar = $7, updated_at = NOW()
-         WHERE id = $8 RETURNING id, name, email, phone, cpf, address, notes, avatar, role, created_at`,
+        `UPDATE users SET 
+           name = COALESCE($1, name), 
+           email = COALESCE($2, email), 
+           phone = COALESCE($3, phone), 
+           cpf = COALESCE($4, cpf), 
+           address = COALESCE($5, address), 
+           notes = COALESCE($6, notes), 
+           avatar = COALESCE($7, avatar), 
+           updated_at = NOW()
+         WHERE id = $8 
+         RETURNING ${CUSTOMER_SAFE_COLUMNS}`,
         [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar, id]
       );
 
       if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
       return c.json(rows[0]);
     } catch (error) {
-      if (isUniqueViolation(error)) return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
+      if (isUniqueViolation(error))
+        return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       logger.error('Erro ao atualizar cliente (PUT)', error, { id: c.req.param('id') });
-      return jsonError(c, 500, 'Erro interno no servidor');
+      return jsonError(c, 500, 'Erro ao salvar as atualizações do cliente.');
     }
   }
 );
 
-router.post('/:id/invite', async (c) => {
-  const db = c.get('db');
-  const client = await db.connect();
-  try {
-    const id = c.req.param('id');
-    if (!isValidUuid(id)) return jsonError(c, 400, 'ID inválido');
-    const { rows } = await client.query('SELECT * FROM users WHERE id = $1', [id]);
-    if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
-    const invite = await generatePasswordSetupInvite(c, client, rows[0]);
-    return c.json({ ...rows[0], invite });
-  } catch (error) {
-    logger.error('Erro ao enviar convite ao cliente', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
-  } finally {
-    client.release();
-  }
-});
+// ARCH-01: Reutiliza handleInvite para ambos endpoints
+router.post('/:id/invite', handleInvite);
+router.patch('/:id/reset-password', handleInvite);
 
-router.patch('/:id/reset-password', async (c) => {
-  const db = c.get('db');
-  const client = await db.connect();
-  try {
-    const id = c.req.param('id');
-    if (!isValidUuid(id)) return jsonError(c, 400, 'ID inválido');
-    const { rows } = await client.query('SELECT * FROM users WHERE id = $1', [id]);
-    if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
-    const invite = await generatePasswordSetupInvite(c, client, rows[0]);
-    return c.json({ ...rows[0], invite });
-  } catch (error) {
-    logger.error('Erro ao resetar senha do cliente', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
-  } finally {
-    client.release();
-  }
-});
+// SEC-05: Role update com validação Zod
+router.patch(
+  '/:id/role',
+  zValidator('json', roleSchema, validationError),
+  async (c) => {
+    try {
+      const db = c.get('db');
+      const id = c.req.param('id');
+      if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-router.patch('/:id/role', async (c) => {
-  try {
-    const db = c.get('db');
-    const id = c.req.param('id');
-    if (!isValidUuid(id)) return jsonError(c, 400, 'ID inválido');
-    const { role } = await c.req.json();
-    if (!['admin', 'customer'].includes(role)) return jsonError(c, 400, 'Cargo inválido');
-    const { rows } = await db.query(
-      `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name, role`,
-      [role, id]
-    );
-    if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
-    return c.json(rows[0]);
-  } catch (error) {
-    logger.error('Erro ao atualizar cargo do cliente (PATCH role)', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
+      const { role } = c.req.valid('json');
+      const { rows } = await db.query(
+        `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name, role`,
+        [role, id]
+      );
+      if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
+      return c.json(rows[0]);
+    } catch (error) {
+      logger.error('Erro ao atualizar cargo do cliente (PATCH role)', error, {
+        id: c.req.param('id'),
+      });
+      return jsonError(c, 500, 'Erro ao alterar a permissão do usuário.');
+    }
   }
-});
+);
 
 router.delete('/:id', async (c) => {
   try {
     const db = c.get('db');
     const id = c.req.param('id');
-    if (!isValidUuid(id)) return jsonError(c, 400, 'ID inválido');
+    if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
     const { rowCount } = await db.query('DELETE FROM users WHERE id = $1', [id]);
     if (!rowCount) return jsonError(c, 404, 'Usuário não encontrado');
     return c.json({ message: 'Usuário excluído' });
   } catch (error) {
     logger.error('Erro ao excluir cliente (DELETE)', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro interno no servidor');
+    return jsonError(c, 500, 'Erro ao remover o cliente.');
   }
 });
 

@@ -20,10 +20,8 @@ export const PRODUCT_CATEGORY_VALUES = [
   'Cosméticos Naturais',
   'Suplementos',
   'Cápsulas',
-  'Chás',
   'Tinturas',
   'Cremes',
-  'Cosméticos',
   'Outros',
 ];
 

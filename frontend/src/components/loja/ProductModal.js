@@ -54,16 +54,21 @@ export default function ProductModal({
 
           <div className={styles.actions}>
             <div className={styles.qty}>
-              <button type="button" onClick={() => setProductQty(Math.max(1, productQty - 1))}>
-                <FiMinus />
+              <button
+                type="button"
+                onClick={() => setProductQty(Math.max(1, productQty - 1))}
+                aria-label="Diminuir quantidade"
+              >
+                <FiMinus aria-hidden="true" />
               </button>
-              <span>{productQty}</span>
+              <span aria-live="polite">{productQty}</span>
               <button
                 type="button"
                 onClick={() => setProductQty(Math.min(availableStock, productQty + 1))}
                 disabled={availableStock <= productQty}
+                aria-label="Aumentar quantidade"
               >
-                <FiPlus />
+                <FiPlus aria-hidden="true" />
               </button>
             </div>
 

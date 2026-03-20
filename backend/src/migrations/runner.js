@@ -1,8 +1,18 @@
 import * as migration001 from './001_initial.js';
 import * as migration002 from './002_fix_transactions_schema.js';
 import * as migration003 from './003_add_performance_indexes.js';
+import * as migration004 from './004_additional_performance_indexes.js';
+import * as migration005 from './005_add_mercado_pago_fields_to_orders.js';
+import * as migration006 from './006_guest_customers_idx.js';
 
-const migrations = [migration001, migration002, migration003];
+const migrations = [
+  migration001, 
+  migration002, 
+  migration003, 
+  migration004, 
+  migration005, 
+  migration006
+];
 
 export async function runMigrations(db) {
   const client = await db.connect();
