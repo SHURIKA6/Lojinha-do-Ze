@@ -75,13 +75,20 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
     ];
     
     const handleKeyDown = (e) => {
-      konamiRef.current.push(e.key);
+      const key = e.key.toLowerCase();
+      konamiRef.current.push(key);
       konamiRef.current = konamiRef.current.slice(-10);
       
-      if (konamiRef.current.length === 10 && konamiRef.current.join(',') === konamiCode.join(',')) {
+      const sequence = [
+        'arrowup', 'arrowup', 'arrowdown', 'arrowdown', 
+        'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 
+        'b', 'a'
+      ];
+      
+      if (konamiRef.current.length === 10 && konamiRef.current.join(',') === sequence.join(',')) {
         toast.info(
-          '🌿 SEU ZÉ MODE: "Tudo o que a natureza dá, a gente compartilha. Fica à vontade, meu filho!"',
-          { duration: 8000 }
+          '🌿 "Tudo o que a natureza dá, a gente compartilha. Fica à vontade!" - Seu Zé',
+          'SEU ZÉ MODE'
         );
         konamiRef.current = [];
       }
