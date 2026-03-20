@@ -47,38 +47,7 @@ export default function SetupPasswordPageClient() {
 
   return (
     <div className="login-page">
-      <div className="login-shell animate-fadeIn">
-        <section className="login-panel">
-          <div className="login-panel__copy">
-            <span className="landing-eyebrow">
-              <FiShield />
-              Ativação segura
-            </span>
-            <h1>Defina sua senha para concluir o acesso à Lojinha do Zé.</h1>
-            <p>
-              Use o link do convite ou informe o código recebido pela loja para ativar sua conta de
-              forma segura.
-            </p>
-          </div>
-
-          <div className="login-panel__list">
-            <div className="login-panel__item">
-              <FiCheckCircle />
-              <div>
-                <strong>Convite temporário</strong>
-                <p>Links e códigos expiram automaticamente e não podem ser reutilizados.</p>
-              </div>
-            </div>
-            <div className="login-panel__item">
-              <FiKey />
-              <div>
-                <strong>Senha criada por você</strong>
-                <p>Depois da ativação, o acesso passa a ser feito pelo login normal.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
+      <div className="login-shell animate-fadeIn" style={{ justifyContent: 'center' }}>
         <section className="login-card">
           <div className="login-card__header">
             <div className="login-card__logo">LZ</div>
@@ -95,7 +64,7 @@ export default function SetupPasswordPageClient() {
               </div>
             ) : null}
 
-            {!token ? (
+            {!token && (
               <div className="form-group">
                 <label className="form-label" htmlFor="setup-code">
                   <FiKey style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
@@ -107,9 +76,10 @@ export default function SetupPasswordPageClient() {
                   value={code}
                   onChange={(event) => setCode(event.target.value.toUpperCase())}
                   placeholder="Ex.: ABCD1234"
+                  required
                 />
               </div>
-            ) : null}
+            )}
 
             <div className="form-group">
               <label className="form-label" htmlFor="setup-password">
