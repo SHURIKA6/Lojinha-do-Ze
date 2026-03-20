@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiGrid, FiLock, FiShoppingBag, FiUser } from 'react-icons/fi';
 import { useAuth } from '@/services/auth/AuthContext';
@@ -65,6 +65,31 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
     handleCheckout,
     sendWhatsAppReceipt
   } = useCheckout({ cart, cartTotal, setError });
+
+  const konamiRef = useRef([]);
+  useEffect(() => {
+    const konamiCode = [
+      'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 
+      'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 
+      'b', 'a'
+    ];
+    
+    const handleKeyDown = (e) => {
+      konamiRef.current.push(e.key);
+      konamiRef.current = konamiRef.current.slice(-10);
+      
+      if (konamiRef.current.length === 10 && konamiRef.current.join(',') === konamiCode.join(',')) {
+        toast.info(
+          '🌿 SEU ZÉ MODE: "Tudo o que a natureza dá, a gente compartilha. Fica à vontade, meu filho!"',
+          { duration: 8000 }
+        );
+        konamiRef.current = [];
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toast]);
 
   const onCheckoutClick = async () => {
     const success = await handleCheckout();
