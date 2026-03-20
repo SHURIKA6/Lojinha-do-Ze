@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
 import { transactionCreateSchema } from '../domain/schemas.js';
-import { cleanOptionalString, isValidUuid } from '../utils/normalize.js';
+import { cleanOptionalString } from '../utils/normalize.js';
 import { jsonError, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
 
@@ -65,9 +65,9 @@ router.post(
 router.delete('/:id', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
-    const id = c.req.param('id');
+    const id = parseInt(c.req.param('id'), 10);
     
-    if (!isValidUuid(id)) {
+    if (isNaN(id) || id <= 0) {
       return jsonError(c, 400, 'ID inválido');
     }
 
