@@ -163,9 +163,26 @@ export default function CheckoutModal({
               <button 
                 type="button" 
                 className="btn btn--primary btn--full btn--lg" 
-                onClick={() => setPixConfirmed(true)}
+                disabled={orderResult?._checkingPayment}
+                onClick={async () => {
+                  if (!orderResult?.pix?.id) return;
+                  setOrderResult(prev => ({ ...prev, _checkingPayment: true }));
+                  try {
+                    const { getPixPaymentStatus } = await import('@/lib/api');
+                    const status = await getPixPaymentStatus(orderResult.pix.id);
+                    if (status.status === 'approved') {
+                      setPixConfirmed(true);
+                    } else {
+                      alert('Pagamento ainda não confirmado. Complete o Pix e tente novamente.');
+                    }
+                  } catch {
+                    alert('Erro ao verificar pagamento. Tente novamente.');
+                  } finally {
+                    setOrderResult(prev => ({ ...prev, _checkingPayment: false }));
+                  }
+                }}
               >
-                Já realizei o pagamento
+                {orderResult?._checkingPayment ? 'Verificando...' : 'Já realizei o pagamento'}
               </button>
             ) : (
               <button 
