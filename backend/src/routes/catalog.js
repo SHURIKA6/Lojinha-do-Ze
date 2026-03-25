@@ -25,6 +25,11 @@ function mergeOrderItems(items) {
   }));
 }
 
+// Escapa caracteres especiais do ILIKE para prevenir injeção de wildcards
+function escapeIlike(value) {
+  return value.replace(/[%_\\]/g, '\\$&');
+}
+
 router.get('/', async (c) => {
   const db = c.get('db');
   const limit = Math.min(parseInt(c.req.query('limit')) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
@@ -43,7 +48,7 @@ router.get('/', async (c) => {
     const queryParams = [];
 
     if (search) {
-      queryParams.push(`%${search}%`);
+      queryParams.push(`%${escapeIlike(search)}%`);
       whereClauses.push(`name ILIKE $${queryParams.length}`);
     }
 

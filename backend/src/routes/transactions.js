@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { adminOnly, authMiddleware, csrfMiddleware } from '../middleware/auth.js';
 import { transactionCreateSchema } from '../domain/schemas.js';
 import { cleanOptionalString } from '../utils/normalize.js';
-import { jsonError, validationError } from '../utils/http.js';
+import { jsonError, setNoStore, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
 
 const router = new Hono();
@@ -11,27 +11,40 @@ const router = new Hono();
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
-  const db = c.get('db');
-  const type = c.req.query('type');
-  const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
-  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
-  const params = [];
-  let query = `
-    SELECT id, type, category, description, value, date, order_id, created_at
-    FROM transactions
-  `;
+  try {
+    const db = c.get('db');
+    const type = c.req.query('type');
+    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-  if (type) {
-    params.push(type);
-    query += ` WHERE type = $${params.length}`;
+    // Valida type contra enum permitido
+    if (type && !['receita', 'despesa'].includes(type)) {
+      setNoStore(c);
+      return jsonError(c, 400, 'Tipo de transação inválido');
+    }
+
+    const params = [];
+    let query = `
+      SELECT id, type, category, description, value, date, order_id, created_at
+      FROM transactions
+    `;
+
+    if (type) {
+      params.push(type);
+      query += ` WHERE type = $${params.length}`;
+    }
+
+    query += ' ORDER BY date DESC, created_at DESC';
+    query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const { rows } = await db.query(query, params);
+    setNoStore(c);
+    return c.json(rows);
+  } catch (error) {
+    logger.error('Erro no GET de Transações', error);
+    return jsonError(c, 500, 'Erro ao carregar a lista de transações.');
   }
-
-  query += ' ORDER BY date DESC, created_at DESC';
-  query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-  params.push(limit, offset);
-
-  const { rows } = await db.query(query, params);
-  return c.json(rows);
 });
 
 router.post(

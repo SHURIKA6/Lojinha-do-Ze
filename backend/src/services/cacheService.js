@@ -4,6 +4,7 @@
  */
 
 const cache = new Map();
+const MAX_CACHE_SIZE = 500;
 
 export const cacheService = {
   get: (key) => {
@@ -19,6 +20,20 @@ export const cacheService = {
   },
 
   set: (key, value, ttlSeconds = 60) => {
+    // Evict expired or oldest entries when cache is full
+    if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
+      const now = Date.now();
+      for (const [k, v] of cache.entries()) {
+        if (now > v.expiry) cache.delete(k);
+        if (cache.size < MAX_CACHE_SIZE) break;
+      }
+      // If still full, delete the oldest entry (first inserted)
+      if (cache.size >= MAX_CACHE_SIZE) {
+        const oldest = cache.keys().next().value;
+        cache.delete(oldest);
+      }
+    }
+
     cache.set(key, {
       value,
       expiry: Date.now() + ttlSeconds * 1000,

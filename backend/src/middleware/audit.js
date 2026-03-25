@@ -1,4 +1,4 @@
-import { logger } from '../utils/logger.js';
+import { logger, sanitizeObject } from '../utils/logger.js';
 import { isSafeMethod } from '../utils/http.js';
 
 /**
@@ -40,7 +40,7 @@ export async function auditMiddleware(c, next) {
       method,
       path,
       user: user ? { id: user.id, email: user.email, role: user.role } : 'anonymous',
-      body: bodyData,
+      body: sanitizeObject(bodyData),
       ip: c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'hidden',
     });
 
