@@ -59,7 +59,11 @@ export const changePasswordSchema = z.object({
   newPassword: z
     .string()
     .min(8, 'Nova senha deve ter pelo menos 8 caracteres')
-    .max(128, 'Nova senha excede o limite permitido'),
+    .max(128, 'Nova senha excede o limite permitido')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'A senha deve conter pelo menos 1 letra maiúscula, 1 minúscula e 1 número'
+    ),
 });
 
 export const passwordSetupSchema = z
@@ -69,7 +73,11 @@ export const passwordSetupSchema = z
     password: z
       .string()
       .min(8, 'Senha deve ter pelo menos 8 caracteres')
-      .max(128, 'Senha excede o limite permitido'),
+      .max(128, 'Senha excede o limite permitido')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        'A senha deve conter pelo menos 1 letra maiúscula, 1 minúscula e 1 número'
+      ),
     confirmPassword: z
       .string()
       .min(8, 'Confirmação de senha deve ter pelo menos 8 caracteres')

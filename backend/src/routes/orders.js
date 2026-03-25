@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { adminOnly, authMiddleware } from '../middleware/auth.js';
 import { orderStatusSchema } from '../domain/schemas.js';
-import { jsonError, validationError } from '../utils/http.js';
+import { ORDER_STATUS_VALUES } from '../domain/constants.js';
+import { jsonError, setNoStore, validationError } from '../utils/http.js';
+import { isValidUuid } from '../utils/normalize.js';
 import { MercadoPagoService } from '../services/mercadoPagoService.js';
 import { getRequiredEnv } from '../load-local-env.js';
 import { logger } from '../utils/logger.js';
@@ -29,38 +31,57 @@ async function restoreOrderStock(client, order) {
   }
 }
 
+// Validação consistente para IDs (suporta UUID e integer)
+function isValidId(id) {
+  if (typeof id !== 'string') return false;
+  return isValidUuid(id) || /^\d+$/.test(id);
+}
+
 router.get('/', authMiddleware, async (c) => {
-  const db = c.get('db');
-  const user = c.get('user');
-  const status = c.req.query('status');
-  const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
-  const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
+  try {
+    const db = c.get('db');
+    const user = c.get('user');
+    const status = c.req.query('status');
+    const limit = Math.min(parseInt(c.req.query('limit')) || 50, 100);
+    const offset = Math.max(parseInt(c.req.query('offset')) || 0, 0);
 
-  if (user.role === 'customer') {
-    const { rows } = await db.query(
-      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
-       FROM orders
-       WHERE customer_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [user.id, limit, offset]
-    );
+    // Valida status contra enum permitido
+    if (status && !ORDER_STATUS_VALUES.includes(status)) {
+      setNoStore(c);
+      return jsonError(c, 400, 'Status inválido');
+    }
+
+    if (user.role === 'customer') {
+      const { rows } = await db.query(
+        `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+         FROM orders
+         WHERE customer_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [user.id, limit, offset]
+      );
+      setNoStore(c);
+      return c.json(rows);
+    }
+
+    const params = [];
+    let query = `
+      SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+      FROM orders
+    `;
+    if (status) {
+      params.push(status);
+      query += ` WHERE status = $1`;
+    }
+    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+
+    const { rows } = await db.query(query, [...params, limit, offset]);
+    setNoStore(c);
     return c.json(rows);
+  } catch (error) {
+    logger.error('Erro no GET de Pedidos', error);
+    return jsonError(c, 500, 'Erro ao carregar a lista de pedidos.');
   }
-
-  const params = [];
-  let query = `
-    SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
-    FROM orders
-  `;
-  if (status) {
-    params.push(status);
-    query += ` WHERE status = $1`;
-  }
-  query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-
-  const { rows } = await db.query(query, [...params, limit, offset]);
-  return c.json(rows);
 });
 
 router.patch(
@@ -76,6 +97,7 @@ router.patch(
       await client.query('BEGIN');
 
       const id = c.req.param('id');
+      if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
       const { status } = c.req.valid('json');
       const { rows: currentRows } = await client.query(
         `SELECT id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, payment_id, payment_method, delivery_type, address, notes
@@ -159,6 +181,9 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
     await client.query('BEGIN');
 
     const id = c.req.param('id');
+    if (!isValidId(id)) {
+      return jsonError(c, 400, 'ID inválido');
+    }
     const { rows } = await client.query(
       `SELECT id, customer_name, items, status, payment_id
        FROM orders

@@ -5,10 +5,17 @@ import { productCreateSchema, productUpdateSchema } from '../domain/schemas.js';
 import {
   cleanOptionalString,
   isUniqueViolation,
+  isValidUuid,
   uniqueFieldLabel,
 } from '../utils/normalize.js';
-import { jsonError, validationError } from '../utils/http.js';
+import { jsonError, setNoStore, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
+
+// Validação consistente para IDs (suporta UUID e integer)
+function isValidId(id) {
+  if (typeof id !== 'string') return false;
+  return isValidUuid(id) || /^\d+$/.test(id);
+}
 
 const router = new Hono();
 
@@ -27,11 +34,14 @@ router.get('/', async (c) => {
     [limit, offset]
   );
 
+  setNoStore(c);
   return c.json(rows);
 });
 
 router.get('/:id', async (c) => {
   const db = c.get('db');
+  const id = c.req.param('id');
+  if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
   const { rows } = await db.query(
     `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
      FROM products
@@ -43,6 +53,7 @@ router.get('/:id', async (c) => {
     return jsonError(c, 404, 'Produto não encontrado');
   }
 
+  setNoStore(c);
   return c.json(rows[0]);
 });
 
@@ -115,6 +126,7 @@ router.put(
       await client.query('BEGIN');
 
       const id = c.req.param('id');
+      if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
       const data = c.req.valid('json');
 
       // Busca o estado atual para comparação
@@ -195,7 +207,9 @@ router.put(
 router.delete('/:id', async (c) => {
   try {
     const db = c.get('db');
-    const { rowCount } = await db.query('DELETE FROM products WHERE id = $1', [c.req.param('id')]);
+    const id = c.req.param('id');
+    if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
+    const { rowCount } = await db.query('DELETE FROM products WHERE id = $1', [id]);
     if (!rowCount) {
       return jsonError(c, 404, 'Produto não encontrado');
     }

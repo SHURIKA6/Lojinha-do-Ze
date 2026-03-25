@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Utilitário de log para sanitizar e mascarar dados sensíveis antes do registro.
  */
@@ -15,7 +16,7 @@ function maskValue(value) {
   return `${value.slice(0, 2)}****${value.slice(-2)}`;
 }
 
-function sanitizeObject(obj) {
+export function sanitizeObject(obj) {
   if (!obj || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(sanitizeObject);
 
