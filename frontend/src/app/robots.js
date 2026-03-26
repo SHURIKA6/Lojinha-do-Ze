@@ -1,4 +1,4 @@
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://lojinha-do-ze.vercel.app';
 
 export default function robots() {
   return {
@@ -6,7 +6,7 @@ export default function robots() {
       {
         userAgent: '*',
         allow: ['/'],
-        disallow: ['/login', '/ativar-conta', '/admin', '/conta', '/cliente'],
+        disallow: ['/api/'],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
