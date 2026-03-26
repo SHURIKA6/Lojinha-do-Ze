@@ -19,7 +19,7 @@ const manrope = Manrope({
   weight: ['400', '500', '600', '700', '800'],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://lojinha-do-ze.vercel.app';
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
