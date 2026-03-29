@@ -66,12 +66,11 @@ export async function middleware(request) {
   }
 
   if (pathname.startsWith('/admin')) {
-    if (result.kind !== 'auth') {
-      return redirect(request, '/login');
-    }
-
-    if (result.user.role !== 'admin') {
-      return redirect(request, '/conta');
+    if (result.kind !== 'auth' || result.user.role !== 'admin') {
+      // Retorna 404 em vez de redirecionar para esconder a existência da rota
+      const url = request.nextUrl.clone();
+      url.pathname = '/404-not-found'; // Rota inexistente para forçar 404
+      return NextResponse.rewrite(url);
     }
 
     return NextResponse.next();
