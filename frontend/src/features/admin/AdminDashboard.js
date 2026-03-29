@@ -34,7 +34,6 @@ import {
   YAxis,
 } from 'recharts';
 import { CHART_COLORS } from '@/styles/theme';
-import styles from './AdminDashboard.module.css';
 
 /**
  * AdminDashboard - Componente principal do painel administrativo
