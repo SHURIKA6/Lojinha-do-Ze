@@ -77,7 +77,7 @@ describe('Payments Security', () => {
 
   it('valida telefone e pedido ao criar e consultar pagamentos Pix', async () => {
     const db = buildDbMock({
-      query: async (text, params) => {
+      query: async (text, _params) => {
         if (text.includes('FROM orders') && text.includes('WHERE id = $1')) {
           return {
             rows: [
