@@ -37,6 +37,52 @@ function redirect(request, pathname) {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  // Interceptar requisições para robots.txt com pegadinha
+  if (pathname === '/robots.txt') {
+    const robotsTxt = `# robots.txt da Lojinha do Zé
+# Última atualização: 29/03/2026
+
+User-agent: *
+Disallow: /tesouro-secreto
+Disallow: /chave-mestra
+Disallow: /caminho-proibido
+Disallow: /easter-egg-nao-existe
+
+# ⚠️ ATENÇÃO ⚠️
+# Se você está lendo isso, você é oficialmente um curioso!
+# 
+# Mas calma, não tem nada de especial aqui...
+# Ou será que tem? 🤔
+#
+# Continue procurando... quem sabe o que você encontra?
+#
+#        ___
+#       /   \\
+#      | o o |
+#      |  ^  |
+#       \\___/
+#    Zé está de olho!
+#
+# Dica: Olhe para o código-fonte... 👀
+#
+# Quer saber um segredo? Digite:
+# ↑ ↑ ↓ ↓ ← → ← → B A
+# no teclado agora! 😄
+#
+# Brincadeira! Mas você tentou, né? 😂
+#
+# Agora vá trabalhar! 🛒
+# www.lojinha-do-ze.vercel.app`;
+
+    return new NextResponse(robotsTxt, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+    });
+  }
+
   const hasSession = request.cookies.has('lz_session');
 
   // Skip fetch if no session and hitting protected routes
