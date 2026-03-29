@@ -126,7 +126,7 @@ describe('Customers and Profile Security', () => {
 
   it('impede autoexclusão e exclusão sem senha válida', async () => {
     const db = buildDbMock({
-      query: async (text, params) => {
+      query: async (text, _params) => {
         if (text.includes('SELECT password FROM users WHERE id = $1')) {
           return { rows: [{ password: 'hash:SenhaForte#123' }] };
         }
