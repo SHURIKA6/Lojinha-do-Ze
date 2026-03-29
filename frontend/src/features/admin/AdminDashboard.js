@@ -36,6 +36,8 @@ import {
 import { CHART_COLORS } from '@/styles/theme';
 import '@/app/admin/dashboard.css';
 import AdminAssistant from './AdminAssistant';
+import StorefrontPageClient from '../storefront/StorefrontPageClient';
+import { FiEye, FiArrowLeft } from 'react-icons/fi';
 
 /**
  * AdminDashboard - Componente principal do painel administrativo
@@ -49,6 +51,7 @@ export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -69,6 +72,32 @@ export default function AdminDashboard() {
       loadDashboardData();
     }
   }, [isAdmin, addToast]);
+
+  if (isPreviewMode) {
+    return (
+      <div className="admin-preview-wrapper">
+        <div className="admin-preview-bar">
+          <div className="admin-preview-bar__info">
+            <FiEye className="admin-preview-bar__icon" />
+            <span>Modo de Visualização da Loja (URL mantida)</span>
+          </div>
+          <button 
+            onClick={() => setIsPreviewMode(false)}
+            className="admin-preview-bar__btn"
+          >
+            <FiArrowLeft /> Voltar ao Painel
+          </button>
+        </div>
+        <div className="admin-preview-content">
+          <StorefrontPageClient 
+            initialProducts={[]} 
+            initialCategories={[]} 
+            isAdminPreview={true}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -136,8 +165,18 @@ export default function AdminDashboard() {
     <div className="admin-dashboard">
       {/* Welcome Header */}
       <header className="admin-dashboard__header">
-        <h1 className="admin-dashboard__title">Painel Operacional</h1>
-        <p className="admin-dashboard__subtitle">Olá, {user?.name || 'Administrador'}. Aqui está o panorama do mês atual.</p>
+        <div className="admin-dashboard__header-info">
+          <h1 className="admin-dashboard__title">Painel Operacional</h1>
+          <p className="admin-dashboard__subtitle">Olá, {user?.name || 'Administrador'}. Aqui está o panorama do mês atual.</p>
+        </div>
+        <div className="admin-dashboard__header-actions">
+          <button 
+            className="admin-dashboard__preview-btn"
+            onClick={() => setIsPreviewMode(true)}
+          >
+            <FiEye /> Visualizar Loja
+          </button>
+        </div>
       </header>
 
       {/* Metrics Cards */}

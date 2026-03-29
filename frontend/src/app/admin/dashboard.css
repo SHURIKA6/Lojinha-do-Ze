@@ -312,3 +312,93 @@
 .admin-assistant__send-btn:hover {
   opacity: 0.9;
 }
+
+/* Styles for Store Preview inside Admin */
+.admin-preview-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+  z-index: 5000;
+  background: var(--admin-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-preview-bar {
+  background: var(--admin-card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 2px solid var(--admin-accent);
+  padding: 0.8rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 5001;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.admin-preview-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--admin-accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.admin-preview-bar__icon {
+  animation: pulse-icon 2s infinite;
+}
+
+@keyframes pulse-icon {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.admin-preview-bar__btn {
+  background: var(--admin-accent);
+  color: var(--admin-bg);
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  transition: all 0.3s;
+}
+
+.admin-preview-bar__btn:hover {
+  transform: translateX(-5px);
+  box-shadow: 0 0 15px rgba(196, 167, 93, 0.4);
+}
+
+.admin-preview-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.admin-dashboard__preview-btn {
+  background: rgba(196, 167, 93, 0.1);
+  border: 1px solid var(--admin-accent);
+  color: var(--admin-accent);
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+}
+
+.admin-dashboard__preview-btn:hover {
+  background: var(--admin-accent);
+  color: var(--admin-bg);
+}
