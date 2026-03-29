@@ -197,7 +197,7 @@ describe('Payments Security', () => {
         return { rowCount: 1, rows: [] };
       }
 
-      if (text.includes('INSERT INTO transactions')) {
+      if (text.startsWith('INSERT INTO transactions')) {
         insertedTransactions += 1;
         return { rowCount: 1, rows: [] };
       }
@@ -209,6 +209,10 @@ describe('Payments Security', () => {
       query: async (text, _params) => {
         if (text.includes('UPDATE orders SET payment_status = $1')) {
           return { rowCount: 1, rows: [] };
+        }
+
+        if (text.includes('SELECT id, payment_id FROM orders WHERE id = $1')) {
+          return { rows: [{ id: 12, payment_id: null }] };
         }
 
         throw new Error(`Query não tratada no teste: ${text}`);

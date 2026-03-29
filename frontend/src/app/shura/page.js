@@ -10,9 +10,5 @@ export const metadata = {
 };
 
 export default function ShuraPage() {
-  if (process.env.NEXT_PUBLIC_ENABLE_EASTER_EGGS !== 'true') {
-    notFound();
-  }
-
   return <ShuraPageClient />;
 }
