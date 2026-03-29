@@ -9,11 +9,9 @@ compatibility_flags = ["nodejs_compat"]
 # npx wrangler secret put DATABASE_URL
 
 # SEC-01: KV namespace para rate limiting distribuído entre edge nodes.
-# Crie com: npx wrangler kv:namespace create "RATE_LIMIT_KV"
-# Cole o ID gerado abaixo.
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "COLE_O_ID_AQUI"
+id = "a7ec24ab1399417d819b1df96d90c51d"
 
 [[r2_buckets]]
 binding = "BUCKET"
