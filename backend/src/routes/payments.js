@@ -194,8 +194,16 @@ router.get('/pix/:id', async (c) => {
 /**
  * Webhook para notificações do Mercado Pago.
  * SEC-01: Verifica assinatura HMAC quando o secret está configurado.
+ * SEC-06: Valida que o pagamento corresponde a um pedido real no banco.
+ * SEC-12: Limita tamanho do body para prevenir OOM.
  */
 router.post('/webhook', async (c) => {
+  // SEC-12: Rejeitar bodies maiores que 64KB (webhooks do MP são < 2KB)
+  const contentLength = parseInt(c.req.header('content-length') || '0', 10);
+  if (contentLength > 65536) {
+    return c.text('Payload Too Large', 413);
+  }
+
   const body = await c.req.json();
   const db = c.get('db');
 
@@ -226,6 +234,31 @@ router.post('/webhook', async (c) => {
       const orderId = payment.external_reference;
 
       if (orderId) {
+        // SEC-06: Validar que o pedido existe no banco antes de atualizar
+        const { rows: orderCheck } = await db.query(
+          'SELECT id, payment_id FROM orders WHERE id = $1',
+          [orderId]
+        );
+
+        if (!orderCheck.length) {
+          logger.warn('Webhook: pagamento referencia pedido inexistente', {
+            paymentId,
+            orderId,
+          });
+          return c.text('OK', 200); // Retorna 200 para não reenviar
+        }
+
+        // SEC-06: Se o pedido já tem um payment_id diferente, rejeitar
+        const existingPaymentId = orderCheck[0].payment_id;
+        if (existingPaymentId && String(existingPaymentId) !== String(payment.id)) {
+          logger.warn('Webhook: payment_id não corresponde ao pedido', {
+            paymentId: payment.id,
+            existingPaymentId,
+            orderId,
+          });
+          return c.text('OK', 200);
+        }
+
         // 1. Atualiza o status do pagamento no pedido (sempre)
         await db.query(
           'UPDATE orders SET payment_status = $1, updated_at = NOW() WHERE id = $2',

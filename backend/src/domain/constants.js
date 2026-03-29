@@ -27,7 +27,7 @@ export const PRODUCT_CATEGORY_VALUES = [
 
 export const SESSION_COOKIE_NAME = 'lz_session';
 export const CSRF_COOKIE_NAME = 'lz_csrf';
-export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_TTL_SECONDS = 60 * 60 * 24; // 24h — sliding window via touchSession
 export const PASSWORD_SETUP_TTL_HOURS = 48;
 export const PASSWORD_SETUP_CODE_LENGTH = 8;
 

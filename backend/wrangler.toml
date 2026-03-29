@@ -8,6 +8,13 @@ compatibility_flags = ["nodejs_compat"]
 # DATABASE_URL should be set as a secret in Cloudflare Dashboard:
 # npx wrangler secret put DATABASE_URL
 
+# SEC-01: KV namespace para rate limiting distribuído entre edge nodes.
+# Crie com: npx wrangler kv:namespace create "RATE_LIMIT_KV"
+# Cole o ID gerado abaixo.
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "COLE_O_ID_AQUI"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "lojinha-do-ze-images"

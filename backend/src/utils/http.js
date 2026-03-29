@@ -15,12 +15,14 @@ export function applySecurityHeaders(c) {
   if (!headers.has('Content-Security-Policy')) {
     headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      // SEC-15: script-src 'none' explícito — API não serve HTML/scripts
+      "default-src 'self'; script-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     );
   }
 
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+  // SEC-14: geolocation=() — e-commerce não precisa de geolocalização
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   headers.set('X-Frame-Options', 'DENY');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Cross-Origin-Opener-Policy', 'same-origin');
@@ -33,6 +35,8 @@ export function applySecurityHeaders(c) {
     // Fallback caso a análise da URL falhe
   }
 
+  // SEC-13: Em Cloudflare Workers, c.req.url reflete o protocolo real do cliente.
+  // O HSTS é setado apenas em HTTPS, o que é correto para este ambiente.
   if (isHttps) {
     headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }

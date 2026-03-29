@@ -1,5 +1,12 @@
-import { createDb } from './db.js';
-import { getRequiredEnv, loadLocalEnv } from './load-local-env.js';
+/* eslint-disable no-console */
+/**
+ * Script utilitário para limpar TODOS os dados do banco de dados.
+ * SEC-09: Movido de src/ para scripts/ para não ser empacotado no deploy.
+ *
+ * Uso: node scripts/clear-db.js
+ */
+import { createDb } from '../src/db.js';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
 
 loadLocalEnv();
 

@@ -2,6 +2,7 @@ import { getCookie } from 'hono/cookie';
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../domain/constants.js';
 import { resolveSession } from '../services/authService.js';
 import { isSafeMethod, jsonError } from '../utils/http.js';
+import { isAllowedOrigin } from './security.js';
 
 async function loadSession(c) {
   const db = c.get('db');
@@ -36,6 +37,17 @@ export async function authMiddleware(c, next) {
   await next();
 }
 
+/**
+ * Middleware CSRF usando double-submit cookie.
+ *
+ * SEC-02: Para requests sem sessão (rotas públicas como /catalog/orders, /payments/pix),
+ * o CSRF é pulado intencionalmente — essas rotas são protegidas por:
+ *   1. originGuardMiddleware (bloqueia cross-origin mutations)
+ *   2. Rate limiting por endpoint
+ *   3. Validação Zod de payload
+ *
+ * Como defesa em profundidade, verificamos Origin mesmo para requests sem sessão.
+ */
 export async function csrfMiddleware(c, next) {
   if (isSafeMethod(c.req.method)) {
     await next();
@@ -46,6 +58,11 @@ export async function csrfMiddleware(c, next) {
   if (!session?.id) {
     const hasSessionCookie = Boolean(getCookie(c, SESSION_COOKIE_NAME));
     if (!hasSessionCookie) {
+      // SEC-02: Defesa em profundidade — verificar Origin para mutações sem sessão
+      const origin = c.req.header('origin');
+      if (origin && !isAllowedOrigin(origin, c)) {
+        return jsonError(c, 403, 'Origem não permitida');
+      }
       await next();
       return;
     }
