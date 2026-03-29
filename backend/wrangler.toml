@@ -8,6 +8,9 @@ compatibility_flags = ["nodejs_compat"]
 # DATABASE_URL should be set as a secret in Cloudflare Dashboard:
 # npx wrangler secret put DATABASE_URL
 
+# GEMINI_API_KEY should be set as a secret in Cloudflare Dashboard:
+# npx wrangler secret put GEMINI_API_KEY
+
 # SEC-01: KV namespace para rate limiting distribuído entre edge nodes.
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
