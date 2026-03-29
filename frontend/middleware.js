@@ -138,5 +138,5 @@ Disallow: /easter-egg-nao-existe
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/conta/:path*', '/login'],
+  matcher: ['/admin/:path*', '/conta/:path*', '/login', '/robots.txt'],
 };
