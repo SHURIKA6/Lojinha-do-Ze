@@ -34,6 +34,8 @@ import {
   YAxis,
 } from 'recharts';
 import { CHART_COLORS } from '@/styles/theme';
+import '@/app/admin/dashboard.css';
+import AdminAssistant from './AdminAssistant';
 
 /**
  * AdminDashboard - Componente principal do painel administrativo
@@ -70,16 +72,16 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="admin-dashboard-loading animate-pulse p-6">
-        <div className="h-10 w-64 bg-slate-200 rounded mb-8"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="admin-dashboard-loading">
+        <div className="admin-dashboard-loading__title"></div>
+        <div className="admin-dashboard-loading__metrics">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-slate-100 rounded-2xl"></div>
+            <div key={i} className="admin-dashboard-loading__metric"></div>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="h-96 bg-slate-100 rounded-2xl shadow-sm border border-slate-100 p-6"></div>
-          <div className="h-96 bg-slate-100 rounded-2xl shadow-sm border border-slate-100 p-6"></div>
+        <div className="admin-dashboard-loading__charts">
+          <div className="admin-dashboard-loading__chart"></div>
+          <div className="admin-dashboard-loading__chart"></div>
         </div>
       </div>
     );
@@ -87,15 +89,15 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="admin-error p-12 text-center">
-        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FiAlertCircle size={32} />
+      <div className="admin-error">
+        <div className="admin-error__icon">
+          <FiAlertCircle />
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Ops! Algo deu errado</h2>
-        <p className="text-slate-500 mb-6">{error}</p>
+        <h2 className="admin-error__title">Ops! Algo deu errado</h2>
+        <p className="admin-error__message">{error}</p>
         <button 
           onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors"
+          className="btn btn--primary"
         >
           Tentar Novamente
         </button>
@@ -107,91 +109,93 @@ export default function AdminDashboard() {
     {
       label: 'Faturamento Mensal',
       value: formatCurrency(data?.monthRevenue || 0),
-      color: 'bg-emerald-50 text-emerald-600',
+      color: 'var(--success-500)',
       icon: <FiDollarSign />
     },
     {
       label: 'Vendas Concluídas',
       value: data?.totalSales || 0,
-      color: 'bg-blue-50 text-blue-600',
+      color: 'var(--info-500)',
       icon: <FiShoppingBag />
     },
     {
       label: 'Pedidos Ativos',
       value: data?.activeOrders || 0,
-      color: 'bg-orange-50 text-orange-600',
+      color: 'var(--warning-500)',
       icon: <FiPackage />
     },
     {
       label: 'Lucro Previsto',
       value: formatCurrency(data?.profit || 0),
-      color: 'bg-indigo-50 text-indigo-600',
+      color: 'var(--primary-500)',
       icon: <FiTrendingUp />
     }
   ];
 
   return (
-    <div className="admin-dashboard px-6 py-8 animate-fadeIn">
+    <div className="admin-dashboard">
       {/* Welcome Header */}
-      <header className="mb-10">
-        <h1 className="text-3xl font-extrabold text-[#21362f] tracking-tight">Painel Operacional</h1>
-        <p className="text-[#64748b]">Olá, {user?.name || 'Administrador'}. Aqui está o panorama do mês atual.</p>
+      <header className="admin-dashboard__header">
+        <h1 className="admin-dashboard__title">Painel Operacional</h1>
+        <p className="admin-dashboard__subtitle">Olá, {user?.name || 'Administrador'}. Aqui está o panorama do mês atual.</p>
       </header>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="admin-dashboard__metrics">
         {metrics.map((stat, idx) => (
-          <div key={idx} className="metric-card group hover:scale-[1.02] transition-transform">
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 h-full flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                <p className="text-2xl font-black text-slate-900 leading-tight">{stat.value}</p>
-              </div>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-sm ${stat.color}`}>
-                {stat.icon}
-              </div>
+          <div key={idx} className="metric-card" style={{ '--metric-color': stat.color }}>
+            <div className="metric-card__icon">
+              {stat.icon}
+            </div>
+            <div className="metric-card__content">
+              <span className="metric-card__label">{stat.label}</span>
+              <span className="metric-card__value">{stat.value}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <FiBarChart2 className="text-blue-500" /> Fluxo Financeiro Diário
+      <div className="admin-dashboard__charts">
+        <div className="dashboard-card admin-dashboard__chart-main">
+          <div className="dashboard-card__header">
+            <h3 className="dashboard-card__title">
+              <FiBarChart2 className="dashboard-card__title-icon" style={{ color: 'var(--info-500)' }} />
+              Fluxo Financeiro Diário
             </h3>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
             {data?.chartData?.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'var(--gray-400)', fontSize: 10 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--gray-400)', fontSize: 10 }} />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)' }}
                     formatter={(value) => formatCurrency(value)}
                   />
-                  <Bar dataKey="receita" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="despesa" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="receita" fill="var(--success-500)" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="despesa" fill="var(--danger-500)" radius={[4, 4, 0, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <FiBarChart2 size={40} className="mb-2 opacity-20" />
-                <p className="italic">Sem dados suficientes para gerar o gráfico.</p>
+              <div className="dashboard-empty dashboard-empty--centered">
+                <FiBarChart2 className="dashboard-empty__icon" />
+                <p>Sem dados suficientes para gerar o gráfico.</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
-            <FiPieChart className="text-indigo-500" /> Categorias
-          </h3>
-          <div className="h-[300px] w-full flex items-center justify-center">
+        <div className="dashboard-card">
+          <div className="dashboard-card__header">
+            <h3 className="dashboard-card__title">
+              <FiPieChart className="dashboard-card__title-icon" style={{ color: 'var(--primary-500)' }} />
+              Categorias
+            </h3>
+          </div>
+          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
             {data?.categoryChart?.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -210,9 +214,9 @@ export default function AdminDashboard() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-center text-slate-400">
-                <FiPieChart size={40} className="mx-auto mb-2 opacity-20" />
-                <p className="italic text-sm">Sem categorias cadastradas.</p>
+              <div className="dashboard-empty dashboard-empty--centered">
+                <FiPieChart className="dashboard-empty__icon" />
+                <p>Sem categorias cadastradas.</p>
               </div>
             )}
           </div>
@@ -220,38 +224,39 @@ export default function AdminDashboard() {
       </div>
 
       {/* Lists Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="admin-dashboard__lists">
         
-        {/* Recent Orders - Premium Style */}
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-50 flex justify-between items-center">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <FiClock className="text-orange-500" /> Pedidos Recentes
+        {/* Recent Orders */}
+        <section className="dashboard-card">
+          <div className="dashboard-card__header">
+            <h3 className="dashboard-card__title">
+              <FiClock className="dashboard-card__title-icon" style={{ color: 'var(--warning-500)' }} />
+              Pedidos Recentes
             </h3>
             <button 
               onClick={() => router.push('/admin/pedidos')}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider flex items-center gap-1 group"
+              className="view-all-link"
             >
-              Ver tudo <FiChevronRight className="group-hover:translate-x-0.5 transition-transform" />
+              Ver tudo <FiChevronRight className="view-all-link__icon" />
             </button>
           </div>
           
-          <div className="p-2">
+          <div className="dashboard-card__body">
             {data?.recentOrders?.length > 0 ? (
-              <div className="space-y-1">
+              <div>
                 {data.recentOrders.map((order) => (
-                  <div key={order.id} className="p-4 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xs">
+                  <div key={order.id} className="order-item">
+                    <div className="order-item__info">
+                      <div className="order-item__avatar">
                         #{order.id.toString().slice(-4)}
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-800 leading-none mb-1">{order.customer_name || 'Cliente Avulso'}</p>
-                        <p className="text-[10px] font-medium text-slate-400 uppercase">{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega em Domicílio'}</p>
+                      <div className="order-item__details">
+                        <p className="order-item__name">{order.customer_name || 'Cliente Avulso'}</p>
+                        <p className="order-item__type">{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega em Domicílio'}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-black text-slate-900 mb-1">{formatCurrency(order.total)}</p>
+                    <div className="order-item__value">
+                      <p className="order-item__total">{formatCurrency(order.total)}</p>
                       <span className={`badge badge--${getStatusVariant(order.status)}`}>
                         {getStatusLabel(order.status)}
                       </span>
@@ -260,7 +265,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="py-16 text-center text-slate-400 italic font-medium">
+              <div className="dashboard-empty">
                 Nenhum pedido processado hoje.
               </div>
             )}
@@ -268,39 +273,40 @@ export default function AdminDashboard() {
         </section>
 
         {/* Inventory Alarms */}
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <FiAlertCircle className="text-red-500" /> Alertas de Inventário
+        <section className="dashboard-card">
+          <div className="dashboard-card__header">
+            <h3 className="dashboard-card__title">
+              <FiAlertCircle className="dashboard-card__title-icon" style={{ color: 'var(--danger-500)' }} />
+              Alertas de Inventário
             </h3>
             {data?.lowStock?.length > 0 && (
-              <span className="bg-red-100 text-red-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+              <span className="critical-badge">
                 {data.lowStock.length} itens críticos
               </span>
             )}
           </div>
           
-          <div className="p-4">
+          <div className="dashboard-card__body">
             {data?.lowStock?.length > 0 ? (
-              <div className="space-y-3">
+              <div>
                 {data.lowStock.map((product) => (
-                  <div key={product.id} className="p-4 rounded-xl border border-red-50 bg-red-50/20 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-white shadow-sm flex items-center justify-center text-red-500 border border-red-100">
+                  <div key={product.id} className="stock-alert">
+                    <div className="stock-alert__info">
+                      <div className="stock-alert__icon">
                         <FiPackage />
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-800">{product.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black uppercase text-red-600">Disponível: {product.quantity}</span>
-                          <span className="w-1 h-1 bg-red-200 rounded-full"></span>
-                          <span className="text-[10px] font-black uppercase text-slate-400">Mínimo: {product.min_stock}</span>
+                      <div className="stock-alert__details">
+                        <p className="stock-alert__name">{product.name}</p>
+                        <div className="stock-alert__quantity">
+                          <span className="stock-alert__quantity-value">Disponível: {product.quantity}</span>
+                          <span className="stock-alert__quantity-separator"></span>
+                          <span className="stock-alert__quantity-min">Mínimo: {product.min_stock}</span>
                         </div>
                       </div>
                     </div>
                     <button 
                       onClick={() => router.push(`/admin/estoque?edit=${product.id}`)}
-                      className="px-4 py-2 bg-white text-red-600 text-[10px] font-black uppercase rounded-lg border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
+                      className="stock-alert__action"
                     >
                       Solicitar Reposição
                     </button>
@@ -308,17 +314,17 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="py-16 text-center">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="dashboard-empty dashboard-empty--centered">
+                <div className="dashboard-empty__icon--success">
                   <FiPackage />
                 </div>
-                <p className="text-slate-400 font-medium italic">Todos os níveis de estoque estão estáveis.</p>
+                <p>Todos os níveis de estoque estão estáveis.</p>
               </div>
             )}
           </div>
         </section>
       </div>
-
+      <AdminAssistant />
     </div>
   );
 }
