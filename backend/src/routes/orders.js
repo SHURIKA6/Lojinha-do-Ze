@@ -4,7 +4,7 @@ import { adminOnly, authMiddleware } from '../middleware/auth.js';
 import { orderStatusSchema } from '../domain/schemas.js';
 import { ORDER_STATUS_VALUES } from '../domain/constants.js';
 import { jsonError, setNoStore, validationError } from '../utils/http.js';
-import { isValidUuid } from '../utils/normalize.js';
+import { isValidId } from '../utils/normalize.js';
 import { MercadoPagoService } from '../services/mercadoPagoService.js';
 import { getRequiredEnv } from '../load-local-env.js';
 import { logger } from '../utils/logger.js';
@@ -29,12 +29,6 @@ async function restoreOrderStock(client, order) {
       [item.productId, item.name, item.quantity, `Cancelamento ou Exclusão do Pedido #${order.id}`]
     );
   }
-}
-
-// Validação consistente para IDs (suporta UUID e integer)
-function isValidId(id) {
-  if (typeof id !== 'string') return false;
-  return isValidUuid(id) || /^\d+$/.test(id);
 }
 
 router.get('/', authMiddleware, async (c) => {

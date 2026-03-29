@@ -6,6 +6,7 @@ import { getRequiredEnv } from '../load-local-env.js';
 import { jsonError, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
 import { orderLimiter } from '../middleware/rateLimit.js';
+import { normalizePhoneDigits } from '../utils/normalize.js';
 
 const router = new Hono();
 
@@ -17,13 +18,13 @@ const getService = (c) => {
 
 /**
  * Verifica a assinatura HMAC do webhook do Mercado Pago.
- * Retorna true se a assinatura for válida ou se o secret não estiver configurado (dev).
+ * Retorna true se a assinatura for válida. Rejeita se o secret não estiver configurado.
  */
 async function verifyWebhookSignature(c, dataId) {
   const webhookSecret = c.env?.MERCADO_PAGO_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    logger.warn('MERCADO_PAGO_WEBHOOK_SECRET não configurado — webhook aceito sem verificação');
-    return true;
+    logger.error('MERCADO_PAGO_WEBHOOK_SECRET não configurado — webhook rejeitado');
+    return false;
   }
 
   const xSignature = c.req.header('x-signature');
@@ -74,7 +75,9 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
   try {
     // 1. Busca o pedido para validar o valor e ownership
     const { rows: orderRows } = await db.query(
-      'SELECT id, total, customer_name, customer_id, payment_id FROM orders WHERE id = $1',
+      `SELECT id, total, customer_name, customer_id, customer_phone, payment_id
+       FROM orders
+       WHERE id = $1`,
       [payload.orderId]
     );
 
@@ -93,6 +96,12 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
     const user = c.get('user');
     if (user && order.customer_id && String(order.customer_id) !== String(user.id)) {
       return jsonError(c, 403, 'Acesso negado a este pedido');
+    }
+
+    const normalizedOrderPhone = normalizePhoneDigits(order.customer_phone || '');
+    const normalizedPayloadPhone = normalizePhoneDigits(payload.phone);
+    if (!normalizedOrderPhone || normalizedOrderPhone !== normalizedPayloadPhone) {
+      return jsonError(c, 403, 'Os dados do pedido não conferem para criar o pagamento');
     }
 
     const service = getService(c);
@@ -127,17 +136,50 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
  * Verifica o status de um pagamento específico (Polling do Frontend)
  */
 router.get('/pix/:id', async (c) => {
+  const db = c.get('db');
   const paymentId = c.req.param('id');
+  const orderId = c.req.query('orderId');
+  const phone = c.req.query('phone') || '';
 
   // Validação básica do ID
   if (!/^\d+$/.test(paymentId)) {
     return jsonError(c, 400, 'ID de pagamento inválido');
   }
 
+  if (!/^\d+$/.test(orderId || '')) {
+    return jsonError(c, 400, 'ID de pedido inválido');
+  }
+
+  const { rows } = await db.query(
+    `SELECT id, customer_id, customer_phone
+     FROM orders
+     WHERE id = $1`,
+    [orderId]
+  );
+  if (!rows.length) {
+    return jsonError(c, 404, 'Pedido não encontrado');
+  }
+
+  const order = rows[0];
+  const user = c.get('user');
+  if (user && order.customer_id && String(order.customer_id) !== String(user.id)) {
+    return jsonError(c, 403, 'Acesso negado a este pedido');
+  }
+
+  const normalizedOrderPhone = normalizePhoneDigits(order.customer_phone || '');
+  const normalizedRequestPhone = normalizePhoneDigits(phone);
+  if (!normalizedOrderPhone || normalizedOrderPhone !== normalizedRequestPhone) {
+    return jsonError(c, 403, 'Os dados do pedido não conferem para consultar o pagamento');
+  }
+
   const service = getService(c);
 
   try {
     const payment = await service.getPayment(paymentId);
+    if (String(payment.external_reference || '') !== String(orderId)) {
+      return jsonError(c, 403, 'Pagamento não corresponde ao pedido informado');
+    }
+
     return c.json({
       id: payment.id,
       status: payment.status,

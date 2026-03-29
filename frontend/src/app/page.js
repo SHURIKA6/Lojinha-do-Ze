@@ -36,6 +36,13 @@ function getRequestOrigin() {
     return `https://${vercelUrl}`;
   }
 
+  // SEC: Em produção, não confiar em headers da requisição (host header poisoning)
+  // NEXT_PUBLIC_SITE_URL deve ser configurado obrigatoriamente
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('NEXT_PUBLIC_SITE_URL must be set in production');
+  }
+
+  // Apenas em desenvolvimento, usar headers da requisição
   const incoming = headers();
   const host = incoming.get('x-forwarded-host') || incoming.get('host');
   if (!host) {

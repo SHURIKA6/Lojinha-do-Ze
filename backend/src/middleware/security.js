@@ -131,15 +131,20 @@ export function isAllowedOrigin(origin, c) {
     return true;
   }
 
-  const forwardedOrigin = getForwardedOrigin(c);
-  if (forwardedOrigin && origin === forwardedOrigin) {
-    return true;
-  }
+  // SEC: Só confiar em headers de forwarding se TRUST_PROXY estiver habilitado
+  // Headers como x-forwarded-host são spoofáveis pelo cliente
+  const trustProxy = c.env?.TRUST_PROXY === 'true';
+  if (trustProxy) {
+    const forwardedOrigin = getForwardedOrigin(c);
+    if (forwardedOrigin && origin === forwardedOrigin) {
+      return true;
+    }
 
-  const originHost = normalizeHost(origin.replace(/^[a-z]+:\/\//i, ''));
-  const forwardedHost = getForwardedHost(c);
-  if (forwardedHost && originHost && forwardedHost === originHost) {
-    return true;
+    const originHost = normalizeHost(origin.replace(/^[a-z]+:\/\//i, ''));
+    const forwardedHost = getForwardedHost(c);
+    if (forwardedHost && originHost && forwardedHost === originHost) {
+      return true;
+    }
   }
 
   const { allowedOrigins, allowedHosts } = getAllowedOriginConfig(c);
@@ -147,6 +152,7 @@ export function isAllowedOrigin(origin, c) {
     return true;
   }
 
+  const originHost = normalizeHost(origin.replace(/^[a-z]+:\/\//i, ''));
   if (originHost && allowedHosts.has(originHost)) {
     return true;
   }

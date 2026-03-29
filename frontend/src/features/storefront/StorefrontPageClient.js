@@ -1,5 +1,4 @@
 'use client';
-// Vercel trigger comment: updated easter eggs
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,6 +16,7 @@ import { useCheckout } from './hooks/useCheckout';
 import styles from './Storefront.module.css';
 
 export default function StorefrontPageClient({ initialCatalog = null }) {
+  const easterEggsEnabled = process.env.NEXT_PUBLIC_ENABLE_EASTER_EGGS === 'true';
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [productModal, setProductModal] = useState(null);
@@ -65,12 +65,16 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
     pixConfirmed, setPixConfirmed,
     handleCheckout,
     sendWhatsAppReceipt
-  } = useCheckout({ cart, cartTotal, setError });
+  } = useCheckout({ cart, cartTotal, setError, user });
 
   const konamiRef = useRef([]);
   const konamiTimer = useRef(null);
 
   useEffect(() => {
+    if (!easterEggsEnabled) {
+      return undefined;
+    }
+
     // Sequência do Konami Code (suportando nomes de teclas modernos e legados)
     const sequence = [
       ['arrowup', 'up'], ['arrowup', 'up'],
@@ -131,7 +135,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
       window.removeEventListener('keydown', handleKeyDown);
       if (konamiTimer.current) clearTimeout(konamiTimer.current);
     };
-  }, [toast, router]);
+  }, [easterEggsEnabled, toast, router]);
 
   const onCheckoutClick = async () => {
     const success = await handleCheckout();

@@ -8,6 +8,7 @@ import { jsonError, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
 import { cacheService } from '../services/cacheService.js';
 import { CATALOG_CACHE_TTL_SECONDS, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants.js';
+import { CACHE_PREFIXES } from '../domain/cacheKeys.js';
 
 const router = new Hono();
 
@@ -37,7 +38,7 @@ router.get('/', async (c) => {
   const search = c.req.query('search')?.trim();
   const category = c.req.query('category')?.trim();
 
-  const cacheKey = `catalog_${limit}_${offset}_${search || ''}_${category || ''}`;
+  const cacheKey = `${CACHE_PREFIXES.CATALOG}${limit}_${offset}_${search || ''}_${category || ''}`;
 
   const cached = cacheService.get(cacheKey);
   if (cached) {

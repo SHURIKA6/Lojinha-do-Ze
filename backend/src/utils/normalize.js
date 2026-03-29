@@ -48,6 +48,15 @@ export function isValidUuid(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
+/**
+ * Valida se um ID é válido (UUID ou inteiro positivo).
+ * Centralizado aqui para evitar duplicação entre rotas.
+ */
+export function isValidId(id) {
+  if (typeof id !== 'string') return false;
+  return isValidUuid(id) || /^\d+$/.test(id);
+}
+
 export function normalizeEmail(value) {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim().toLowerCase();

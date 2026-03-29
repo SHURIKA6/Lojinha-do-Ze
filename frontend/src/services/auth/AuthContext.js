@@ -5,7 +5,7 @@ import { getMe } from '@/services/api/auth';
 import { login as apiLogin, logout as apiLogout } from '@/services/api/auth';
 import { useToast } from '@/components/ui/ToastProvider';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);

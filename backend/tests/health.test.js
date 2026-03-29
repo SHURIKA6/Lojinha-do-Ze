@@ -7,6 +7,10 @@ describe('Health Check API', () => {
     expect(res.status).toBe(200);
     
     const body = await res.json();
-    expect(body).toEqual({ status: 'ok', message: 'Lojinha do Zé API' });
+    expect(body.status).toBe('ok');
+    expect(body.message).toBe('Lojinha do Zé API');
+    expect(body.timestamp).toBeDefined();
+    expect(body.checks).toBeDefined();
+    expect(body.checks.cache).toBeDefined();
   });
 });

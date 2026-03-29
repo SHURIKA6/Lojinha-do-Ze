@@ -40,8 +40,10 @@ export default function ClientesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [deletingCustomer, setDeletingCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -50,6 +52,7 @@ export default function ClientesPage() {
   const [form, setForm] = useState(initialForm);
 
   const [roleForm, setRoleForm] = useState({ role: '', password: '' });
+  const [deletePassword, setDeletePassword] = useState('');
 
   const confirm = useConfirm();
   const toast = useToast();
@@ -117,6 +120,18 @@ export default function ClientesPage() {
     setRoleModalOpen(false);
     setSelectedCustomer(null);
     setRoleForm({ role: '', password: '' });
+  };
+
+  const openDeleteModal = (customer) => {
+    setDeletingCustomer(customer);
+    setDeletePassword('');
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setDeletingCustomer(null);
+    setDeletePassword('');
   };
 
   const handleUpdateRole = async () => {
@@ -225,34 +240,25 @@ export default function ClientesPage() {
     }
   };
 
-  const handleDelete = async (customer) => {
-    let adminSecret = undefined;
+  const handleDelete = async () => {
+    if (!deletingCustomer) return;
 
-    if (customer.role === 'admin') {
-      const code = window.prompt(
-        `Para excluir o administrador ${customer.name}, digite o código de segurança (160506):`
-      );
-      if (code === null) return;
-      adminSecret = code;
-    } else {
-      const confirmed = await confirm({
-        title: 'Excluir usuário',
-        description: 'Esta ação remove o cadastro do usuário.',
-        body: `Tem certeza que deseja excluir ${customer.name}?`,
-        confirmLabel: 'Excluir',
-        cancelLabel: 'Cancelar',
-      });
-
-      if (!confirmed) return;
+    if (!deletePassword) {
+      toast.error('Informe a senha administrativa para confirmar a exclusão.');
+      return;
     }
 
+    setSaving(true);
     try {
-      await deleteCustomer(customer.id, adminSecret);
+      await deleteCustomer(deletingCustomer.id, deletePassword);
       toast.success('Usuário excluído com sucesso.');
+      closeDeleteModal();
       await loadData();
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Não foi possível excluir o usuário.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -386,7 +392,7 @@ export default function ClientesPage() {
                         type="button"
                         className="btn btn--danger btn--sm"
                         aria-label={`Excluir ${customer.name}`}
-                        onClick={() => handleDelete(customer)}
+                        onClick={() => openDeleteModal(customer)}
                       >
                         <FiTrash2 />
                       </button>
@@ -459,6 +465,45 @@ export default function ClientesPage() {
           <p style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', marginTop: 'var(--space-2)' }}>
             Esta ação requer autorização elevada.
           </p>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Excluir usuário"
+        description={
+          deletingCustomer?.role === 'admin'
+            ? `Você está removendo um administrador: ${deletingCustomer?.name}.`
+            : `Confirme a exclusão de ${deletingCustomer?.name || 'este usuário'}.`
+        }
+        footer={
+          <>
+            <button type="button" className="btn btn--secondary" onClick={closeDeleteModal}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn--danger" onClick={handleDelete} disabled={saving}>
+              {saving ? 'Excluindo...' : 'Excluir usuário'}
+            </button>
+          </>
+        }
+      >
+        <p className="modal__confirm-body">
+          Esta ação é destrutiva e requer reconfirmação com a sua senha administrativa.
+        </p>
+
+        <div className="form-group" style={{ marginTop: 'var(--space-4)', marginBottom: 0 }}>
+          <label className="form-label" htmlFor="delete-admin-password">
+            Senha Administrativa
+          </label>
+          <input
+            id="delete-admin-password"
+            type="password"
+            className="form-input"
+            value={deletePassword}
+            onChange={(event) => setDeletePassword(event.target.value)}
+            placeholder="Digite sua senha para confirmar"
+          />
         </div>
       </Modal>
 

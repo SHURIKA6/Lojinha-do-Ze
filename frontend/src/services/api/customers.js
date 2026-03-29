@@ -45,9 +45,9 @@ export function updateUserRole(id, role, password) {
   });
 }
 
-export function deleteCustomer(id, adminSecret) {
+export function deleteCustomer(id, password) {
   return request(`/customers/${id}`, {
     method: 'DELETE',
-    body: adminSecret ? JSON.stringify({ adminSecret }) : undefined,
+    body: JSON.stringify({ password }),
   });
 }

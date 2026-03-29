@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react';
-import { createOrder, createPixPayment, getPixPaymentStatus } from '@/lib/api';
+import {
+  createOrder,
+  createPixPayment,
+  getPixPaymentStatus,
+  isValidCpf,
+  isValidEmail,
+} from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
 
 const CUSTOMER_STORAGE_KEY = 'lojinha_customer';
 
-export function useCheckout({ cart, cartTotal, setError }) {
-  const [customerForm, setCustomerForm] = useState({ name: '', phone: '', cpf: '', notes: '' });
+export function useCheckout({ cart, cartTotal, setError, user = null }) {
+  const [customerForm, setCustomerForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    cpf: '',
+    notes: '',
+  });
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerCoords, setCustomerCoords] = useState(null);
   const [deliveryType, setDeliveryType] = useState('entrega');
@@ -24,24 +36,37 @@ export function useCheckout({ cart, cartTotal, setError }) {
     if (!saved) return;
     try {
       const data = JSON.parse(saved);
-      setCustomerForm(prev => ({
+      setCustomerForm((prev) => ({
         ...prev,
         name: data.name || '',
         phone: data.phone || '',
-        cpf: data.cpf || '',
-        notes: data.notes || '',
+        email: data.email || '',
       }));
-      setCustomerAddress(data.address || '');
-      setCustomerCoords(data.coords || null);
+      // SEC: Não restaurar endereço/coords do localStorage (PII desnecessária)
       if (data.name && data.phone) setIsRegistered(true);
     } catch (err) {
       console.error('Erro no armazenamento:', err);
     }
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    setCustomerForm((prev) => ({
+      ...prev,
+      name: prev.name || user.name || '',
+      phone: prev.phone || user.phone || '',
+      email: prev.email || user.email || '',
+    }));
+
+    setCustomerAddress((prev) => prev || user.address || '');
+    if (user.name && user.phone && !isRegistered) {
+      setIsRegistered(true);
+    }
+  }, [isRegistered, user]);
+
   const sendWhatsAppReceipt = (order, items, method) => {
     const zePhone = process.env.NEXT_PUBLIC_ZE_PHONE;
-    console.log('DEBUG: NEXT_PUBLIC_ZE_PHONE =', zePhone);
     if (!zePhone) {
       toast.error('Número de WhatsApp não configurado. Por favor, contate o administrador.');
       return;
@@ -76,6 +101,18 @@ export function useCheckout({ cart, cartTotal, setError }) {
       setError('Nome e telefone são obrigatórios.');
       return;
     }
+    if (customerForm.email && !isValidEmail(customerForm.email)) {
+      setError('Informe um e-mail válido para continuar.');
+      return;
+    }
+    if (paymentMethod === 'pix' && !customerForm.email.trim()) {
+      setError('Informe um e-mail válido para gerar o pagamento via Pix.');
+      return;
+    }
+    if (paymentMethod === 'pix' && !isValidCpf(customerForm.cpf)) {
+      setError('Informe um CPF válido para gerar o pagamento via Pix.');
+      return;
+    }
     if (deliveryType === 'entrega' && !customerAddress.trim()) {
       setError('Endereço de entrega é obrigatório.');
       return;
@@ -102,14 +139,13 @@ export function useCheckout({ cart, cartTotal, setError }) {
         notes: customerForm.notes,
       });
 
+      // SEC: Não salvar PII desnecessária em localStorage (endereço, coordenadas)
+      // Apenas dados mínimos para UX de retorno
       if (typeof window !== 'undefined') {
         localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
           name: customerForm.name,
           phone: customerForm.phone,
-          cpf: customerForm.cpf,
-          address: customerAddress,
-          coords: customerCoords,
-          notes: customerForm.notes,
+          email: customerForm.email,
         }));
       }
 
@@ -127,21 +163,24 @@ export function useCheckout({ cart, cartTotal, setError }) {
 
           const payment = await createPixPayment({
             orderId: result.order.id,
-            email: 'cliente@exemplo.com', // Opcional ou pegar se houver
+            email: customerForm.email.trim(),
+            phone: customerForm.phone,
             firstName,
             lastName,
-            identificationNumber: customerForm.cpf.replace(/\D/g, '')
+            identificationNumber: customerForm.cpf.replace(/\D/g, ''),
           });
-          
-          setOrderResult(prev => ({ ...prev, pix: payment }));
+
+          setOrderResult((prev) => ({ ...prev, pix: payment }));
         } catch (paymentErr) {
           console.error('Erro ao gerar Pix:', paymentErr);
-          toast.error('Pedido criado, mas não conseguimos gerar o QR Code Pix. Tente novamente em "Meus Pedidos".');
+          toast.error(
+            'Pedido criado, mas não conseguimos gerar o QR Code Pix. Tente novamente em "Meus Pedidos".'
+          );
         }
       } else {
-        sendWhatsAppReceipt(result.order, cart, paymentMethod);
+        sendWhatsAppReceipt(result.order, result.order.items || orderItems, paymentMethod);
       }
-      
+
       toast.success('Pedido enviado com sucesso.');
       return true; // Sucesso
     } catch (err) {
@@ -160,13 +199,16 @@ export function useCheckout({ cart, cartTotal, setError }) {
     if (orderResult?.pix?.id && !pixConfirmed) {
       interval = setInterval(async () => {
         try {
-          const status = await getPixPaymentStatus(orderResult.pix.id);
+          const status = await getPixPaymentStatus(orderResult.pix.id, {
+            orderId: orderResult.order.id,
+            phone: orderResult.order.customer_phone,
+          });
           if (status.status === 'approved') {
             setPixConfirmed(true);
             clearInterval(interval);
             toast.success('Pagamento Pix confirmado!', 'Sucesso');
             // Envia o WhatsApp automaticamente após confirmação
-            sendWhatsAppReceipt(orderResult.order, cart, 'pix');
+            sendWhatsAppReceipt(orderResult.order, orderResult.order.items || [], 'pix');
           }
         } catch (err) {
           console.error('Erro no polling do Pix:', err);
@@ -174,7 +216,7 @@ export function useCheckout({ cart, cartTotal, setError }) {
       }, 5000); // 5 segundos
     }
     return () => clearInterval(interval);
-  }, [orderResult, pixConfirmed]);
+  }, [orderResult, pixConfirmed, toast]);
 
   return {
     customerForm, setCustomerForm,

@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import StorefrontNavbar from './StorefrontNavbar';
+import { renderWithProviders } from '@/test-utils/renderWithProviders';
 
 // Mock react-icons to avoid issues in tests
 jest.mock('react-icons/fi', () => ({
@@ -23,24 +24,24 @@ describe('StorefrontNavbar', () => {
   };
 
   it('renders the brand name', () => {
-    render(<StorefrontNavbar {...defaultProps} />);
+    renderWithProviders(<StorefrontNavbar {...defaultProps} />);
     expect(screen.getByText('Lojinha do Zé')).toBeInTheDocument();
   });
 
   it('displays the cart count when greater than 0', () => {
-    render(<StorefrontNavbar {...defaultProps} cartCount={5} />);
+    renderWithProviders(<StorefrontNavbar {...defaultProps} cartCount={5} />);
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
   it('calls setSearch on input change', () => {
-    render(<StorefrontNavbar {...defaultProps} />);
+    renderWithProviders(<StorefrontNavbar {...defaultProps} />);
     const input = screen.getByLabelText('Buscar produto');
     fireEvent.change(input, { target: { value: 'lavanda' } });
     expect(defaultProps.setSearch).toHaveBeenCalledWith('lavanda');
   });
 
   it('calls onLogout when logout button is clicked', () => {
-    render(<StorefrontNavbar {...defaultProps} />);
+    renderWithProviders(<StorefrontNavbar {...defaultProps} />);
     const logoutBtn = screen.getByLabelText('Sair');
     fireEvent.click(logoutBtn);
     expect(defaultProps.onLogout).toHaveBeenCalled();

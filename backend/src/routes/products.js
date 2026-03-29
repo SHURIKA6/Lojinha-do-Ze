@@ -5,17 +5,13 @@ import { productCreateSchema, productUpdateSchema } from '../domain/schemas.js';
 import {
   cleanOptionalString,
   isUniqueViolation,
-  isValidUuid,
+  isValidId,
   uniqueFieldLabel,
 } from '../utils/normalize.js';
 import { jsonError, setNoStore, validationError } from '../utils/http.js';
 import { logger } from '../utils/logger.js';
-
-// Validação consistente para IDs (suporta UUID e integer)
-function isValidId(id) {
-  if (typeof id !== 'string') return false;
-  return isValidUuid(id) || /^\d+$/.test(id);
-}
+import { cacheService } from '../services/cacheService.js';
+import { CACHE_PREFIXES } from '../domain/cacheKeys.js';
 
 const router = new Hono();
 
@@ -100,6 +96,10 @@ router.post(
       }
 
       await client.query('COMMIT');
+
+      // Invalida cache do catálogo para refletir o novo produto imediatamente
+      cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG);
+
       return c.json(product, 201);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
@@ -189,6 +189,10 @@ router.put(
       }
 
       await client.query('COMMIT');
+
+      // Invalida cache do catálogo para refletir a atualização imediatamente
+      cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG);
+
       return c.json(updatedProduct);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
@@ -213,6 +217,9 @@ router.delete('/:id', async (c) => {
     if (!rowCount) {
       return jsonError(c, 404, 'Produto não encontrado');
     }
+
+    // Invalida cache do catálogo para refletir a exclusão imediatamente
+    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG);
 
     return c.json({ message: 'Produto excluído' });
   } catch (error) {

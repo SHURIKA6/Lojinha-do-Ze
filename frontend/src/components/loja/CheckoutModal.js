@@ -7,6 +7,7 @@ import {
   FiCheckCircle,
   FiCreditCard,
   FiEdit3,
+  FiMail,
   FiMapPin,
   FiPhone,
   FiShoppingBag,
@@ -65,13 +66,6 @@ export default function CheckoutModal({
 
   if (orderResult) {
     const isPix = orderResult._paymentMethod === 'pix';
-    const showWhatsApp = !isPix || pixConfirmed;
-
-    const copyPixKey = () => {
-      const key = '56.885.629/0001-10'; // J P DA SILVA LTDA - ME
-      navigator.clipboard.writeText(key.replace(/\D/g, ''));
-      alert('Chave PIX copiada!');
-    };
 
     return (
       <Modal
@@ -166,10 +160,13 @@ export default function CheckoutModal({
                 disabled={orderResult?._checkingPayment}
                 onClick={async () => {
                   if (!orderResult?.pix?.id) return;
-                  setOrderResult(prev => ({ ...prev, _checkingPayment: true }));
+                  setOrderResult((prev) => ({ ...prev, _checkingPayment: true }));
                   try {
                     const { getPixPaymentStatus } = await import('@/lib/api');
-                    const status = await getPixPaymentStatus(orderResult.pix.id);
+                    const status = await getPixPaymentStatus(orderResult.pix.id, {
+                      orderId: orderResult.order.id,
+                      phone: orderResult.order.customer_phone,
+                    });
                     if (status.status === 'approved') {
                       setPixConfirmed(true);
                     } else {
@@ -178,7 +175,7 @@ export default function CheckoutModal({
                   } catch {
                     alert('Erro ao verificar pagamento. Tente novamente.');
                   } finally {
-                    setOrderResult(prev => ({ ...prev, _checkingPayment: false }));
+                    setOrderResult((prev) => ({ ...prev, _checkingPayment: false }));
                   }
                 }}
               >
@@ -293,6 +290,12 @@ export default function CheckoutModal({
                 <FiUser />
                 <strong>{customerForm.name}</strong>
               </div>
+              {customerForm.email ? (
+                <div className={styles.profileCardItem}>
+                  <FiMail />
+                  <span>{customerForm.email}</span>
+                </div>
+              ) : null}
               <div className={styles.profileCardItem}>
                 <FiPhone />
                 <span>{customerForm.phone}</span>
@@ -351,9 +354,25 @@ export default function CheckoutModal({
             </div>
 
             <div className="form-group">
+              <label htmlFor="checkout-email" className="form-label">
+                <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
+                E-mail {paymentMethod === 'pix' ? '*' : ''}
+              </label>
+              <input
+                id="checkout-email"
+                className="form-input"
+                type="email"
+                value={customerForm.email}
+                onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                placeholder="voce@email.com"
+                aria-required={paymentMethod === 'pix'}
+              />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="checkout-cpf" className="form-label">
                 <FiCreditCard style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                CPF (para Pix) *
+                CPF {paymentMethod === 'pix' ? '(obrigatório para Pix) *' : '(opcional)'}
               </label>
               <input
                 id="checkout-cpf"
@@ -361,7 +380,7 @@ export default function CheckoutModal({
                 value={customerForm.cpf}
                 onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
                 placeholder="000.000.000-00"
-                aria-required="true"
+                aria-required={paymentMethod === 'pix'}
               />
             </div>
 

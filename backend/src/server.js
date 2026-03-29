@@ -3,6 +3,7 @@ import { createDb } from './db.js';
 import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security.js';
 import { isSafeMethod, jsonError } from './utils/http.js';
 import { logger } from './utils/logger.js';
+import { cacheService } from './services/cacheService.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
 import customersRoutes from './routes/customers.js';
@@ -29,7 +30,48 @@ app.use('/api/*', securityHeadersMiddleware);
 app.use('/api/*', originGuardMiddleware);
 app.use('/api/*', auditMiddleware);
 
-app.get('/api/health', (c) => c.json({ status: 'ok', message: 'Lojinha do Zé API' }));
+app.get('/api/health', async (c) => {
+  const isProduction = c.env?.ENVIRONMENT === 'production';
+
+  const health = {
+    status: 'ok',
+    message: 'Lojinha do Zé API',
+    timestamp: new Date().toISOString(),
+  };
+
+  // SEC: Em produção, não expor detalhes internos (enumeração, troubleshooting)
+  if (!isProduction) {
+    health.checks = {};
+  }
+
+  // Verifica conexão com o banco de dados
+  const connectionString = c.env?.DATABASE_URL;
+  if (connectionString) {
+    try {
+      const db = createDb(connectionString);
+      await db.query('SELECT 1');
+      if (!isProduction) {
+        health.checks.database = { status: 'ok' };
+      }
+      await db.close();
+    } catch (error) {
+      health.status = 'degraded';
+      if (!isProduction) {
+        health.checks.database = { status: 'error', message: error.message };
+      }
+    }
+  } else if (!isProduction) {
+    health.checks.database = { status: 'not_configured' };
+  }
+
+  // SEC: Em produção, não expor métricas de cache
+  if (!isProduction) {
+    health.checks.cache = cacheService.getMetrics();
+  }
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  return c.json(health, statusCode);
+});
 
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;

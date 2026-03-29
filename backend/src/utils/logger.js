@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 /**
  * Utilitário de log para sanitizar e mascarar dados sensíveis antes do registro.
+ * Inclui timestamps ISO 8601 e contexto estruturado para observabilidade em produção.
  */
 
 const SENSITIVE_FIELDS = [
@@ -9,6 +10,9 @@ const SENSITIVE_FIELDS = [
   'setup_code', 'token_hash', 'csrf_token', 'identifier',
   'identification_number', 'identificationnumber',
 ];
+
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+const currentLevel = LOG_LEVELS[process.env.LOG_LEVEL || 'info'] ?? LOG_LEVELS.info;
 
 function maskValue(value) {
   if (typeof value !== 'string') return value;
@@ -33,23 +37,48 @@ export function sanitizeObject(obj) {
   return sanitized;
 }
 
+function formatLog(level, message, context) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+  };
+
+  if (context) {
+    entry.context = sanitizeObject(context);
+  }
+
+  return JSON.stringify(entry);
+}
+
 export const logger = {
+  debug: (message, context) => {
+    if (currentLevel <= LOG_LEVELS.debug) {
+      console.debug(formatLog('debug', message, context));
+    }
+  },
   info: (message, context) => {
-    console.log(`[INFO] ${message}`, context ? JSON.stringify(sanitizeObject(context)) : '');
+    if (currentLevel <= LOG_LEVELS.info) {
+      console.log(formatLog('info', message, context));
+    }
   },
   warn: (message, context) => {
-    console.warn(`[WARN] ${message}`, context ? JSON.stringify(sanitizeObject(context)) : '');
+    if (currentLevel <= LOG_LEVELS.warn) {
+      console.warn(formatLog('warn', message, context));
+    }
   },
   error: (message, error, context) => {
-    const errorDetails = error instanceof Error ? {
-      message: error.message,
-      stack: error.stack,
-      ...error
-    } : error;
+    if (currentLevel <= LOG_LEVELS.error) {
+      const errorDetails = error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      } : error;
 
-    console.error(`[ERROR] ${message}`, JSON.stringify({
-      error: sanitizeObject(errorDetails),
-      context: sanitizeObject(context)
-    }));
-  }
+      console.error(formatLog('error', message, {
+        error: sanitizeObject(errorDetails),
+        ...sanitizeObject(context),
+      }));
+    }
+  },
 };
