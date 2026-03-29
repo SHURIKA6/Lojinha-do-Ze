@@ -306,6 +306,20 @@ router.delete('/:id', async (c) => {
     const db = c.get('db');
     const id = c.req.param('id');
     if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
+
+    // SEC-15: Proteção extra para exclusão de administradores
+    const { rows } = await db.query('SELECT role FROM users WHERE id = $1', [id]);
+    if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
+
+    if (rows[0].role === 'admin') {
+      const body = await c.req.json().catch(() => ({}));
+      const adminSecret = body.adminSecret || c.req.query('adminSecret');
+
+      if (adminSecret !== '160506') {
+        return jsonError(c, 403, 'Código de segurança incorreto para excluir um administrador.');
+      }
+    }
+
     const { rowCount } = await db.query('DELETE FROM users WHERE id = $1', [id]);
     if (!rowCount) return jsonError(c, 404, 'Usuário não encontrado');
     return c.json({ message: 'Usuário excluído' });

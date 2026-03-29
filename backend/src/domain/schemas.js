@@ -174,6 +174,7 @@ export const profileUpdateSchema = z
     ),
     phone: optionalTrimmedString(30, 'Telefone'),
     address: optionalTrimmedString(320, 'Endereço'),
+    adminSecret: optionalTrimmedString(50, 'Código Especial'),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Informe ao menos um campo para atualização',

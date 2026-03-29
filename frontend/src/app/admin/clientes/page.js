@@ -226,20 +226,28 @@ export default function ClientesPage() {
   };
 
   const handleDelete = async (customer) => {
-    const confirmed = await confirm({
-      title: 'Excluir usuário',
-      description: 'Esta ação remove o cadastro do usuário.',
-      body: `Tem certeza que deseja excluir ${customer.name}?`,
-      confirmLabel: 'Excluir',
-      cancelLabel: 'Cancelar',
-    });
+    let adminSecret = undefined;
 
-    if (!confirmed) {
-      return;
+    if (customer.role === 'admin') {
+      const code = window.prompt(
+        `Para excluir o administrador ${customer.name}, digite o código de segurança (160506):`
+      );
+      if (code === null) return;
+      adminSecret = code;
+    } else {
+      const confirmed = await confirm({
+        title: 'Excluir usuário',
+        description: 'Esta ação remove o cadastro do usuário.',
+        body: `Tem certeza que deseja excluir ${customer.name}?`,
+        confirmLabel: 'Excluir',
+        cancelLabel: 'Cancelar',
+      });
+
+      if (!confirmed) return;
     }
 
     try {
-      await deleteCustomer(customer.id);
+      await deleteCustomer(customer.id, adminSecret);
       toast.success('Usuário excluído com sucesso.');
       await loadData();
     } catch (error) {
