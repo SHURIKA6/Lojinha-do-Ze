@@ -28,11 +28,16 @@ function isSecureRequest(c) {
   return new URL(c.req.url).protocol === 'https:';
 }
 
+/**
+ * SEC-04: sameSite: 'Strict' impede envio do cookie em qualquer navegação cross-site.
+ * SEC-11: O cookie CSRF usa httpOnly: false intencionalmente (double-submit cookie pattern).
+ *         A proteção primária contra XSS roubar o CSRF token é o CSP + origin guard.
+ */
 function sessionCookieOptions(c, maxAge = SESSION_TTL_SECONDS, httpOnly = true) {
   const isProd = c.env?.ENVIRONMENT === 'production';
   return {
     path: '/',
-    sameSite: 'Lax',
+    sameSite: 'Strict',
     secure: isProd || isSecureRequest(c),
     httpOnly,
     maxAge,

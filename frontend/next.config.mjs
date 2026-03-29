@@ -14,17 +14,17 @@ const nextConfig = {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
+          // SEC-07: X-XSS-Protection removido — deprecated e pode causar vulnerabilidades em browsers antigos.
+          // CSP é o substituto correto.
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
           },
           {
+            // TODO SEC-05: Migrar para nonces quando Next.js tiver suporte melhor.
+            // Por enquanto, 'unsafe-inline' é necessário para o funcionamento do Next.js.
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none';",
           },
           {
             key: 'Permissions-Policy',

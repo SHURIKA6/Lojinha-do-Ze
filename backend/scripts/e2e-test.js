@@ -1,7 +1,9 @@
+/* eslint-disable no-console */
 /**
  * E2E manual para a API da Lojinha do Zé.
- * Execute localmente contra a Worker em desenvolvimento:
- * node src/e2e-test.js
+ * SEC-09: Movido de src/ para scripts/ para não ser empacotado no deploy.
+ *
+ * Uso: node scripts/e2e-test.js
  */
 
 const API_URL = 'http://localhost:8787/api';

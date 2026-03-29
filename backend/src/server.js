@@ -56,8 +56,10 @@ app.get('/api/health', async (c) => {
       await db.close();
     } catch (error) {
       health.status = 'degraded';
+      // SEC-08: Nunca expor error.message em responses — logar internamente
+      logger.error('Health check: falha na conexão com o banco', error);
       if (!isProduction) {
-        health.checks.database = { status: 'error', message: error.message };
+        health.checks.database = { status: 'error' };
       }
     }
   } else if (!isProduction) {
