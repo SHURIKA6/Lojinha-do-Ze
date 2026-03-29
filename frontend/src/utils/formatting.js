@@ -93,3 +93,9 @@ export function isValidCpf(cpf) {
   return true;
 }
 
+export function isValidEmail(email) {
+  if (typeof email !== 'string') return false;
+  const normalized = email.trim();
+  if (!normalized) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+}

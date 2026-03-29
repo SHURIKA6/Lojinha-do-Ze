@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -32,7 +33,41 @@ function isValidId(id) {
 // SEC-05: Schema Zod para role update
 const roleSchema = z.object({
   role: z.enum(['admin', 'customer']),
+  password: z
+    .string()
+    .min(1, 'Senha administrativa é obrigatória')
+    .max(128, 'Senha administrativa excede o limite permitido'),
 });
+
+const deleteSchema = z.object({
+  password: z
+    .string()
+    .min(1, 'Senha administrativa é obrigatória')
+    .max(128, 'Senha administrativa excede o limite permitido'),
+});
+
+async function validatePrivilegedAction(c, db, password, action, targetId) {
+  const currentUser = c.get('user');
+  const { rows } = await db.query('SELECT password FROM users WHERE id = $1', [currentUser.id]);
+
+  if (!rows.length) {
+    return { ok: false, response: jsonError(c, 404, 'Administrador autenticado não encontrado') };
+  }
+
+  const passwordHash = rows[0].password || '';
+  const validPassword = passwordHash ? await bcrypt.compare(password, passwordHash) : false;
+
+  if (!validPassword) {
+    logger.warn('Falha na confirmação de ação privilegiada', {
+      action,
+      actorUserId: currentUser.id,
+      targetId,
+    });
+    return { ok: false, response: jsonError(c, 403, 'Senha administrativa incorreta') };
+  }
+
+  return { ok: true };
+}
 
 // ARCH-01: Função compartilhada para invite e reset-password
 async function handleInvite(c) {
@@ -282,10 +317,24 @@ router.patch(
   async (c) => {
     try {
       const db = c.get('db');
+      const currentUser = c.get('user');
       const id = c.req.param('id');
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-      const { role } = c.req.valid('json');
+      if (String(currentUser.id) === String(id)) {
+        return jsonError(c, 400, 'Não é permitido alterar o próprio cargo por este endpoint');
+      }
+
+      const { role, password } = c.req.valid('json');
+      const passwordCheck = await validatePrivilegedAction(
+        c,
+        db,
+        password,
+        'customers.updateRole',
+        id
+      );
+      if (!passwordCheck.ok) return passwordCheck.response;
+
       const { rows } = await db.query(
         `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name, role`,
         [role, id]
@@ -301,32 +350,38 @@ router.patch(
   }
 );
 
-router.delete('/:id', async (c) => {
-  try {
-    const db = c.get('db');
-    const id = c.req.param('id');
-    if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
+router.delete(
+  '/:id',
+  zValidator('json', deleteSchema, validationError),
+  async (c) => {
+    try {
+      const db = c.get('db');
+      const currentUser = c.get('user');
+      const id = c.req.param('id');
+      if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-    // SEC-15: Proteção extra para exclusão de administradores
-    const { rows } = await db.query('SELECT role FROM users WHERE id = $1', [id]);
-    if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
-
-    if (rows[0].role === 'admin') {
-      const body = await c.req.json().catch(() => ({}));
-      const adminSecret = body.adminSecret || c.req.query('adminSecret');
-
-      if (adminSecret !== '160506') {
-        return jsonError(c, 403, 'Código de segurança incorreto para excluir um administrador.');
+      if (String(currentUser.id) === String(id)) {
+        return jsonError(c, 400, 'A autoexclusão não é permitida por este endpoint');
       }
-    }
 
-    const { rowCount } = await db.query('DELETE FROM users WHERE id = $1', [id]);
-    if (!rowCount) return jsonError(c, 404, 'Usuário não encontrado');
-    return c.json({ message: 'Usuário excluído' });
-  } catch (error) {
-    logger.error('Erro ao excluir cliente (DELETE)', error, { id: c.req.param('id') });
-    return jsonError(c, 500, 'Erro ao remover o cliente.');
+      const { password } = c.req.valid('json');
+      const passwordCheck = await validatePrivilegedAction(
+        c,
+        db,
+        password,
+        'customers.delete',
+        id
+      );
+      if (!passwordCheck.ok) return passwordCheck.response;
+
+      const { rowCount } = await db.query('DELETE FROM users WHERE id = $1', [id]);
+      if (!rowCount) return jsonError(c, 404, 'Usuário não encontrado');
+      return c.json({ message: 'Usuário excluído' });
+    } catch (error) {
+      logger.error('Erro ao excluir cliente (DELETE)', error, { id: c.req.param('id') });
+      return jsonError(c, 500, 'Erro ao remover o cliente.');
+    }
   }
-});
+);
 
 export default router;

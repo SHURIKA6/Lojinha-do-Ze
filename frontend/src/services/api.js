@@ -8,4 +8,4 @@ export * from './api/transactions';
 export * from './api/reports';
 export * from './api/profile';
 export * from './api/images';
-
+export * from './api/payments';

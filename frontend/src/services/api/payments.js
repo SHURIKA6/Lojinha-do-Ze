@@ -13,8 +13,13 @@ export async function createPixPayment(data) {
 
 /**
  * Consulta o status de um pagamento Pix
- * @param {string} paymentId 
+ * @param {string} paymentId
  */
-export async function getPixPaymentStatus(paymentId) {
-  return request(`/payments/pix/${paymentId}`);
+export async function getPixPaymentStatus(paymentId, { orderId, phone }) {
+  const query = new URLSearchParams({
+    orderId: String(orderId),
+    phone: String(phone || ''),
+  });
+
+  return request(`/payments/pix/${paymentId}?${query.toString()}`);
 }

@@ -174,7 +174,6 @@ export const profileUpdateSchema = z
     ),
     phone: optionalTrimmedString(30, 'Telefone'),
     address: optionalTrimmedString(320, 'Endereço'),
-    adminSecret: optionalTrimmedString(50, 'Código Especial'),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Informe ao menos um campo para atualização',
@@ -235,8 +234,12 @@ export const orderStatusSchema = z.object({
 export const pixPaymentSchema = z.object({
   orderId: z.coerce.number().int('ID de pedido inválido'),
   email: z.string().email('E-mail inválido'),
+  phone: z
+    .string()
+    .trim()
+    .min(10, 'Telefone inválido')
+    .max(30, 'Telefone deve ter no máximo 30 caracteres'),
   firstName: z.string().min(2, 'Nome é muito curto'),
   lastName: z.string().min(2, 'Sobrenome é muito curto'),
   identificationNumber: z.string().min(11, 'CPF/CNPJ inválido'),
 });
-
