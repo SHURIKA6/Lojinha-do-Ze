@@ -1,17 +1,27 @@
 import { Hono } from 'hono';
 import { logger } from '../utils/logger.js';
+import { getRequiredEnv } from '../load-local-env.js';
+import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
 const aiRoutes = new Hono();
 
-aiRoutes.post('/chat', async (c) => {
-  const { message } = await c.req.json();
-  const apiKey = c.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return c.json({ error: 'Chave da API do Gemini não configurada no servidor.' }, 500);
-  }
-
+// SEC-03: Proteção obrigatória para rotas administrativas de IA
+aiRoutes.post('/chat', authMiddleware, adminOnly, async (c) => {
   try {
+    const { message } = await c.req.json();
+    
+    if (!message || typeof message !== 'string') {
+      return c.json({ error: 'Mensagem inválida ou ausente.' }, 400);
+    }
+
+    let apiKey;
+    try {
+      apiKey = getRequiredEnv(c, 'GEMINI_API_KEY');
+    } catch (err) {
+      logger.error('Config Error: GEMINI_API_KEY not found', err);
+      return c.json({ error: 'Chave da API do Gemini não configurada no servidor.' }, 500);
+    }
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
@@ -28,7 +38,7 @@ aiRoutes.post('/chat', async (c) => {
                   text: `Você é o "Guardião da Lojinha", um assistente místico e inteligente da "Lojinha do Zé", um e-commerce de produtos naturais e artesanais.
                   Seu objetivo é ajudar o administrador com dados da loja, dicas de marketing e suporte. 
                   Mantenha um tom profissional, porém leve e levemente rústico (como um conselheiro sábio).
-                  Responda de forma concisa.
+                  Responda de forma concisa em português do Brasil.
                   
                   Pergunta do usuário: ${message}`
                 }
@@ -39,10 +49,19 @@ aiRoutes.post('/chat', async (c) => {
       }
     );
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      logger.error('Gemini API HTTP Error:', { 
+        status: response.status, 
+        error: errorData.error || 'Unknown Error' 
+      });
+      return c.json({ error: 'A sabedoria da IA está temporariamente indisponível.' }, 503);
+    }
+
     const data = await response.json();
     
     if (data.error) {
-      logger.error('Gemini API Error:', data.error);
+      logger.error('Gemini API Application Error:', data.error);
       return c.json({ error: 'Erro ao consultar a sabedoria da IA.' }, 500);
     }
 
@@ -50,9 +69,10 @@ aiRoutes.post('/chat', async (c) => {
 
     return c.json({ reply });
   } catch (err) {
-    logger.error('AI Route Error:', err);
+    logger.error('AI Route Critical Error:', err);
     return c.json({ error: 'Conexão mística interrompida.' }, 500);
   }
 });
 
 export default aiRoutes;
+
