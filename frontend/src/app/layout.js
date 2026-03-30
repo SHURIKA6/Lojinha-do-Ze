@@ -6,7 +6,9 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { Fraunces, Manrope } from 'next/font/google';
-import { useEffect } from 'react';
+import ServiceWorkerRegistration from '@/components/common/ServiceWorkerRegistration';
+import AccessibilityStyles from '@/components/common/AccessibilityStyles';
+import SkipLink from '@/components/common/SkipLink';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -73,37 +75,6 @@ export const viewport = {
 
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
-function ServiceWorkerRegistration() {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((registration) => {
-            console.log('SW registered: ', registration);
-            
-            // Verifica atualizações do Service Worker
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Nova versão disponível
-                  if (confirm('Nova versão disponível! Deseja atualizar?')) {
-                    window.location.reload();
-                  }
-                }
-              });
-            });
-          })
-          .catch((registrationError) => {
-            console.log('SW registration failed: ', registrationError);
-          });
-      });
-    }
-  }, []);
-
-  return null;
-}
-
 function A11yAnnouncer() {
   return (
     <div
@@ -118,35 +89,6 @@ function A11yAnnouncer() {
       }}
       id="a11y-announcer"
     />
-  );
-}
-
-function SkipLink() {
-  return (
-    <a
-      href="#main-content"
-      className="skip-link"
-      style={{
-        position: 'absolute',
-        top: '-40px',
-        left: '6px',
-        background: '#667eea',
-        color: 'white',
-        padding: '8px',
-        textDecoration: 'none',
-        borderRadius: '4px',
-        zIndex: 10000,
-        transition: 'top 0.3s',
-      }}
-      onFocus={(e) => {
-        e.target.style.top = '6px';
-      }}
-      onBlur={(e) => {
-        e.target.style.top = '-40px';
-      }}
-    >
-      Pular para o conteúdo principal
-    </a>
   );
 }
 
@@ -189,38 +131,7 @@ export default function RootLayout({ children }) {
           </ToastProvider>
         </ErrorBoundary>
         
-        {/* Estilos inline para acessibilidade */}
-        <style jsx>{`
-          .skip-link:focus {
-            top: 6px !important;
-          }
-          
-          /* Melhora o foco para acessibilidade */
-          :focus-visible {
-            outline: 3px solid #667eea;
-            outline-offset: 2px;
-          }
-          
-          /* Suporte a alto contraste */
-          @media (prefers-contrast: high) {
-            :root {
-              --primary-500: #0000ff;
-              --danger-500: #ff0000;
-              --success-500: #00ff00;
-            }
-          }
-          
-          /* Reduz animações para usuários que preferem */
-          @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
-              animation-duration: 0.01ms !important;
-              animation-iteration-count: 1 !important;
-              transition-duration: 0.01ms !important;
-            }
-          }
-        `}</style>
+        <AccessibilityStyles />
       </body>
     </html>
   );

@@ -390,3 +390,4 @@ class DemandForecastService {
 
 export const demandForecastService = new DemandForecastService();
 export { FORECAST_ALGORITHMS, SEASONALITY_PERIODS };
+export default DemandForecastService;

@@ -575,3 +575,4 @@ class BusinessIntelligenceService {
 
 export const businessIntelligenceService = new BusinessIntelligenceService();
 export { RECOMMENDATION_TYPES, RECOMMENDATION_ALGORITHMS };
+export default BusinessIntelligenceService;

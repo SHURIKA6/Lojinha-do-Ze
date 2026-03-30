@@ -7,6 +7,9 @@ const nextConfig = {
     webpackBuildWorker: true,
   },
   
+  // Turbopack config (Next.js 16 compatibility)
+  turbopack: {},
+  
   // Headers de segurança
   async headers() {
     return [
