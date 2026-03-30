@@ -45,6 +45,7 @@ next-env.d.ts
 
 # User specific
 AUDITORIA_TECNICA.md
+.cocoindex_code/
 
 !package.json
 !tsconfig.json
