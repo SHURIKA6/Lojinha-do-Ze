@@ -389,7 +389,7 @@ export default function AdvancedDashboard() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {data.categoryChart.map((entry, index) => (
+                  {(Array.isArray(data.categoryChart) ? data.categoryChart : []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>

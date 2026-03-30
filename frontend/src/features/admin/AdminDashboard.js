@@ -262,7 +262,7 @@ export default function AdminDashboard() {
                       dataKey="value"
                       paddingAngle={3}
                     >
-                      {data.categoryChart.map((_, index) => (
+                      {(Array.isArray(data.categoryChart) ? data.categoryChart : []).map((_, index) => (
                         <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>

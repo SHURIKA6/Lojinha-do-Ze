@@ -53,7 +53,7 @@ export default function ClienteLayoutClient({ children }) {
         </div>
 
         <nav className="customer-topbar__nav" aria-label="Navegação da conta">
-          {navLinks.map((link) => (
+          {(Array.isArray(navLinks) ? navLinks : []).map((link) => (
             <button
               key={link.href}
               type="button"

@@ -137,7 +137,7 @@ export function ExportButton({
       
       {isOpen && (
         <div className="export-button__dropdown">
-          {formats.map((format) => (
+          {(Array.isArray(formats) ? formats : []).map((format) => (
             <button
               key={format}
               className="export-button__option"

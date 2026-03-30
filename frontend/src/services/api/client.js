@@ -17,8 +17,8 @@ function readCookie(name) {
   if (typeof document === 'undefined') return '';
 
   const prefix = `${name}=`;
-  return document.cookie
-    .split(';')
+  const cookies = document.cookie ? document.cookie.split(';') : [];
+  return cookies
     .map((value) => value.trim())
     .find((value) => value.startsWith(prefix))
     ?.slice(prefix.length) || '';

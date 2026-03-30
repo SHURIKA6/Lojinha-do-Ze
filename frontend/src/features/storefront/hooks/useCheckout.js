@@ -122,7 +122,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }) {
     setSubmitting(true);
 
     try {
-      const orderItems = cart.map((item) => ({
+      const orderItems = (Array.isArray(cart) ? cart : []).map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         name: item.name,

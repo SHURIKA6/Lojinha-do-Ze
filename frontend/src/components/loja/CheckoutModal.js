@@ -248,7 +248,7 @@ export default function CheckoutModal({
 
         <div className={styles.summary}>
           <h4 className={styles.summaryTitle}>Resumo do pedido</h4>
-          {cart.map((item) => (
+          {(Array.isArray(cart) ? cart : []).map((item) => (
             <div key={item.productId} className={styles.summaryRow}>
               <span>
                 {item.quantity}x {item.name}

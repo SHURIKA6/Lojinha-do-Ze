@@ -1,7 +1,7 @@
 import StorefrontPageClient from '@/features/storefront/StorefrontPageClient';
 import { headers } from 'next/headers';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://lojinha-do-ze.vercel.app';
 
 export const metadata = {
   title: 'Loja',
@@ -39,7 +39,7 @@ function getRequestOrigin() {
   // SEC: Em produção, não confiar em headers da requisição (host header poisoning)
   // NEXT_PUBLIC_SITE_URL deve ser configurado obrigatoriamente
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('NEXT_PUBLIC_SITE_URL must be set in production');
+    return 'https://lojinha-do-ze.vercel.app';
   }
 
   // Apenas em desenvolvimento, usar headers da requisição

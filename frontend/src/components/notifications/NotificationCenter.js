@@ -236,7 +236,7 @@ export default function NotificationCenter() {
                 <p>Nenhuma notificação</p>
               </div>
             ) : (
-              notifications.map((notification) => (
+              (Array.isArray(notifications) ? notifications : []).map((notification) => (
                 <div
                   key={notification.id}
                   className={`notification-item ${!notification.read ? 'notification-item--unread' : ''}`}
