@@ -5,6 +5,11 @@ import { useToast } from '@/components/ui/ToastProvider';
 export function useCatalog(initialCatalog = null) {
   const hasInitialCatalog = Boolean(initialCatalog?.categories);
   const [catalogData, setCatalogData] = useState(() => initialCatalog || { categories: [], total: 0 });
+  const [categoryTabs, setCategoryTabs] = useState(() => {
+    return Array.isArray(initialCatalog?.categories)
+      ? initialCatalog.categories.map(c => ({ name: c.name, count: Array.isArray(c.products) ? c.products.length : 0 }))
+      : [];
+  });
   const [activeCategory, setActiveCategory] = useState(() => initialCatalog?.categories?.[0]?.name || '');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(() => !hasInitialCatalog);
@@ -32,6 +37,9 @@ export function useCatalog(initialCatalog = null) {
           
           if (page === 1) {
             setCatalogData(data || { categories: [], total: 0 });
+            if (!activeCategory && !search) {
+              setCategoryTabs((data?.categories || []).map(c => ({ name: c.name, count: Array.isArray(c.products) ? c.products.length : 0 })));
+            }
           } else {
             setCatalogData(prev => {
               const newCategories = [...(prev?.categories || [])];
@@ -91,6 +99,7 @@ export function useCatalog(initialCatalog = null) {
 
   return {
     catalogData,
+    categoryTabs,
     activeCategory,
     setActiveCategory,
     search,

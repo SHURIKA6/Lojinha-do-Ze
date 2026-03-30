@@ -25,7 +25,18 @@ import {
   FiUpload,
 } from 'react-icons/fi';
 
-const categories = ['Cápsulas', 'Chás', 'Tinturas', 'Cremes', 'Cosméticos', 'Outros'];
+const categories = [
+  'Óleos Essenciais',
+  'Óleos',
+  'Chás e Infusões',
+  'Naturais',
+  'Cosméticos Naturais',
+  'Suplementos',
+  'Cápsulas',
+  'Tinturas',
+  'Cremes',
+  'Outros',
+];
 
 const initialForm = {
   code: '',

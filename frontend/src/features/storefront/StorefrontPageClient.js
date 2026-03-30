@@ -29,6 +29,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
 
   const {
     catalogData,
+    categoryTabs,
     activeCategory,
     setActiveCategory,
     search,
@@ -182,7 +183,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
 
       <nav className={styles.categories} aria-label="Categorias do catálogo">
         <div className={styles.categoriesInner}>
-          {(Array.isArray(catalogData?.categories) ? catalogData.categories : []).map((category) => (
+          {(categoryTabs?.length > 0 ? categoryTabs : []).map((category) => (
             <button
               key={category.name}
               type="button"
@@ -195,7 +196,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
               }}
             >
               {category.name}
-              <span className={styles.categoriesCount}>{Array.isArray(category?.products) ? category.products.length : 0}</span>
+              <span className={styles.categoriesCount}>{category.count}</span>
             </button>
           ))}
         </div>
