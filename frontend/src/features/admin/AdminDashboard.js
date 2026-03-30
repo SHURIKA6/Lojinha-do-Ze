@@ -27,7 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/navigation';
 import { getDashboard } from '@/services/api';
-import { formatCurrency, getStatusLabel, getStatusVariant } from '@/utils/formatters';
+import { formatCurrency, getStatusLabel, getStatusVariant } from '@/utils/formatting';
 import { CHART_COLORS } from '@/styles/theme';
 import AdminAssistant from './AdminAssistant';
 import StorefrontPageClient from '../storefront/StorefrontPageClient';
