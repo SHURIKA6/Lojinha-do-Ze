@@ -1,0 +1,149 @@
+{
+  "name": "Lojinha do Zé",
+  "short_name": "Lojinha do Zé",
+  "description": "E-commerce de produtos naturais e fitoterápicos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "pt-BR",
+  "categories": ["shopping", "health"],
+  "icons": [
+    {
+      "src": "/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard da Lojinha do Zé"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Catálogo de Produtos"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catálogo",
+      "short_name": "Catálogo",
+      "description": "Ver produtos disponíveis",
+      "url": "/catalog",
+      "icons": [{"src": "/icon-96x96.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Meus Pedidos",
+      "short_name": "Pedidos",
+      "description": "Ver meus pedidos",
+      "url": "/account/orders",
+      "icons": [{"src": "/icon-96x96.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Carrinho",
+      "short_name": "Carrinho",
+      "description": "Ver carrinho de compras",
+      "url": "/cart",
+      "icons": [{"src": "/icon-96x96.png", "sizes": "96x96"}]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "display_override": ["window-controls-overlay", "standalone"],
+  "file_handlers": [
+    {
+      "action": "/open",
+      "accept": {
+        "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "image",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+lojinha",
+      "url": "/product?id=%s"
+    }
+  ],
+  "lock_screen": "not-required",
+  "capture_links": "existing-client-event",
+  "scope_extensions": [
+    {
+      "origin": "https://lojinha-do-ze.vercel.app"
+    }
+  ],
+  "id": "lojinha-do-ze",
+  "dir": "ltr",
+  "generated": "2026-03-29T20:55:00.000Z"
+}

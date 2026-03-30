@@ -4,6 +4,8 @@ import * as migration003 from './003_add_performance_indexes.js';
 import * as migration004 from './004_additional_performance_indexes.js';
 import * as migration005 from './005_add_mercado_pago_fields_to_orders.js';
 import * as migration006 from './006_guest_customers_idx.js';
+import * as migration007 from './007_add_refresh_tokens.js';
+import * as migration008 from './008_add_performance_indexes.js';
 
 const migrations = [
   migration001, 
@@ -11,7 +13,9 @@ const migrations = [
   migration003, 
   migration004, 
   migration005, 
-  migration006
+  migration006,
+  migration007,
+  migration008
 ];
 
 export async function runMigrations(db) {

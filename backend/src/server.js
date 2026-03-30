@@ -16,6 +16,7 @@ import transactionsRoutes from './routes/transactions.js';
 import uploadRoutes from './routes/upload.js';
 import paymentRoutes from './routes/payments.js';
 import aiRoutes from './routes/ai.js';
+import analyticsRoutes from './routes/analytics.js';
 
 import { apiLimiter } from './middleware/rateLimit.js';
 import { auditMiddleware } from './middleware/audit.js';
@@ -139,5 +140,6 @@ app.route('/api/transactions', transactionsRoutes);
 app.route('/api/upload', uploadRoutes);
 app.route('/api/payments', paymentRoutes);
 app.route('/api/admin', aiRoutes);
+app.route('/api/analytics', analyticsRoutes);
 
 export default app;

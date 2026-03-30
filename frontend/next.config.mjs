@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  
+  // PWA Configuration
+  experimental: {
+    webpackBuildWorker: true,
+  },
+  
+  // Headers de segurança
   async headers() {
     return [
       {
@@ -14,15 +21,11 @@ const nextConfig = {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
-          // SEC-07: X-XSS-Protection removido — deprecated e pode causar vulnerabilidades em browsers antigos.
-          // CSP é o substituto correto.
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
           },
           {
-            // TODO SEC-05: Migrar para nonces quando Next.js tiver suporte melhor.
-            // Por enquanto, 'unsafe-inline' é necessário para o funcionamento do Next.js.
             key: 'Content-Security-Policy',
             value: "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai; frame-ancestors 'none';",
           },
@@ -34,6 +37,8 @@ const nextConfig = {
       },
     ];
   },
+  
+  // Rewrites para API proxy
   async rewrites() {
     const proxyBase = process.env.API_PROXY_BASE || process.env.NEXT_PUBLIC_API_PROXY_BASE || 'http://localhost:8787/api';
     const destination = proxyBase.endsWith('/') ? `${proxyBase}:path*` : `${proxyBase}/:path*`;
@@ -44,6 +49,40 @@ const nextConfig = {
         destination,
       },
     ];
+  },
+  
+  // Compressão
+  compress: true,
+  
+  // Otimizações de imagem
+  images: {
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+  },
+  
+  // Webpack config para otimizações
+  webpack: (config, { dev, isServer }) => {
+    // Otimizações para produção
+    if (!dev) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+          common: {
+            minChunks: 2,
+            chunks: 'all',
+            enforce: true,
+          },
+        },
+      };
+    }
+    
+    return config;
   },
 };
 

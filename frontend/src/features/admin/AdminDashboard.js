@@ -1,43 +1,36 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/ToastProvider';
+import React, { useState, useEffect } from 'react';
 import { 
-  getDashboard, 
-  formatCurrency, 
-  getStatusLabel, 
-  getStatusVariant 
-} from '@/lib/api';
-import { 
+  FiDollarSign, 
   FiShoppingBag, 
   FiPackage, 
   FiTrendingUp, 
-  FiDollarSign, 
-  FiClock, 
-  FiAlertCircle, 
-  FiChevronRight,
+  FiAlertCircle,
   FiBarChart2,
-  FiPieChart
+  FiPieChart,
+  FiEye,
+  FiArrowLeft,
+  FiChevronRight
 } from 'react-icons/fi';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
   ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
+import { useRouter } from 'next/navigation';
+import { getDashboard } from '@/services/api';
+import { formatCurrency, getStatusLabel, getStatusVariant } from '@/utils/formatters';
 import { CHART_COLORS } from '@/styles/theme';
-import '@/app/admin/dashboard.css';
 import AdminAssistant from './AdminAssistant';
 import StorefrontPageClient from '../storefront/StorefrontPageClient';
-import { FiEye, FiArrowLeft } from 'react-icons/fi';
 
 /**
  * AdminDashboard - Componente principal do painel administrativo
@@ -75,42 +68,49 @@ export default function AdminDashboard() {
 
   if (isPreviewMode) {
     return (
-      <div className="admin-preview-wrapper">
-        <div className="admin-preview-bar">
-          <div className="admin-preview-bar__info">
+      <div className="admin-preview-wrapper" style={{ 
+        position: 'fixed', 
+        inset: 0, 
+        zIndex: 2000, 
+        backgroundColor: 'var(--cream-100)',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div className="admin-preview-bar" style={{
+          backgroundColor: 'var(--forest-600)',
+          color: 'white',
+          padding: 'var(--space-3) var(--space-6)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: 'var(--shadow-md)'
+        }}>
+          <div className="admin-preview-bar__info" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <FiEye className="admin-preview-bar__icon" />
             <span>Modo de Visualização da Loja (URL mantida)</span>
           </div>
           <button 
             onClick={() => setIsPreviewMode(false)}
-            className="admin-preview-bar__btn"
+            className="btn btn--secondary btn--sm"
           >
             <FiArrowLeft /> Voltar ao Painel
           </button>
         </div>
-        <div className="admin-preview-content">
+        <div className="admin-preview-content" style={{ flex: 1, overflow: 'auto' }}>
           <StorefrontPageClient 
-            initialProducts={[]} 
-            initialCategories={[]} 
-            isAdminPreview={true}
+            initialCatalog={null}
           />
         </div>
       </div>
     );
   }
 
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="admin-dashboard-loading">
-        <div className="admin-dashboard-loading__title"></div>
-        <div className="admin-dashboard-loading__metrics">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="admin-dashboard-loading__metric"></div>
-          ))}
-        </div>
-        <div className="admin-dashboard-loading__charts">
-          <div className="admin-dashboard-loading__chart"></div>
-          <div className="admin-dashboard-loading__chart"></div>
+      <div className="animate-fadeIn surface-stack">
+        <div className="app-loader" style={{ minHeight: '40vh' }}>
+          <div className="app-loader__spinner" />
+          <p>Carregando panorama...</p>
         </div>
       </div>
     );
@@ -118,251 +118,262 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="admin-error">
-        <div className="admin-error__icon">
-          <FiAlertCircle />
+      <div className="animate-fadeIn surface-stack">
+        <div className="page-header">
+           <div>
+             <span className="page-eyebrow">
+               <FiBarChart2 />
+               Operação
+             </span>
+             <h1>Dashboard</h1>
+           </div>
+         </div>
+        <div className="empty-state">
+          <div className="empty-state__icon">
+            <FiAlertCircle />
+          </div>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="btn btn--secondary"
+          >
+            Recarregar página
+          </button>
         </div>
-        <h2 className="admin-error__title">Ops! Algo deu errado</h2>
-        <p className="admin-error__message">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="btn btn--primary"
-        >
-          Tentar Novamente
-        </button>
       </div>
     );
   }
 
   const metrics = [
     {
-      label: 'Faturamento Mensal',
-      value: formatCurrency(data?.monthRevenue || 0),
-      color: 'var(--success-500)',
-      icon: <FiDollarSign />
+      label: 'Receita do mês',
+      value: data ? formatCurrency(data.monthRevenue) : '—',
+      tone: 'var(--success-500)',
+      icon: FiDollarSign,
     },
     {
-      label: 'Vendas Concluídas',
-      value: data?.totalSales || 0,
-      color: 'var(--info-500)',
-      icon: <FiShoppingBag />
+      label: 'Vendas concluídas',
+      value: data?.totalSales ?? '—',
+      tone: 'var(--primary-500)',
+      icon: FiShoppingBag,
     },
     {
-      label: 'Pedidos Ativos',
-      value: data?.activeOrders || 0,
-      color: 'var(--warning-500)',
-      icon: <FiPackage />
+      label: 'Pedidos ativos',
+      value: data?.activeOrders ?? '—',
+      tone: 'var(--info-500)',
+      icon: FiPackage,
     },
     {
-      label: 'Lucro Previsto',
-      value: formatCurrency(data?.profit || 0),
-      color: 'var(--primary-500)',
-      icon: <FiTrendingUp />
-    }
+      label: 'Lucro no mês',
+      value: data ? formatCurrency(data.profit) : '—',
+      tone: 'var(--warning-500)',
+      icon: FiTrendingUp,
+    },
   ];
 
   return (
-    <div className="admin-dashboard">
-      {/* Welcome Header */}
-      <header className="admin-dashboard__header">
-        <div className="admin-dashboard__header-info">
-          <h1 className="admin-dashboard__title">Painel Operacional</h1>
-          <p className="admin-dashboard__subtitle">Olá, {user?.name || 'Administrador'}. Aqui está o panorama do mês atual.</p>
+    <div className="animate-fadeIn surface-stack">
+      <div className="page-header">
+        <div>
+          <span className="page-eyebrow">
+            <FiBarChart2 />
+            Operação
+          </span>
+          <h1>Dashboard</h1>
+          <p className="page-header__subtitle">
+            Visão geral de vendas, pedidos e composição do catálogo em um painel mais legível.
+          </p>
         </div>
-        <div className="admin-dashboard__header-actions">
+        <div className="page-header__actions">
           <button 
-            className="admin-dashboard__preview-btn"
+            className="btn btn--secondary btn--sm"
             onClick={() => setIsPreviewMode(true)}
           >
             <FiEye /> Visualizar Loja
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* Metrics Cards */}
-      <div className="admin-dashboard__metrics">
-        {metrics.map((stat, idx) => (
-          <div key={idx} className="metric-card" style={{ '--metric-color': stat.color }}>
+      <div className="grid grid-4">
+        {metrics.map(({ label, value, tone, icon: Icon }, idx) => (
+          <div key={idx} className="metric-card" style={{ '--metric-color': tone }}>
             <div className="metric-card__icon">
-              {stat.icon}
+              <Icon />
             </div>
             <div className="metric-card__content">
-              <span className="metric-card__label">{stat.label}</span>
-              <span className="metric-card__value">{stat.value}</span>
+              <div className="metric-card__label">{label}</div>
+              <div className="metric-card__value">{value}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts Section */}
-      <div className="admin-dashboard__charts">
-        <div className="dashboard-card admin-dashboard__chart-main">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiBarChart2 className="dashboard-card__title-icon" style={{ color: 'var(--info-500)' }} />
-              Fluxo Financeiro Diário
-            </h3>
+      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 'var(--space-6)', marginTop: 'var(--space-6)' }}>
+        <div className="panel chart-panel">
+          <div className="page-header" style={{ marginBottom: 'var(--space-4)' }}>
+            <div>
+              <h3>Fluxo financeiro</h3>
+              <p className="page-header__subtitle">Receitas e despesas registrados ao longo do mês.</p>
+            </div>
           </div>
-          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
+
+          <div className="chart-panel__body">
             {data?.chartData?.length ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={data.chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'var(--gray-400)', fontSize: 10 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--gray-400)', fontSize: 10 }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-md)' }}
-                    formatter={(value) => formatCurrency(value)}
-                  />
-                  <Bar dataKey="receita" fill="var(--success-500)" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="despesa" fill="var(--danger-500)" radius={[4, 4, 0, 0]} barSize={20} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(64, 57, 47, 0.12)" />
+                  <XAxis dataKey="day" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => formatCurrency(value || 0)} />
+                  <Bar dataKey="receita" fill="var(--success-500)" radius={[8, 8, 0, 0]} name="Receita" />
+                  <Bar dataKey="despesa" fill="var(--danger-400)" radius={[8, 8, 0, 0]} name="Despesa" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="dashboard-empty dashboard-empty--centered">
-                <FiBarChart2 className="dashboard-empty__icon" />
-                <p>Sem dados suficientes para gerar o gráfico.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiPieChart className="dashboard-card__title-icon" style={{ color: 'var(--primary-500)' }} />
-              Categorias
-            </h3>
-          </div>
-          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
-            {data?.categoryChart?.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.categoryChart}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {data.categoryChart.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="dashboard-empty dashboard-empty--centered">
-                <FiPieChart className="dashboard-empty__icon" />
-                <p>Sem categorias cadastradas.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Lists Section */}
-      <div className="admin-dashboard__lists">
-        
-        {/* Recent Orders */}
-        <section className="dashboard-card">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiClock className="dashboard-card__title-icon" style={{ color: 'var(--warning-500)' }} />
-              Pedidos Recentes
-            </h3>
-            <button 
-              onClick={() => router.push('/admin/pedidos')}
-              className="view-all-link"
-            >
-              Ver tudo <FiChevronRight className="view-all-link__icon" />
-            </button>
-          </div>
-          
-          <div className="dashboard-card__body">
-            {data?.recentOrders?.length > 0 ? (
-              <div>
-                {data.recentOrders.map((order) => (
-                  <div key={order.id} className="order-item">
-                    <div className="order-item__info">
-                      <div className="order-item__avatar">
-                        #{order.id.toString().slice(-4)}
-                      </div>
-                      <div className="order-item__details">
-                        <p className="order-item__name">{order.customer_name || 'Cliente Avulso'}</p>
-                        <p className="order-item__type">{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega em Domicílio'}</p>
-                      </div>
-                    </div>
-                    <div className="order-item__value">
-                      <p className="order-item__total">{formatCurrency(order.total)}</p>
-                      <span className={`badge badge--${getStatusVariant(order.status)}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="dashboard-empty">
-                Nenhum pedido processado hoje.
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Inventory Alarms */}
-        <section className="dashboard-card">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiAlertCircle className="dashboard-card__title-icon" style={{ color: 'var(--danger-500)' }} />
-              Alertas de Inventário
-            </h3>
-            {data?.lowStock?.length > 0 && (
-              <span className="critical-badge">
-                {data.lowStock.length} itens críticos
-              </span>
-            )}
-          </div>
-          
-          <div className="dashboard-card__body">
-            {data?.lowStock?.length > 0 ? (
-              <div>
-                {data.lowStock.map((product) => (
-                  <div key={product.id} className="stock-alert">
-                    <div className="stock-alert__info">
-                      <div className="stock-alert__icon">
-                        <FiPackage />
-                      </div>
-                      <div className="stock-alert__details">
-                        <p className="stock-alert__name">{product.name}</p>
-                        <div className="stock-alert__quantity">
-                          <span className="stock-alert__quantity-value">Disponível: {product.quantity}</span>
-                          <span className="stock-alert__quantity-separator"></span>
-                          <span className="stock-alert__quantity-min">Mínimo: {product.min_stock}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => router.push(`/admin/estoque?edit=${product.id}`)}
-                      className="stock-alert__action"
-                    >
-                      Solicitar Reposição
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="dashboard-empty dashboard-empty--centered">
-                <div className="dashboard-empty__icon--success">
-                  <FiPackage />
+              <div className="empty-state">
+                <div className="empty-state__icon">
+                  <FiBarChart2 />
                 </div>
-                <p>Todos os níveis de estoque estão estáveis.</p>
+                <p>Sem dados financeiros para este período.</p>
               </div>
             )}
           </div>
-        </section>
+        </div>
+
+        <div className="surface-stack">
+          <div className="panel chart-panel">
+            <div className="page-header" style={{ marginBottom: 'var(--space-4)' }}>
+              <div>
+                <h3>Categorias do catálogo</h3>
+                <p className="page-header__subtitle">Distribuição dos produtos cadastrados.</p>
+              </div>
+            </div>
+
+            <div className="chart-panel__body">
+              {data?.categoryChart?.length ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={data.categoryChart}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      innerRadius={50}
+                      dataKey="value"
+                      paddingAngle={3}
+                    >
+                      {data.categoryChart.map((_, index) => (
+                        <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-state__icon">
+                    <FiPieChart />
+                  </div>
+                  <p>Sem dados suficientes de catálogo.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mini-stat-grid" style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            <div className="mini-stat" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="mini-stat__label" style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)', fontWeight: 600 }}>Pedidos recentes</div>
+              <div className="mini-stat__value" style={{ fontSize: 'var(--font-xl)', fontWeight: 800 }}>{data?.recentOrders?.length || 0}</div>
+            </div>
+            <div className="mini-stat" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="mini-stat__label" style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)', fontWeight: 600 }}>Itens com estoque baixo</div>
+              <div className="mini-stat__value" style={{ fontSize: 'var(--font-xl)', fontWeight: 800 }}>{data?.lowStock?.length || 0}</div>
+            </div>
+            <div className="mini-stat" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="mini-stat__label" style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)', fontWeight: 600 }}>Total de categorias</div>
+              <div className="mini-stat__value" style={{ fontSize: 'var(--font-xl)', fontWeight: 800 }}>{data?.categoryChart?.length || 0}</div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <div className="grid grid-2" style={{ marginTop: 'var(--space-6)' }}>
+        <div className="table-container">
+          <div className="table-header">
+            <h3 className="table-header__title">Pedidos recentes</h3>
+          </div>
+          <div className="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Tipo</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data?.recentOrders?.length ? (
+                  data.recentOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td>{order.customer_name || 'Cliente avulso'}</td>
+                      <td>{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}</td>
+                      <td>
+                        <span className={`badge badge--${getStatusVariant(order.status)}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 800 }}>{formatCurrency(order.total)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="table-empty">
+                      Nenhum pedido recente.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="table-container">
+          <div className="table-header">
+            <h3 className="table-header__title">Estoque baixo</h3>
+            <span className="badge badge--danger" style={{ background: 'var(--danger-500)', color: 'white' }}>{data?.lowStock?.length || 0} itens</span>
+          </div>
+          <div className="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Atual</th>
+                  <th>Mínimo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data?.lowStock?.length ? (
+                  data.lowStock.map((product) => (
+                    <tr key={product.id}>
+                      <td>{product.name}</td>
+                      <td style={{ fontWeight: 800 }}>{product.quantity}</td>
+                      <td>{product.min_stock}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="table-empty">
+                      Estoque em dia.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <AdminAssistant />
     </div>
   );
