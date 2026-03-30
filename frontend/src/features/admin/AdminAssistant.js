@@ -62,7 +62,7 @@ export default function AdminAssistant() {
           </header>
 
           <div className="admin-assistant__messages">
-            {messages.map((msg, idx) => (
+            {(Array.isArray(messages) ? messages : []).map((msg, idx) => (
               <div key={idx} className={`chat-msg chat-msg--${msg.role}`}>
                 {msg.content}
               </div>

@@ -164,7 +164,7 @@ export default function HomePageClient() {
           </section>
 
           <section className="landing-grid landing-grid--triple">
-            {features.map(({ icon: Icon, title, text }) => (
+            {(Array.isArray(features) ? features : []).map(({ icon: Icon, title, text }) => (
               <article key={title} className="landing-feature">
                 <div className="landing-feature__icon">
                   <Icon />
@@ -176,7 +176,7 @@ export default function HomePageClient() {
           </section>
 
           <section className="landing-grid landing-grid--triple">
-            {categories.map((category) => (
+            {(Array.isArray(categories) ? categories : []).map((category) => (
               <article key={category.title} className="landing-category">
                 <span className="landing-category__tag">{category.tag}</span>
                 <h2>{category.title}</h2>
@@ -199,7 +199,7 @@ export default function HomePageClient() {
             </div>
 
             <div className="landing-story__list">
-              {storyPoints.map((point) => (
+              {(Array.isArray(storyPoints) ? storyPoints : []).map((point) => (
                 <div key={point} className="landing-story__item">
                   <span>
                     <FiCheckCircle />

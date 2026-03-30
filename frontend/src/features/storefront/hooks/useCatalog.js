@@ -85,7 +85,9 @@ export function useCatalog(initialCatalog = null) {
     return categories.flatMap((c) => Array.isArray(c?.products) ? c.products : []);
   }, [catalogData]);
 
-  const filteredProducts = allProducts; 
+  const filteredProducts = useMemo(() => {
+    return Array.isArray(allProducts) ? allProducts : [];
+  }, [allProducts]);
 
   return {
     catalogData,

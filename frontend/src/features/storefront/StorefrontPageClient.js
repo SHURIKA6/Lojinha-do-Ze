@@ -195,7 +195,7 @@ export default function StorefrontPageClient({ initialCatalog = null }) {
               }}
             >
               {category.name}
-              <span className={styles.categoriesCount}>{category.products.length}</span>
+              <span className={styles.categoriesCount}>{Array.isArray(category?.products) ? category.products.length : 0}</span>
             </button>
           ))}
         </div>

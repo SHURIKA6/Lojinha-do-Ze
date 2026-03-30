@@ -32,7 +32,7 @@ export default function ProductGrid({
       )}
 
       <div className={styles.grid}>
-        {filteredProducts.map((product) => {
+        {(Array.isArray(filteredProducts) ? filteredProducts : []).map((product) => {
           const cartItem = cart.find((item) => item.productId === product.id);
           const availableStock = getAvailableStock(product.id);
 

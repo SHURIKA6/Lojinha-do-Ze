@@ -113,7 +113,7 @@ export default function InteractiveDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {forecasts.map((f) => {
+                {(Array.isArray(forecasts) ? forecasts : []).map((f) => {
                   const toBuy = f.regression > f.currentStock;
                   return (
                     <tr key={f.id}>
@@ -151,7 +151,7 @@ export default function InteractiveDashboard() {
         </div>
         <div className="dashboard-card__body--padded">
            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {sentiments.map((s, idx) => (
+              {(Array.isArray(sentiments) ? sentiments : []).map((s, idx) => (
                 <div key={idx} style={{ padding: '1.5rem', border: '1px solid var(--gray-200)', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '0.5rem' }}>
                         {s.sentiment === 'positive' && <FiSmile size={24} color="var(--success-500)" />}

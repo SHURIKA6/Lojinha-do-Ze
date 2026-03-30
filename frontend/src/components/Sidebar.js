@@ -71,10 +71,10 @@ export default function Sidebar() {
         </div>
 
         <nav className={styles.nav}>
-          {navItems.map((section) => (
+          {(Array.isArray(navItems) ? navItems : []).map((section) => (
             <div key={section.section} className={styles.section}>
               <div className={styles.sectionTitle}>{section.section}</div>
-              {section.items.map((item) => {
+              {(Array.isArray(section.items) ? section.items : []).map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
 

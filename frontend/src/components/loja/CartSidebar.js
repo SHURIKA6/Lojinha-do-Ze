@@ -35,7 +35,7 @@ export default function CartSidebar({
         {cart.length > 0 ? (
           <>
             <div className={styles.items}>
-              {cart.map((item) => {
+              {(Array.isArray(cart) ? cart : []).map((item) => {
                 const availableStock = getAvailableStock(item.productId);
 
                 return (

@@ -10,6 +10,10 @@ export function useCart(allProducts) {
     return Object.fromEntries(products.map((p) => [p.id, Number(p.quantity) || 0]));
   }, [allProducts]);
 
+  const filteredProducts = useMemo(() => {
+    return Array.isArray(allProducts) ? allProducts : [];
+  }, [allProducts]);
+
   useEffect(() => {
     setCart((prev) =>
       prev
