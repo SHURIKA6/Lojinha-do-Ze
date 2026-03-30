@@ -126,4 +126,43 @@ router.get('/:type', async (c) => {
   }
 });
 
+// Endpoint para exportação em CSV (Exemplo: orders)
+router.post('/export/csv', async (c) => {
+  try {
+    const db = c.get('db');
+    const body = await c.req.json();
+    const { reportType } = body; // 'vendas', 'estoque', etc
+
+    let csvContent = '';
+    
+    if (reportType === 'vendas') {
+      const { rows } = await db.query(
+        `SELECT id, customer_name, status, total, created_at FROM orders ORDER BY created_at DESC LIMIT 500`
+      );
+      csvContent += 'ID,Cliente,Status,Total,Data\n';
+      rows.forEach(r => {
+        csvContent += `${r.id},"${r.customer_name}",${r.status},${r.total},"${new Date(r.created_at).toISOString()}"\n`;
+      });
+    } else if (reportType === 'estoque') {
+      const { rows } = await db.query(
+        `SELECT id, code, name, quantity, cost_price, sale_price FROM products ORDER BY name LIMIT 500`
+      );
+      csvContent += 'ID,Codigo,Nome,Quantidade,Custo,PrecoVenda\n';
+      rows.forEach(r => {
+        csvContent += `${r.id},${r.code},"${r.name}",${r.quantity},${r.cost_price},${r.sale_price}\n`;
+      });
+    } else {
+      return jsonError(c, 400, 'Tipo de relatório para exportação não suportado.');
+    }
+
+    // Configurando headers para download de arquivo CSV diretamente no browser
+    c.header('Content-Type', 'text/csv; charset=utf-8');
+    c.header('Content-Disposition', `attachment; filename="relatorio_${reportType}_${new Date().toISOString().split('T')[0]}.csv"`);
+    return c.body(csvContent);
+  } catch (error) {
+    logger.error('Erro ao exportar CSV', error);
+    return jsonError(c, 500, 'Erro ao exportar os dados do relatório.');
+  }
+});
+
 export default router;

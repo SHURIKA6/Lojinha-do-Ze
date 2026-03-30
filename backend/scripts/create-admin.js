@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import bcrypt from 'bcryptjs';
 import { createDb } from '../src/db.js';
 import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
