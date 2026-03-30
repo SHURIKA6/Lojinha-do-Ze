@@ -208,7 +208,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 'var(--space-6)', marginTop: 'var(--space-6)' }}>
+      <div className="dashboard-grid" style={{ marginTop: 'var(--space-6)' }}>
         <div className="panel chart-panel">
           <div className="page-header" style={{ marginBottom: 'var(--space-4)' }}>
             <div>
@@ -280,18 +280,18 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="mini-stat-grid" style={{ display: 'grid', gap: 'var(--space-3)' }}>
-            <div className="mini-stat" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)' }}>
-              <div className="mini-stat__label" style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)', fontWeight: 600 }}>Pedidos recentes</div>
-              <div className="mini-stat__value" style={{ fontSize: 'var(--font-xl)', fontWeight: 800 }}>{data?.recentOrders?.length || 0}</div>
+          <div className="mini-stat-grid">
+            <div className="mini-stat">
+              <div className="mini-stat__label">Pedidos recentes</div>
+              <div className="mini-stat__value">{data?.recentOrders?.length || 0}</div>
             </div>
-            <div className="mini-stat" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)' }}>
-              <div className="mini-stat__label" style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)', fontWeight: 600 }}>Itens com estoque baixo</div>
-              <div className="mini-stat__value" style={{ fontSize: 'var(--font-xl)', fontWeight: 800 }}>{data?.lowStock?.length || 0}</div>
+            <div className="mini-stat">
+              <div className="mini-stat__label">Itens com estoque baixo</div>
+              <div className="mini-stat__value">{data?.lowStock?.length || 0}</div>
             </div>
-            <div className="mini-stat" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.05)' }}>
-              <div className="mini-stat__label" style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)', fontWeight: 600 }}>Total de categorias</div>
-              <div className="mini-stat__value" style={{ fontSize: 'var(--font-xl)', fontWeight: 800 }}>{data?.categoryChart?.length || 0}</div>
+            <div className="mini-stat">
+              <div className="mini-stat__label">Total de categorias</div>
+              <div className="mini-stat__value">{data?.categoryChart?.length || 0}</div>
             </div>
           </div>
         </div>

@@ -31,7 +31,7 @@ export const ValidationRules = {
     category: {
       required: true,
       type: 'string',
-      enum: ['Óleos Essenciais', 'Chás e Infusões', 'Naturais', 'Cosméticos Naturais', 'Suplementos', 'Cápsulas', 'Tinturas', 'Cremes', 'Outros'],
+      enum: ['Óleos Essenciais', 'Óleos', 'Chás e Infusões', 'Naturais', 'Cosméticos Naturais', 'Suplementos', 'Cápsulas', 'Tinturas', 'Cremes', 'Outros'],
       message: 'Categoria inválida'
     },
     quantity: {

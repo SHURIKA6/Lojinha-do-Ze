@@ -15,6 +15,7 @@ export const PAYMENT_METHOD_VALUES = ['pix', 'maquininha'];
 
 export const PRODUCT_CATEGORY_VALUES = [
   'Óleos Essenciais',
+  'Óleos',
   'Chás e Infusões',
   'Naturais',
   'Cosméticos Naturais',
