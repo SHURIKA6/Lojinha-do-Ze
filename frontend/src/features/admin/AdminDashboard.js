@@ -23,7 +23,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/navigation';
 import { getDashboard } from '@/services/api';
