@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8788';
+const BACKEND_URL = process.env.BACKEND_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://lojinha-do-ze-backend.riad777.workers.dev' 
+    : 'http://127.0.0.1:8788');
 
 export async function GET(request, { params }) {
   const path = params.path.join('/');
