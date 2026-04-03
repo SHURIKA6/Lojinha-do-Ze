@@ -22,17 +22,25 @@ export async function GET(request, { params }) {
       credentials: 'include',
     });
 
-    const data = await response.json();
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+    const data = isJson ? await response.json() : { error: await response.text() };
+    
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('Proxy error (GET):', error);
     return NextResponse.json({ error: 'Erro ao conectar ao servidor' }, { status: 500 });
   }
 }
 
 export async function POST(request, { params }) {
   const path = params.path.join('/');
-  const body = await request.json();
+  let body = {};
+  
+  try {
+    body = await request.json();
+  } catch (e) {
+    console.warn('Proxy: failed to parse request body as JSON');
+  }
   
   const backendUrl = `${BACKEND_URL}/api/${path}`;
   
@@ -47,10 +55,12 @@ export async function POST(request, { params }) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+    const data = isJson ? await response.json() : { error: await response.text() };
+
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('Proxy error (POST):', error);
     return NextResponse.json({ error: 'Erro ao conectar ao servidor' }, { status: 500 });
   }
 }

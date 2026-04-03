@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { clearSessionCookies, destroySession, issueSession, resolveSession } from '../services/authService';
 import { jsonError, jsonSuccess } from '../utils/http';
 import bcrypt from 'bcryptjs';
+import { logger } from '../utils/logger';
 import { authMiddleware, csrfMiddleware } from '../middleware/auth';
 import { Bindings, Variables } from '../types';
 
@@ -12,42 +13,56 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
  * Autentica o usuário e cria uma sessão
  */
 router.post('/login', async (c) => {
-  const { email, password } = await c.req.json();
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch (e) {
+    return jsonError(c, 400, 'Corpo da requisição inválido');
+  }
+
+  const email = (body.email || body.identifier) as string;
+  const password = body.password as string;
   const db = c.get('db');
 
   if (!email || !password) {
     return jsonError(c, 400, 'E-mail e senha são obrigatórios');
   }
 
-  const { rows } = await db.query(
-    'SELECT id, password, role FROM users WHERE email = $1',
-    [email.toLowerCase()]
-  );
+  const emailLower = email.trim().toLowerCase();
 
-  const user = rows[0];
-  if (!user) {
-    return jsonError(c, 401, 'Credenciais inválidas');
-  }
-
-  const validPassword = user.password ? await bcrypt.compare(password, user.password) : false;
-  if (!validPassword) {
-    return jsonError(c, 401, 'Credenciais inválidas');
-  }
-
-  const client = await db.connect();
   try {
-    const { csrfToken } = await issueSession(c, client, user.id);
-    
-    // Easter egg: Detectar usuário especial de teste
-    const isEasterEgg = email.toLowerCase() === 'teste@gmail.com';
-    
-    return jsonSuccess(c, {
-      user: { id: user.id, role: user.role },
-      csrfToken,
-      easterEgg: isEasterEgg,
-    });
-  } finally {
-    if (client.release) client.release();
+    const { rows } = await db.query(
+      'SELECT id, password, role FROM users WHERE email = $1',
+      [emailLower]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return jsonError(c, 401, 'Credenciais inválidas');
+    }
+
+    const validPassword = user.password ? await bcrypt.compare(password, user.password) : false;
+    if (!validPassword) {
+      return jsonError(c, 401, 'Credenciais inválidas');
+    }
+
+    const client = await db.connect();
+    try {
+      const { csrfToken } = await issueSession(c, client, user.id);
+      
+      const isEasterEgg = emailLower === 'teste@gmail.com';
+      
+      return jsonSuccess(c, {
+        user: { id: user.id, role: user.role },
+        csrfToken,
+        easterEgg: isEasterEgg,
+      });
+    } finally {
+      if (client.release) client.release();
+    }
+  } catch (error) {
+    logger.error('Erro no processamento do login', error);
+    return jsonError(c, 500, 'Erro interno ao processar login');
   }
 });
 
