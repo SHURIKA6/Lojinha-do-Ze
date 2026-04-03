@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { clearSessionCookies, destroySession, issueSession, resolveSession } from '../services/authService';
 import { jsonError, jsonSuccess } from '../utils/http';
-import { sha256Hex } from '../utils/crypto';
+import bcrypt from 'bcryptjs';
 import { authMiddleware, csrfMiddleware } from '../middleware/auth';
 import { Bindings, Variables } from '../types';
 
@@ -20,7 +20,7 @@ router.post('/login', async (c) => {
   }
 
   const { rows } = await db.query(
-    'SELECT id, password_hash, role FROM users WHERE email = $1 AND active = true',
+    'SELECT id, password, role FROM users WHERE email = $1',
     [email.toLowerCase()]
   );
 
@@ -29,17 +29,22 @@ router.post('/login', async (c) => {
     return jsonError(c, 401, 'Credenciais inválidas');
   }
 
-  const passwordHash = await sha256Hex(password);
-  if (passwordHash !== user.password_hash) {
+  const validPassword = user.password ? await bcrypt.compare(password, user.password) : false;
+  if (!validPassword) {
     return jsonError(c, 401, 'Credenciais inválidas');
   }
 
   const client = await db.connect();
   try {
     const { csrfToken } = await issueSession(c, client, user.id);
+    
+    // Easter egg: Detectar usuário especial de teste
+    const isEasterEgg = email.toLowerCase() === 'teste@gmail.com';
+    
     return jsonSuccess(c, {
       user: { id: user.id, role: user.role },
       csrfToken,
+      easterEgg: isEasterEgg,
     });
   } finally {
     if (client.release) client.release();

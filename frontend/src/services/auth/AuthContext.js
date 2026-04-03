@@ -44,7 +44,11 @@ export function AuthProvider({ children }) {
     try {
       const data = await apiLogin(identifier, password);
       setUser(data.user);
-      return { success: true, user: data.user };
+      return { 
+        success: true, 
+        user: data.user,
+        easterEgg: data.easterEgg || false
+      };
     } catch (err) {
       return { success: false, error: err.message };
     }
