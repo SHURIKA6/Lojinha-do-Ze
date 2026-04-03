@@ -108,8 +108,7 @@ export default function RootLayout({ children }) {
         
         {/* Ícones para PWA */}
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png" />
+        
         
         {/* Meta tags para acessibilidade */}
         <meta name="theme-color" content="#667eea" />
