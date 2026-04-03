@@ -234,7 +234,7 @@ router.post(
       const avatar = buildAvatar(cleanName);
 
       const { rows } = await client.query(
-        `INSERT INTO users (name, email, password_hash, is_temporary_password, role, phone, cpf, address, notes, avatar)
+        `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
          VALUES ($1, $2, NULL, false, 'customer', $3, $4, $5, $6, $7)
          RETURNING ${CUSTOMER_SAFE_COLUMNS}`,
         [cleanName, cleanEmail, cleanPhone, cleanCpf, cleanAddress, cleanNotes, avatar]

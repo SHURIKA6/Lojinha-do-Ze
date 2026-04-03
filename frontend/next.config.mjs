@@ -12,6 +12,17 @@ const nextConfig = {
   
   // Headers de segurança
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+    const cspDirectives = [
+      "default-src 'self'",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+      "connect-src 'self' https:",
+      "img-src 'self' data: https:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai",
+      "frame-ancestors 'none'",
+    ].join('; ');
+    
     return [
       {
         source: '/:path*',
@@ -30,7 +41,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai; frame-ancestors 'none';",
+            value: cspDirectives,
           },
           {
             key: 'Permissions-Policy',
