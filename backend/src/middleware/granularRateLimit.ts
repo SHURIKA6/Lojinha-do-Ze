@@ -4,8 +4,8 @@
  */
 
 import { Context, Next } from 'hono';
-import { createRateLimiter } from './rateLimit.js';
-import { logger } from '../utils/logger.js';
+import { createRateLimiter } from './rateLimit';
+import { logger } from '../utils/logger';
 
 // Rate limiters específicos por endpoint
 export const authLimiter = createRateLimiter('auth', 5, 15 * 60 * 1000); // 5 tentativas a cada 15 minutos
@@ -53,7 +53,7 @@ type OperationType =
   | 'webhook_payment'
   | 'webhook_notification';
 
-type RateLimiter = (c: Context, next: Next) => Promise<void>;
+type RateLimiter = (c: Context, next: Next) => Promise<Response | void | undefined>;
 
 /**
  * Middleware para aplicar rate limiting baseado no tipo de operação

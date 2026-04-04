@@ -4,7 +4,7 @@
  */
 
 import { Context, Next } from 'hono';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 /**
  * Caracteres perigosos que precisam ser escapados
@@ -221,4 +221,11 @@ export function sanitizeResponse() {
       logger.warn('Erro na sanitização de resposta', { error: (error as Error).message });
     }
   };
+}
+
+/**
+ * Alias para sanitização de strings para compatibilidade com middleware de validação
+ */
+export function sanitizeString(value: string): string {
+  return sanitizeValue(value) as string;
 }
