@@ -1,16 +1,25 @@
-// Rate limiter distribuído usando Cloudflare Workers KV.
-// Quando KV está disponível (produção), o estado é compartilhado entre todos os edge nodes.
-// Quando KV não está disponível (desenvolvimento local), usa Map() em memória como fallback.
+import { Context, Next } from 'hono';
+import { logger } from '../utils/logger';
 
-import { logger } from '../utils/logger.js';
+// ---------- Interfaces ----------
+
+interface RateLimitState {
+  count: number;
+  resetAt: number;
+}
+
+interface RateLimitStore {
+  get(key: string): Promise<RateLimitState | null>;
+  put(key: string, value: RateLimitState, ttlMs: number): Promise<void>;
+}
 
 // ---------- Fallback em memória (apenas para dev local) ----------
 
-function createInMemoryStore() {
-  const map = new Map();
+function createInMemoryStore(): RateLimitStore {
+  const map = new Map<string, RateLimitState>();
 
   return {
-    async get(key) {
+    async get(key: string) {
       const state = map.get(key);
       if (!state) return null;
       if (Date.now() > state.resetAt) {
@@ -19,7 +28,7 @@ function createInMemoryStore() {
       }
       return state;
     },
-    async put(key, value, _ttlMs) {
+    async put(key: string, value: RateLimitState, _ttlMs: number) {
       map.set(key, value);
       // Evita vazamento de memória em isolados de longa duração
       if (map.size > 5000) {
@@ -34,25 +43,25 @@ function createInMemoryStore() {
 
 // ---------- Store distribuído via KV ----------
 
-function createKvStore(kvNamespace) {
+function createKvStore(kvNamespace: any): RateLimitStore {
   return {
-    async get(key) {
+    async get(key: string) {
       try {
-        const raw = await kvNamespace.get(key, 'json');
+        const raw = await kvNamespace.get(key, { type: 'json' });
         if (!raw) return null;
-        if (Date.now() > raw.resetAt) return null;
-        return raw;
-      } catch (err) {
+        if (Date.now() > (raw as RateLimitState).resetAt) return null;
+        return raw as RateLimitState;
+      } catch (err: any) {
         logger.warn('KV rate-limit get falhou, permitindo request', { key, error: err?.message });
         return null;
       }
     },
-    async put(key, value, ttlMs) {
+    async put(key: string, value: RateLimitState, ttlMs: number) {
       try {
         // expirationTtl é em segundos e mínimo 60s no KV
         const ttlSeconds = Math.max(Math.ceil(ttlMs / 1000), 60);
         await kvNamespace.put(key, JSON.stringify(value), { expirationTtl: ttlSeconds });
-      } catch (err) {
+      } catch (err: any) {
         logger.warn('KV rate-limit put falhou', { key, error: err?.message });
       }
     },
@@ -63,9 +72,9 @@ function createKvStore(kvNamespace) {
 
 const fallbackStore = createInMemoryStore();
 
-export function createRateLimiter(namespace, limit, windowMs) {
-  return async (c, next) => {
-    const kvBinding = c.env?.RATE_LIMIT_KV;
+export function createRateLimiter(namespace: string, limit: number, windowMs: number) {
+  return async (c: Context, next: Next) => {
+    const kvBinding = (c.env as any)?.RATE_LIMIT_KV;
     const store = kvBinding ? createKvStore(kvBinding) : fallbackStore;
 
     // Confia apenas no IP do cliente fornecido pela plataforma.

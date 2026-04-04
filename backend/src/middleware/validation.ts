@@ -3,13 +3,14 @@
  * Valida dados de entrada com regras complexas e feedback detalhado
  */
 
-import { logger } from '../utils/logger.js';
-import { sanitizeString } from './inputSanitization.js';
+import { Context, Next } from 'hono';
+import { logger } from '../utils/logger';
+import { sanitizeString } from './inputSanitization';
 
 /**
  * Regras de validação predefinidas
  */
-export const ValidationRules = {
+export const ValidationRules: Record<string, any> = {
   // Regras para produtos
   product: {
     name: {
@@ -134,8 +135,8 @@ export const ValidationRules = {
 /**
  * Valida um campo individual
  */
-function validateField(value, rules, fieldName) {
-  const errors = [];
+function validateField(value: any, rules: any, fieldName: string) {
+  const errors: string[] = [];
   
   if (rules.required && (value === undefined || value === null || value === '')) {
     errors.push(rules.message || `${fieldName} é obrigatório`);
@@ -154,35 +155,36 @@ function validateField(value, rules, fieldName) {
     }
   }
   
-  if (rules.sanitize && typeof value === 'string') {
-    value = sanitizeString(value);
+  let processedValue = value;
+  if (rules.sanitize && typeof processedValue === 'string') {
+    processedValue = sanitizeString(processedValue);
   }
   
-  if (rules.minLength && value.length < rules.minLength) {
+  if (rules.minLength && processedValue.length < rules.minLength) {
     errors.push(rules.message || `${fieldName} deve ter pelo menos ${rules.minLength} caracteres`);
   }
   
-  if (rules.maxLength && value.length > rules.maxLength) {
+  if (rules.maxLength && processedValue.length > rules.maxLength) {
     errors.push(rules.message || `${fieldName} deve ter no máximo ${rules.maxLength} caracteres`);
   }
   
-  if (rules.pattern && !rules.pattern.test(value)) {
+  if (rules.pattern && !rules.pattern.test(processedValue)) {
     errors.push(rules.message || `${fieldName} não atende ao padrão exigido`);
   }
   
-  if (rules.enum && !rules.enum.includes(value)) {
+  if (rules.enum && !rules.enum.includes(processedValue)) {
     errors.push(rules.message || `${fieldName} deve ser um dos valores: ${rules.enum.join(', ')}`);
   }
   
-  if (rules.min !== undefined && typeof value === 'number' && value < rules.min) {
+  if (rules.min !== undefined && typeof processedValue === 'number' && processedValue < rules.min) {
     errors.push(rules.message || `${fieldName} deve ser pelo menos ${rules.min}`);
   }
   
-  if (rules.max !== undefined && typeof value === 'number' && value > rules.max) {
+  if (rules.max !== undefined && typeof processedValue === 'number' && processedValue > rules.max) {
     errors.push(rules.message || `${fieldName} deve ser no máximo ${rules.max}`);
   }
   
-  if (rules.integer && typeof value === 'number' && !Number.isInteger(value)) {
+  if (rules.integer && typeof processedValue === 'number' && !Number.isInteger(processedValue)) {
     errors.push(rules.message || `${fieldName} deve ser um número inteiro`);
   }
   
@@ -192,10 +194,10 @@ function validateField(value, rules, fieldName) {
 /**
  * Valida objeto completo contra regras
  */
-function validateObject(data, rules) {
-  const errors = {};
-  const warnings = [];
-  const sanitizedData = {};
+function validateObject(data: any, rules: any) {
+  const errors: Record<string, string[]> = {};
+  const warnings: string[] = [];
+  const sanitizedData: any = {};
   
   for (const [fieldName, fieldRules] of Object.entries(rules)) {
     const value = data[fieldName];
@@ -204,7 +206,7 @@ function validateObject(data, rules) {
     if (fieldErrors.length > 0) {
       errors[fieldName] = fieldErrors;
     } else {
-      if (fieldRules.sanitize && typeof value === 'string') {
+      if ((fieldRules as any).sanitize && typeof value === 'string') {
         sanitizedData[fieldName] = sanitizeString(value);
       } else {
         sanitizedData[fieldName] = value;
@@ -229,26 +231,23 @@ function validateObject(data, rules) {
 /**
  * Middleware de validação genérico
  */
-export function validate(validationRules, options = {}) {
+export function validate(validationRules: any, options: any = {}) {
   const {
     sanitize = true
   } = options;
   
-  return async (c, next) => {
+  return async (c: Context, next: Next) => {
     try {
-      let data;
+      let data: any;
       const contentType = c.req.header('content-type');
       
       if (contentType?.includes('application/json')) {
         data = await c.req.json();
-      } else if (contentType?.includes('application/x-www-form-urlencoded')) {
-        const formData = await c.req.formData();
-        data = Object.fromEntries(formData.entries());
-      } else if (contentType?.includes('multipart/form-data')) {
+      } else if (contentType?.includes('application/x-www-form-urlencoded') || contentType?.includes('multipart/form-data')) {
         const formData = await c.req.formData();
         data = Object.fromEntries(formData.entries());
       } else {
-        data = c.req.query;
+        data = c.req.query();
       }
       
       const validation = validateObject(data, validationRules);
@@ -281,7 +280,7 @@ export function validate(validationRules, options = {}) {
       }
       
       await next();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Erro no middleware de validação', error);
       return c.json({
         success: false,
@@ -315,14 +314,14 @@ export const validateTransaction = validate(ValidationRules.transaction);
 /**
  * Middleware de validação customizada
  */
-export function validateCustom(rules, options = {}) {
+export function validateCustom(rules: any, options: any = {}) {
   return validate(rules, options);
 }
 
 /**
  * Validação de CPF
  */
-export function validateCpf(cpf) {
+export function validateCpf(cpf: string) {
   if (typeof cpf !== 'string') return false;
   
   const cleaned = cpf.replace(/\D/g, '');
@@ -351,7 +350,7 @@ export function validateCpf(cpf) {
 /**
  * Validação de telefone
  */
-export function validatePhone(phone) {
+export function validatePhone(phone: string) {
   if (typeof phone !== 'string') return false;
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 11;
@@ -360,7 +359,7 @@ export function validatePhone(phone) {
 /**
  * Validação de email
  */
-export function validateEmail(email) {
+export function validateEmail(email: string) {
   if (typeof email !== 'string') return false;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -370,8 +369,8 @@ export function validateEmail(email) {
  * Middleware de validação de CPF
  */
 export function validateCpfField(fieldName = 'cpf') {
-  return async (c, next) => {
-    const data = c.get('validatedData') || {};
+  return async (c: Context, next: Next) => {
+    const data: any = c.get('validatedData') || {};
     const cpf = data[fieldName];
     
     if (cpf && !validateCpf(cpf)) {
@@ -391,8 +390,8 @@ export function validateCpfField(fieldName = 'cpf') {
  * Middleware de validação de telefone
  */
 export function validatePhoneField(fieldName = 'phone') {
-  return async (c, next) => {
-    const data = c.get('validatedData') || {};
+  return async (c: Context, next: Next) => {
+    const data: any = c.get('validatedData') || {};
     const phone = data[fieldName];
     
     if (phone && !validatePhone(phone)) {
@@ -412,8 +411,8 @@ export function validatePhoneField(fieldName = 'phone') {
  * Middleware de validação de email
  */
 export function validateEmailField(fieldName = 'email') {
-  return async (c, next) => {
-    const data = c.get('validatedData') || {};
+  return async (c: Context, next: Next) => {
+    const data: any = c.get('validatedData') || {};
     const email = data[fieldName];
     
     if (email && !validateEmail(email)) {
