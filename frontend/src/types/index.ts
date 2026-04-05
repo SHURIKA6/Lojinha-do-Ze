@@ -25,7 +25,7 @@ export interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isCustomer: boolean;
-  login: (identifier: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; user?: User; error?: string; easterEgg?: boolean }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   setUser: (user: User | null) => void;
@@ -130,6 +130,13 @@ export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'refunded';
 
 export interface CartItem {
   product: Product;
+  quantity: number;
+}
+
+export interface StoreCartItem {
+  productId: string;
+  name: string;
+  price: number;
   quantity: number;
 }
 
