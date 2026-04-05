@@ -34,7 +34,7 @@ async function fetchMe(request: NextRequest): Promise<AuthResult> {
     }
 
     const data = await res.json();
-    return { kind: 'auth', user: data.user };
+    return { kind: 'auth', user: data.data?.user || data.user };
   } catch {
     return { kind: 'error' };
   }
@@ -114,7 +114,7 @@ Disallow: /easter-egg-nao-existe
   }
 
   if (pathname === '/login') {
-    if (result.kind === 'auth') {
+    if (result.kind === 'auth' && result.user) {
       return redirect(
         request,
         result.user.role === 'admin' ? '/admin/dashboard' : '/conta'
@@ -124,7 +124,7 @@ Disallow: /easter-egg-nao-existe
   }
 
   if (pathname.startsWith('/admin')) {
-    if (result.kind === 'auth' && result.user.role === 'admin') {
+    if (result.kind === 'auth' && result.user?.role === 'admin') {
       return NextResponse.next();
     }
     // Retorna 404 em vez de redirecionar para esconder a existência da rota
@@ -134,7 +134,7 @@ Disallow: /easter-egg-nao-existe
   }
 
   if (pathname.startsWith('/conta')) {
-    if (result.kind !== 'auth') {
+    if (result.kind !== 'auth' || !result.user) {
       return redirect(request, '/login');
     }
 
