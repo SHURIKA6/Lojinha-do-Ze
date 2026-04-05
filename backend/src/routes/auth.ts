@@ -25,30 +25,41 @@ router.post('/login', async (c) => {
   const db = c.get('db');
 
   if (!email || !password) {
-    return jsonError(c, 400, 'E-mail e senha são obrigatórios');
+    return jsonError(c, 400, 'Identificador e senha são obrigatórios');
   }
 
-  const emailLower = email.trim().toLowerCase();
-
   try {
+    const identifier = String(email).trim();
+    const passwordTrim = String(password).trim();
+
+    // Normaliza identificador (remove caracteres especiais de telefone ou CPF)
+    const onlyDigits = identifier.replace(/\D/g, '');
+    
+    // Busca usuário por e-mail, telefone ou CPF (tentando versões formatadas e apenas dígitos)
     const { rows } = await db.query(
-      'SELECT id, password, role FROM users WHERE email = $1',
-      [emailLower]
+      `SELECT id, password, role FROM users 
+       WHERE LOWER(email) = LOWER($1) 
+          OR phone = $1 OR phone = $2 
+          OR cpf = $1 OR cpf = $2 
+       LIMIT 1`,
+      [identifier, onlyDigits]
     );
 
     const user = rows[0];
     if (!user) {
+      logger.warn('Tentativa de login: usuário não encontrado', { identifier });
       return jsonError(c, 401, 'Credenciais inválidas');
     }
 
-    const validPassword = user.password ? await bcrypt.compare(password, user.password) : false;
+    const validPassword = user.password ? await bcrypt.compare(passwordTrim, user.password) : false;
     if (!validPassword) {
+      logger.warn('Tentativa de login: senha incorreta', { userId: user.id });
       return jsonError(c, 401, 'Credenciais inválidas');
     }
 
-    const { csrfToken } = await issueSession(c, db, user.id);
+    const { csrfToken } = await issueSession(c, db, String(user.id));
     
-    const isEasterEgg = emailLower === 'teste@gmail.com';
+    const isEasterEgg = identifier.toLowerCase() === 'teste@gmail.com';
     
     return jsonSuccess(c, {
       user: { id: user.id, role: user.role },
