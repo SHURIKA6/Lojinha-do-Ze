@@ -7,6 +7,25 @@ import { FiAlertCircle, FiCheckCircle, FiInfo } from 'react-icons/fi';
 /**
  * Componente de input de CPF com validação robusta
  */
+interface CpfInputProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  required?: boolean;
+  showSuggestions?: boolean;
+  showStats?: boolean;
+  className?: string;
+  label?: string;
+  error?: string;
+  [key: string]: any;
+}
+
+/**
+ * Componente de input de CPF com validação robusta
+ */
 export function CpfInput({
   value = '',
   onChange,
@@ -21,10 +40,10 @@ export function CpfInput({
   label = 'CPF',
   error: externalError,
   ...props
-}) {
+}: CpfInputProps) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const inputRef = useRef(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   const {
     error,
@@ -55,7 +74,7 @@ export function CpfInput({
     }
   }, [value, showSuggestions, getSuggestions]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const cleaned = cleanCpf(rawValue);
     
@@ -66,12 +85,12 @@ export function CpfInput({
     }
   };
 
-  const handleBlur = (e) => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     onBlur?.(e);
     setShowTooltip(false);
   };
 
-  const handleFocus = (e) => {
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     onFocus?.(e);
     if (error || suggestions.length > 0) {
       setShowTooltip(true);
@@ -194,7 +213,7 @@ export function CpfInput({
 /**
  * Componente de CPF somente leitura
  */
-export function CpfDisplay({ cpf, showFormatted = true, showStats = false }) {
+export function CpfDisplay({ cpf, showFormatted = true, showStats = false }: { cpf: string; showFormatted?: boolean; showStats?: boolean }) {
   const { formatCpf, getCpfStats, validateCpf } = useCpfValidation();
   
   const formatted = showFormatted ? formatCpf(cpf) : cpf;
@@ -222,7 +241,7 @@ export function CpfDisplay({ cpf, showFormatted = true, showStats = false }) {
 /**
  * Componente de validação de CPF em tempo real
  */
-export function CpfValidator({ cpf, onValidationChange }) {
+export function CpfValidator({ cpf, onValidationChange }: { cpf: string; onValidationChange?: (result: { isValid: boolean; error: string }) => void }) {
   const { validateCpfRealTime, error, isValid } = useCpfValidation();
   
   useEffect(() => {

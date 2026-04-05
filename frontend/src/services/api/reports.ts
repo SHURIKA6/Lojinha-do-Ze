@@ -4,11 +4,11 @@ export function getDashboard() {
   return request('/dashboard');
 }
 
-export function getReport(type) {
+export function getReport(type: string) {
   return request(`/reports/${type}`);
 }
 
-export async function exportReportCsv(reportType) {
+export async function exportReportCsv(reportType: string) {
   // Using native fetch since it returns a file blob
   const token = localStorage.getItem('@LojinhaDoZe:token');
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/reports/export/csv`, {

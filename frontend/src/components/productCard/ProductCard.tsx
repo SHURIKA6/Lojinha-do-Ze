@@ -5,13 +5,23 @@ import AppImage from '@/components/ui/AppImage';
 import { formatCurrency, getImageUrl } from '@/lib/api';
 import styles from './ProductCard.module.css';
 
+import { Product, StoreCartItem } from '@/types';
+
+interface ProductCardProps {
+  product: Product;
+  cartItem?: StoreCartItem | null;
+  availableStock: number;
+  onOpen: (product: Product) => void;
+  onQuickAdd: (event: React.MouseEvent, product: Product) => void;
+}
+
 export default function ProductCard({
   product,
   cartItem,
   availableStock,
   onOpen,
   onQuickAdd,
-}) {
+}: ProductCardProps) {
   const hasStock = availableStock > 0;
 
   return (
@@ -68,7 +78,7 @@ export default function ProductCard({
             type="button"
             className={`${styles.add} ${cartItem ? styles.inCart : ''}`}
             onClick={(event) => onQuickAdd(event, product)}
-            disabled={!hasStock || cartItem?.quantity >= availableStock}
+            disabled={!hasStock || (cartItem?.quantity ?? 0) >= availableStock}
             aria-label={
               cartItem
                 ? `${cartItem.quantity} de ${product.name} no carrinho`

@@ -16,7 +16,7 @@ export function useCart(allProducts: Product[]) {
   }, [allProducts]);
 
   useEffect(() => {
-    setCart((prev) =>
+    setCart((prev: StoreCartItem[]) =>
       prev
         .map((item) => ({
           ...item,
@@ -38,7 +38,7 @@ export function useCart(allProducts: Product[]) {
       return;
     }
 
-    setCart((prev) => {
+    setCart((prev: StoreCartItem[]) => {
       const existing = prev.find((item) => item.productId === product.id);
       if (existing) {
         const nextQty = Math.min(stock, existing.quantity + qty);
@@ -61,10 +61,10 @@ export function useCart(allProducts: Product[]) {
   const updateCartItem = (productId: string | number, qty: number) => {
     const stock = getAvailableStock(productId);
     if (qty <= 0 || stock <= 0) {
-      setCart((prev) => prev.filter((item) => item.productId !== productId));
+      setCart((prev: StoreCartItem[]) => prev.filter((item) => item.productId !== productId));
       return;
     }
-    setCart((prev) =>
+    setCart((prev: StoreCartItem[]) =>
       prev.map((item) =>
         item.productId === productId
           ? { ...item, quantity: Math.min(qty, stock) }
@@ -74,7 +74,7 @@ export function useCart(allProducts: Product[]) {
   };
 
   const removeFromCart = (productId: string | number) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
+    setCart((prev: StoreCartItem[]) => prev.filter((item) => item.productId !== productId));
   };
 
   return {

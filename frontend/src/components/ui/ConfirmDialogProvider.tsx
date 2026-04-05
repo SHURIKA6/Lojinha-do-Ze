@@ -3,12 +3,25 @@
 import { createContext, useContext, useState } from 'react';
 import Modal from '@/components/Modal';
 
-const ConfirmContext = createContext(null);
+interface ConfirmOptions {
+  title?: string;
+  description?: string;
+  body?: string;
+  cancelLabel?: string;
+  confirmLabel?: string;
+  tone?: 'primary' | 'danger';
+}
 
-export function ConfirmDialogProvider({ children }) {
-  const [dialog, setDialog] = useState(null);
+interface DialogState extends ConfirmOptions {
+  resolve: (value: boolean) => void;
+}
 
-  const confirm = (options) =>
+const ConfirmContext = createContext<((options: ConfirmOptions) => Promise<boolean>) | null>(null);
+
+export function ConfirmDialogProvider({ children }: { children: React.ReactNode }) {
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+
+  const confirm = (options: ConfirmOptions): Promise<boolean> =>
     new Promise((resolve) => {
       setDialog({
         ...options,
@@ -16,7 +29,7 @@ export function ConfirmDialogProvider({ children }) {
       });
     });
 
-  const closeDialog = (confirmed) => {
+  const closeDialog = (confirmed: boolean) => {
     if (dialog?.resolve) {
       dialog.resolve(Boolean(confirmed));
     }

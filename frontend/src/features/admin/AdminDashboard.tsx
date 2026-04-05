@@ -36,14 +36,40 @@ import StorefrontPageClient from '../storefront/StorefrontPageClient';
  * AdminDashboard - Componente principal do painel administrativo
  * Responsável por exibir métricas, pedidos recentes e alertas de estoque.
  */
+
+interface DashboardOrder {
+  id: string | number;
+  customer_name: string;
+  delivery_type: 'entrega' | 'retirada';
+  status: any; // We can use OrderStatus if we import it, but 'any' here is better than implicit any for now, or just use string
+  total: number;
+}
+
+interface DashboardProduct {
+  id: string | number;
+  name: string;
+  quantity: number;
+  min_stock: number;
+}
+
+interface DashboardData {
+  monthRevenue: number;
+  totalSales: number;
+  activeOrders: number;
+  profit: number;
+  chartData: Array<{ day: string; receita: number; despesa: number }>;
+  categoryChart: Array<{ name: string; value: number }>;
+  recentOrders: DashboardOrder[];
+  lowStock: DashboardProduct[];
+}
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const { addToast } = useToast();
   const router = useRouter();
   
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
@@ -196,7 +222,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-4">
         {metrics.map(({ label, value, tone, icon: Icon }, idx) => (
-          <div key={idx} className="metric-card" style={{ '--metric-color': tone }}>
+          <div key={idx} className="metric-card" style={{ '--metric-color': tone } as React.CSSProperties}>
             <div className="metric-card__icon">
               <Icon />
             </div>
@@ -224,7 +250,7 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(64, 57, 47, 0.12)" />
                   <XAxis dataKey="day" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => formatCurrency(value || 0)} />
+                  <Tooltip formatter={(value: any) => formatCurrency(Number(value) || 0)} />
                   <Bar dataKey="receita" fill="var(--success-500)" radius={[8, 8, 0, 0]} name="Receita" />
                   <Bar dataKey="despesa" fill="var(--danger-400)" radius={[8, 8, 0, 0]} name="Despesa" />
                 </BarChart>
@@ -314,7 +340,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {data?.recentOrders?.length ? (
-                  data.recentOrders.map((order) => (
+                  data.recentOrders.map((order: DashboardOrder) => (
                     <tr key={order.id}>
                       <td>{order.customer_name || 'Cliente avulso'}</td>
                       <td>{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}</td>
@@ -354,7 +380,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {data?.lowStock?.length ? (
-                  data.lowStock.map((product) => (
+                  data.lowStock.map((product: DashboardProduct) => (
                     <tr key={product.id}>
                       <td>{product.name}</td>
                       <td style={{ fontWeight: 800 }}>{product.quantity}</td>

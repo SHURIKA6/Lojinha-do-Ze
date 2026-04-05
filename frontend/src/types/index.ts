@@ -203,6 +203,7 @@ export interface Notification {
 
 export interface ToastContextType {
   showToast: (payload: { type?: 'success' | 'error' | 'warning' | 'info'; title?: string; message: string; duration?: number }) => void;
+  addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info', duration?: number) => void;
   success: (message: string, title?: string) => void;
   error: (message: string, title?: string) => void;
   info: (message: string, title?: string) => void;

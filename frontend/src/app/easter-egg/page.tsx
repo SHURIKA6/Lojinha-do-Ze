@@ -4,15 +4,26 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './easter-egg.module.css';
 
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  speedY: number;
+  speedX: number;
+  color: string;
+  opacity: number;
+}
+
 export default function EasterEggPage() {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const router = useRouter();
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<string[]>([]);
   const [currentMessage, setCurrentMessage] = useState(0);
   const [showSecret, setShowSecret] = useState(false);
   const [konamiIndex, setKonamiIndex] = useState(0);
   const [matrixMode, setMatrixMode] = useState(false);
-  const [particles, setParticles] = useState([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [clickCount, setClickCount] = useState(0);
   const [showCredits, setShowCredits] = useState(false);
@@ -38,6 +49,7 @@ export default function EasterEggPage() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
@@ -47,6 +59,7 @@ export default function EasterEggPage() {
     const drops = Array(Math.floor(columns)).fill(1);
 
     function drawMatrix() {
+      if (!ctx || !canvas) return;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -71,7 +84,7 @@ export default function EasterEggPage() {
 
   // Konami code detector
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === konamiCode[konamiIndex]) {
         setKonamiIndex(prev => {
           const newIndex = prev + 1;
@@ -134,7 +147,7 @@ export default function EasterEggPage() {
 
   // Mouse trail
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
 
