@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import ClienteLayoutClient from '@/features/account/ClienteLayoutClient';
 
 export const metadata = {
@@ -8,6 +9,6 @@ export const metadata = {
   },
 };
 
-export default function ContaLayout({ children }) {
+export default function ContaLayout({ children }: { children: ReactNode }) {
   return <ClienteLayoutClient>{children}</ClienteLayoutClient>;
 }
