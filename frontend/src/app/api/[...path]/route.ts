@@ -119,22 +119,22 @@ async function proxyRequest(request: NextRequest, params: { path: string[] } | P
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return proxyRequest(request, params, 'GET');
 }
 
-export async function POST(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return proxyRequest(request, params, 'POST');
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return proxyRequest(request, params, 'PUT');
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return proxyRequest(request, params, 'PATCH');
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return proxyRequest(request, params, 'DELETE');
 }
