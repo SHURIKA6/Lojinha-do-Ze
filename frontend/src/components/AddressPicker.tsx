@@ -110,7 +110,7 @@ export default function AddressPicker({
         }
       });
 
-      map.on('click', async (event) => {
+      map.on('click', async (event: any) => {
         marker.setLatLng(event.latlng);
         onCoordinatesChange({ lat: event.latlng.lat, lng: event.latlng.lng });
 

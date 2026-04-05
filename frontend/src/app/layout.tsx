@@ -1,5 +1,4 @@
 import './globals.css';
-import './theme.ts';
 import './experience.css';
 import './storefront.css';
 
