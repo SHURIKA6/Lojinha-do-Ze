@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const { message } = await req.json();
     
@@ -22,6 +22,6 @@ export async function POST(req) {
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Proxy AI Error:', error);
-    return NextResponse.json({ error: 'Erro ao conectar com o portal da IA.' }, 500);
+    return NextResponse.json({ error: 'Erro ao conectar com o portal da IA.' }, { status: 500 });
   }
 }
