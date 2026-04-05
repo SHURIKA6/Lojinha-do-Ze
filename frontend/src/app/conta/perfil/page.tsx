@@ -13,7 +13,7 @@ export default function ClientePerfilPage() {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    address: user?.address || '',
+    address: typeof user?.address === 'string' ? user.address : '',
   });
   const [saved, setSaved] = useState(false);
 
@@ -26,7 +26,8 @@ export default function ClientePerfilPage() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error(err);
-      toast.error(err.message || 'Não foi possível atualizar o perfil.');
+      const message = err instanceof Error ? err.message : 'Não foi possível atualizar o perfil.';
+      toast.error(message);
     }
   };
 
