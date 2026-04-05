@@ -11,14 +11,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
+  const isFetchingRef = React.useRef(false);
 
   const refreshUser = React.useCallback(async (): Promise<User | null> => {
-    if (isFetching) return user;
+    // Usar ref em vez de estado dentro do callback para evitar dependências cíclicas
+    if (isFetchingRef.current) return null;
     
+    isFetchingRef.current = true;
     setIsFetching(true);
+    
     try {
       const res = await getMe() as any;
-      // UNIFICAÇÃO: Se vier embrulhado no jsonSuccess, pega o data interno. Senão, tenta direto.
       const actualData = res.success ? res.data : res;
       const userData = actualData?.user || null;
       
@@ -28,10 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       return null;
     } finally {
+      isFetchingRef.current = false;
       setIsFetching(false);
       setLoading(false);
     }
-  }, [isFetching, user]);
+  }, []);
 
   useEffect(() => {
     refreshUser();
