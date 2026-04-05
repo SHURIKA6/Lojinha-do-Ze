@@ -1,25 +1,25 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { Hono } from 'hono';
+import { Hono, Context, Next } from 'hono';
 
-const mockCreatePixPayment = jest.fn();
-const mockGetPayment = jest.fn();
+const mockCreatePixPayment = jest.fn() as any;
+const mockGetPayment = jest.fn() as any;
 
-jest.unstable_mockModule('../src/services/mercadoPagoService.js', () => ({
+jest.unstable_mockModule('../src/services/mercadoPagoService', () => ({
   MercadoPagoService: class {
-    async createPixPayment(payload) {
+    async createPixPayment(payload: any) {
       return mockCreatePixPayment(payload);
     }
 
-    async getPayment(paymentId) {
+    async getPayment(paymentId: any) {
       return mockGetPayment(paymentId);
     }
   },
 }));
 
-const { default: paymentsRoutes } = await import('../src/routes/payments.js');
+const { default: paymentsRoutes } = await import('../src/routes/payments');
 
-function buildDbMock(handlers = {}) {
-  const query = jest.fn(async (text, params) => {
+function buildDbMock(handlers: any = {}) {
+  const query = jest.fn(async (text: string, params: any) => {
     if (handlers.query) {
       return handlers.query(text, params);
     }
@@ -37,8 +37,13 @@ function buildDbMock(handlers = {}) {
   };
 }
 
-function buildApp(db) {
-  const app = new Hono();
+type Variables = {
+  db: ReturnType<typeof buildDbMock>;
+  user?: { id: string; role: string };
+};
+
+function buildApp(db: ReturnType<typeof buildDbMock>) {
+  const app = new Hono<{ Variables: Variables }>();
   app.use('*', async (c, next) => {
     c.set('db', db);
     const userId = c.req.header('x-test-user-id');
@@ -54,7 +59,7 @@ function buildApp(db) {
   return app;
 }
 
-async function signWebhook(secret, dataId, requestId, ts) {
+async function signWebhook(secret: string, dataId: string, requestId: string, ts: string) {
   const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
   const key = await crypto.subtle.importKey(
     'raw',
@@ -77,7 +82,7 @@ describe('Payments Security', () => {
 
   it('valida telefone e pedido ao criar e consultar pagamentos Pix', async () => {
     const db = buildDbMock({
-      query: async (text, _params) => {
+      query: async (text: string, _params: any[] = []) => {
         if (text.includes('FROM orders') && text.includes('WHERE id = $1')) {
           return {
             rows: [
@@ -181,7 +186,7 @@ describe('Payments Security', () => {
     let orderStatus = 'novo';
     let insertedTransactions = 0;
 
-    const clientQuery = jest.fn(async (text, params) => {
+    const clientQuery = jest.fn(async (text: string, params: any[] = []) => {
       if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
         return { rowCount: 0, rows: [] };
       }
@@ -206,7 +211,7 @@ describe('Payments Security', () => {
     });
 
     const db = buildDbMock({
-      query: async (text, _params) => {
+      query: async (text: string, _params: any[] = []) => {
         if (text.includes('UPDATE orders SET payment_status = $1')) {
           return { rowCount: 1, rows: [] };
         }

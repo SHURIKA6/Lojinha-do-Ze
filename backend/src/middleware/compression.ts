@@ -4,7 +4,7 @@
  */
 
 import { Context, Next } from 'hono';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 // Tipos de conteúdo que devem ser comprimidos
 const COMPRESSIBLE_TYPES = [

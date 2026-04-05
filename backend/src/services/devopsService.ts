@@ -226,7 +226,7 @@ export class DevOpsService {
     await this.simulateAsyncOperation(2000);
     
     return {
-      artifacts: ['app.js', 'styles.css', 'index.html'],
+      artifacts: ['app.ts', 'styles.css', 'index.html'],
       size: '2.5MB',
       buildTime: '45s'
     };

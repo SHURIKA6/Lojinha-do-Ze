@@ -1,6 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-async function fetchMe(request) {
+interface AuthUser {
+  id: string;
+  role: 'admin' | 'customer';
+  email: string;
+}
+
+type AuthResult = 
+  | { kind: 'auth'; user: AuthUser }
+  | { kind: 'unauth' }
+  | { kind: 'error' };
+
+async function fetchMe(request: NextRequest): Promise<AuthResult> {
   const meUrl = request.nextUrl.clone();
   meUrl.pathname = '/api/auth/me';
   meUrl.search = '';
@@ -22,20 +33,21 @@ async function fetchMe(request) {
       return { kind: 'error' };
     }
 
-    return { kind: 'auth', user: await res.json() };
+    const data = await res.json();
+    return { kind: 'auth', user: data.user };
   } catch {
     return { kind: 'error' };
   }
 }
 
-function redirect(request, pathname) {
+function redirect(request: NextRequest, pathname: string) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   url.search = '';
   return NextResponse.redirect(url);
 }
 
-export async function middleware(request) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Interceptar requisições para robots.txt com pegadinha
@@ -91,7 +103,8 @@ Disallow: /easter-egg-nao-existe
   }
 
   // Fail-closed: if the auth check fails due to network/runtime, redirect to login for protected routes.
-  const result = hasSession ? await fetchMe(request) : { kind: 'unauth' };
+  const result: AuthResult = hasSession ? await fetchMe(request) : { kind: 'unauth' };
+  
   if (result.kind === 'error') {
     if (pathname === '/login') {
       return NextResponse.next();
@@ -101,25 +114,23 @@ Disallow: /easter-egg-nao-existe
   }
 
   if (pathname === '/login') {
-    if (result.kind !== 'auth') {
-      return NextResponse.next();
+    if (result.kind === 'auth') {
+      return redirect(
+        request,
+        result.user.role === 'admin' ? '/admin/dashboard' : '/conta'
+      );
     }
-
-    return redirect(
-      request,
-      result.user.role === 'admin' ? '/admin/dashboard' : '/conta'
-    );
+    return NextResponse.next();
   }
 
   if (pathname.startsWith('/admin')) {
-    if (result.kind !== 'auth' || result.user.role !== 'admin') {
-      // Retorna 404 em vez de redirecionar para esconder a existência da rota
-      const url = request.nextUrl.clone();
-      url.pathname = '/404-not-found'; // Rota inexistente para forçar 404
-      return NextResponse.rewrite(url);
+    if (result.kind === 'auth' && result.user.role === 'admin') {
+      return NextResponse.next();
     }
-
-    return NextResponse.next();
+    // Retorna 404 em vez de redirecionar para esconder a existência da rota
+    const url = request.nextUrl.clone();
+    url.pathname = '/404-not-found'; // Rota inexistente para forçar 404
+    return NextResponse.rewrite(url);
   }
 
   if (pathname.startsWith('/conta')) {
