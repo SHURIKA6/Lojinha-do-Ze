@@ -9,11 +9,12 @@ import {
   getStatusLabel,
   getStatusVariant,
 } from '@/lib/api';
+import { Order } from '@/types';
 import { FiCheckCircle, FiClock, FiPackage, FiTruck } from 'react-icons/fi';
 
 export default function ClienteDashboard() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function ClienteDashboard() {
       </div>
 
       <div className="status-summary">
-        <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' }}>
+        <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
             <FiClock />
           </div>
@@ -70,7 +71,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' }}>
+        <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
             <FiPackage />
           </div>
@@ -80,7 +81,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' }}>
+        <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
             <FiTruck />
           </div>
@@ -90,7 +91,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' }}>
+        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
             <FiCheckCircle />
           </div>
@@ -125,8 +126,8 @@ export default function ClienteDashboard() {
                   let itemsLabel = '';
 
                   try {
-                    const items = JSON.parse(order.items || '[]');
-                    itemsLabel = items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
+                    const items = Array.isArray(order.items) ? order.items : [];
+                    itemsLabel = items.map((item) => `${item.quantity}x ${item.productName || (item as any).name}`).join(', ');
                   } catch (error) {
                     console.error(error);
                   }
