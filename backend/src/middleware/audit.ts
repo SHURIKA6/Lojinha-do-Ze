@@ -1,6 +1,6 @@
 import { Context, Next } from 'hono';
-import { logger, sanitizeObject } from '../utils/logger.js';
-import { isSafeMethod } from '../utils/http.js';
+import { logger, sanitizeObject } from '../utils/logger';
+import { isSafeMethod } from '../utils/http';
 
 /**
  * Middleware para auditoria de segurança automatizada.

@@ -46,20 +46,15 @@ router.post('/login', async (c) => {
       return jsonError(c, 401, 'Credenciais inválidas');
     }
 
-    const client = await db.connect();
-    try {
-      const { csrfToken } = await issueSession(c, client, user.id);
-      
-      const isEasterEgg = emailLower === 'teste@gmail.com';
-      
-      return jsonSuccess(c, {
-        user: { id: user.id, role: user.role },
-        csrfToken,
-        easterEgg: isEasterEgg,
-      });
-    } finally {
-      if (client.release) client.release();
-    }
+    const { csrfToken } = await issueSession(c, db, user.id);
+    
+    const isEasterEgg = emailLower === 'teste@gmail.com';
+    
+    return jsonSuccess(c, {
+      user: { id: user.id, role: user.role },
+      csrfToken,
+      easterEgg: isEasterEgg,
+    });
   } catch (error) {
     logger.error('Erro no processamento do login', error);
     return jsonError(c, 500, 'Erro interno ao processar login');

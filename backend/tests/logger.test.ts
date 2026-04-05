@@ -1,18 +1,18 @@
 /* eslint-disable no-console */
 import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
-import { logger, sanitizeObject } from '../src/utils/logger.js';
+import { logger, sanitizeObject } from '../src/utils/logger';
 
 describe('Logger', () => {
-  let consoleOutput = [];
+  let consoleOutput: Array<{ type: string; args: any[] }> = [];
   const originalLog = console.log;
   const originalWarn = console.warn;
   const originalError = console.error;
 
   beforeEach(() => {
     consoleOutput = [];
-    console.log = (...args) => consoleOutput.push({ type: 'log', args });
-    console.warn = (...args) => consoleOutput.push({ type: 'warn', args });
-    console.error = (...args) => consoleOutput.push({ type: 'error', args });
+    console.log = (...args: any[]) => consoleOutput.push({ type: 'log', args });
+    console.warn = (...args: any[]) => consoleOutput.push({ type: 'warn', args });
+    console.error = (...args: any[]) => consoleOutput.push({ type: 'error', args });
   });
 
   afterEach(() => {
@@ -29,7 +29,7 @@ describe('Logger', () => {
         name: 'John',
       };
 
-      const result = sanitizeObject(input);
+      const result = sanitizeObject(input) as any;
 
       expect(result.password).toBe('se****23');
       expect(result.email).toBe('us****om');
@@ -44,7 +44,7 @@ describe('Logger', () => {
         },
       };
 
-      const result = sanitizeObject(input);
+      const result = sanitizeObject(input) as any;
 
       expect(result.user.password).toBe('se****et');
       expect(result.user.name).toBe('John');
@@ -53,7 +53,7 @@ describe('Logger', () => {
     it('should handle arrays', () => {
       const input = [{ password: 'secret' }, { name: 'John' }];
 
-      const result = sanitizeObject(input);
+      const result = sanitizeObject(input) as any;
 
       expect(result[0].password).toBe('se****et');
       expect(result[1].name).toBe('John');
@@ -68,7 +68,7 @@ describe('Logger', () => {
 
     it('should mask short values completely', () => {
       const input = { code: 'ab' };
-      const result = sanitizeObject(input);
+      const result = sanitizeObject(input) as any;
       expect(result.code).toBe('****');
     });
   });

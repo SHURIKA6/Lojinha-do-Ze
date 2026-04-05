@@ -3,7 +3,7 @@
  * E2E manual para a API da Lojinha do Zé.
  * SEC-09: Movido de src/ para scripts/ para não ser empacotado no deploy.
  *
- * Uso: node scripts/e2e-test.js
+ * Uso: npx tsx scripts/e2e-test.ts
  */
 
 const API_URL = 'http://localhost:8787/api';

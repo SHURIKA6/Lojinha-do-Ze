@@ -20,7 +20,7 @@ async function updateSchema() {
     await client.query('DROP TABLE IF EXISTS users CASCADE');
     await client.query('DROP TABLE IF EXISTS schema_migrations CASCADE');
     
-    console.log('🗑️ Tabelas antigas dropadas. O server.js ou db-bootstrap.js irá recriá-las.');
+    console.log('🗑️ Tabelas antigas dropadas. O server.ts ou db-bootstrap.ts irá recriá-las.');
     client.release();
   } catch (err: any) {
     console.error('Erro:', err);
