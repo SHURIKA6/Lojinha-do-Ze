@@ -12,9 +12,9 @@ type AuthResult =
   | { kind: 'error' };
 
 async function fetchMe(request: NextRequest): Promise<AuthResult> {
-  const meUrl = request.nextUrl.clone();
-  meUrl.pathname = '/api/auth/me';
-  meUrl.search = '';
+  // Chamada direta para o backend para evitar problemas de proxy interno no middleware
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
+  const meUrl = `${backendUrl}/auth/me`;
 
   try {
     const res = await fetch(meUrl, {
