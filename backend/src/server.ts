@@ -17,12 +17,14 @@ import uploadRoutes from './routes/upload';
 import paymentRoutes from './routes/payments';
 import aiRoutes from './routes/ai';
 import analyticsRoutes from './routes/analytics';
+import { loadLocalEnv } from './load-local-env';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { auditMiddleware } from './middleware/audit';
 import { csrfMiddleware, optionalAuthMiddleware } from './middleware/auth';
 import { Bindings, Variables, Database } from './types';
 
+loadLocalEnv();
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 const DBLESS_PATH_PREFIXES = ['/api/health'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
