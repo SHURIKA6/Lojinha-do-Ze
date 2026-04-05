@@ -1,12 +1,7 @@
 'use client';
 
-import AdminPlaceholder from '@/features/admin/AdminPlaceholder';
+import ProfileSettings from '@/features/admin/ProfileSettings';
 
 export default function PerfilPage() {
-  return (
-    <AdminPlaceholder 
-      title="Perfil do Administrador" 
-      subtitle="Configurações de conta e preferências pessoais." 
-    />
-  );
+  return <ProfileSettings />;
 }
