@@ -27,7 +27,7 @@ import {
   getPaymentMethodLabel
 } from '@/lib/api';
 import { Order, OrderStatus } from '@/types';
-import '../admin/dashboard.css'; // Reusing dashboard styles for consistency
+import '@/app/admin/dashboard.css'; // Reusing dashboard styles for consistency
 
 export default function OrdersManagement() {
   const { isAdmin } = useAuth();
