@@ -3,7 +3,7 @@
  * Implementação mais eficiente que offset-based para grandes datasets
  */
 
-import { logger } from './logger.js';
+import { logger } from './logger';
 
 interface CursorData {
   [key: string]: unknown;

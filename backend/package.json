@@ -9,8 +9,8 @@
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "seed": "node src/db-bootstrap.js",
-    "create-admin": "node scripts/create-admin.js"
+    "seed": "npx tsx scripts/clear-db.ts",
+    "create-admin": "npx tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",
@@ -38,6 +38,7 @@
     "prettier": "^3.8.1",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.9",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "wrangler": "^4.72.0"
   },
