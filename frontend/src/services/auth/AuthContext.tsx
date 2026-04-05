@@ -10,23 +10,32 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
-  const refreshUser = async (): Promise<User | null> => {
+  const refreshUser = React.useCallback(async (): Promise<User | null> => {
+    if (isFetching) return user;
+    
+    setIsFetching(true);
     try {
-      const data = await getMe() as any;
-      const userData = data.user || data;
+      const res = await getMe() as any;
+      // UNIFICAÇÃO: Se vier embrulhado no jsonSuccess, pega o data interno. Senão, tenta direto.
+      const actualData = res.success ? res.data : res;
+      const userData = actualData?.user || null;
+      
       setUser(userData);
       return userData;
     } catch {
       setUser(null);
       return null;
+    } finally {
+      setIsFetching(false);
+      setLoading(false);
     }
-  };
+  }, [isFetching, user]);
 
   useEffect(() => {
-    refreshUser()
-      .finally(() => setLoading(false));
-  }, []);
+    refreshUser();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toast = useToast();
   
@@ -43,28 +52,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:expired', handleExpiredSession);
   }, [user, toast]);
 
-  const login = async (identifier: string, password: string) => {
+  const login = React.useCallback(async (identifier: string, password: string) => {
     try {
-      const data = await apiLogin(identifier, password);
-      setUser(data.user);
-      return { success: true, user: data.user };
+      const res = await apiLogin(identifier, password) as any;
+      const actualData = res.success ? res.data : res;
+      const userData = actualData?.user;
+      
+      setUser(userData);
+      return { success: true, user: userData };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = React.useCallback(async () => {
     await apiLogout().catch(() => {});
     setUser(null);
-  };
+  }, []);
 
-  const isAdmin = user?.role === 'admin';
-  const isCustomer = user?.role === 'customer';
+  const isAdmin = React.useMemo(() => user?.role === 'admin', [user]);
+  const isCustomer = React.useMemo(() => user?.role === 'customer', [user]);
+
+  const value = React.useMemo(() => ({
+    user,
+    login,
+    logout,
+    loading,
+    refreshUser,
+    setUser,
+    isAdmin,
+    isCustomer
+  }), [user, login, logout, loading, refreshUser, isAdmin, isCustomer]);
 
   return (
-    <AuthContext.Provider
-      value={{ user, login, logout, loading, refreshUser, setUser, isAdmin, isCustomer }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
