@@ -1,12 +1,7 @@
 'use client';
 
-import AdminPlaceholder from '@/features/admin/AdminPlaceholder';
+import FinancialManagement from '@/features/admin/FinancialManagement';
 
 export default function FinanceiroPage() {
-  return (
-    <AdminPlaceholder 
-      title="Gestão Financeira" 
-      subtitle="Fluxo de caixa, receitas e transações da Lojinha." 
-    />
-  );
+  return <FinancialManagement />;
 }
