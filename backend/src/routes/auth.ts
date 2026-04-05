@@ -99,7 +99,7 @@ router.get('/me', async (c) => {
     if (!session) {
       return jsonError(c, 401, 'Não autenticado');
     }
-    return jsonSuccess(c, { user: session.user, csrfToken: session.csrfToken });
+    return c.json({ user: session.user, csrfToken: session.csrfToken });
   } finally {
     if (client.release) client.release();
   }
