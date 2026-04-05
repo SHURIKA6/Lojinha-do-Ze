@@ -2,17 +2,29 @@
 
 import Image from 'next/image';
 
+interface AppImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+  fill?: boolean;
+  sizes?: string;
+  width?: number;
+  height?: number;
+  style?: React.CSSProperties;
+  priority?: boolean;
+}
+
 export default function AppImage({
   src,
   alt,
-  className,
+  className = '',
   fill = false,
   sizes = '(max-width: 768px) 100vw, 33vw',
   width = 800,
   height = 600,
   style,
   priority = false,
-}) {
+}: AppImageProps) {
   if (!src) {
     return null;
   }

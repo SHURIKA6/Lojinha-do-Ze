@@ -1,6 +1,6 @@
 import { API_BASE } from './client';
 
-export function getImageUrl(path) {
+export function getImageUrl(path: string) {
   if (!path) return '';
   if (path.startsWith('http')) return path;
 

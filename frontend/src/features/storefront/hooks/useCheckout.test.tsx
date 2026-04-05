@@ -1,3 +1,4 @@
+import React from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
@@ -9,14 +10,14 @@ const mockCreatePixPayment = jest.fn();
 const mockGetPixPaymentStatus = jest.fn();
 
 jest.mock('@/lib/api', () => ({
-  createOrder: (...args) => mockCreateOrder(...args),
-  createPixPayment: (...args) => mockCreatePixPayment(...args),
-  getPixPaymentStatus: (...args) => mockGetPixPaymentStatus(...args),
-  isValidCpf: (cpf) => cpf.replace(/\D/g, '').length === 11,
-  isValidEmail: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+  createOrder: (...args: any[]) => mockCreateOrder(...args),
+  createPixPayment: (...args: any[]) => mockCreatePixPayment(...args),
+  getPixPaymentStatus: (...args: any[]) => mockGetPixPaymentStatus(...args),
+  isValidCpf: (cpf: string) => cpf.replace(/\D/g, '').length === 11,
+  isValidEmail: (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
 }));
 
-function Wrapper({ children }) {
+function Wrapper({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <ConfirmDialogProvider>
@@ -59,7 +60,7 @@ describe('useCheckout', () => {
     const { result } = renderHook(
       () =>
         useCheckout({
-          cart: [{ productId: 1, name: 'Erva', quantity: 1, price: 10 }],
+          cart: [{ productId: '1', name: 'Erva', quantity: 1, price: 10 }],
           cartTotal: 10,
           setError,
           user: null,
@@ -91,7 +92,7 @@ describe('useCheckout', () => {
       })
     );
 
-    expect(JSON.parse(window.localStorage.getItem('lojinha_customer'))).toEqual({
+    expect(JSON.parse(window.localStorage.getItem('lojinha_customer') || '{}')).toEqual({
       name: 'Ana Silva',
       phone: '(65) 99999-0000',
       email: 'ana@example.com',

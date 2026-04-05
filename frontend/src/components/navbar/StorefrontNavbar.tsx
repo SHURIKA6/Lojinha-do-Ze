@@ -6,6 +6,18 @@ import { FiLogOut, FiSearch, FiShoppingCart, FiX } from 'react-icons/fi';
 import { useToast } from '@/components/ui/ToastProvider';
 import styles from './StorefrontNavbar.module.css';
 
+interface StorefrontNavbarProps {
+  cartCount: number;
+  onLogout?: () => void;
+  onPortalClick: () => void;
+  portalLabel: string;
+  PortalIcon: React.ElementType;
+  search: string;
+  setActiveCategory: (category: string) => void;
+  setCartOpen: (open: boolean) => void;
+  setSearch: (search: string) => void;
+}
+
 export default function StorefrontNavbar({
   cartCount,
   onLogout,
@@ -16,11 +28,11 @@ export default function StorefrontNavbar({
   setActiveCategory,
   setCartOpen,
   setSearch,
-}) {
+}: StorefrontNavbarProps) {
   const [clickCount, setClickCount] = useState(0);
   const toast = useToast();
 
-  const handleLogoClick = (e) => {
+  const handleLogoClick = (e: React.MouseEvent) => {
     // Incrementa contador se clicar no logo
     const newCount = clickCount + 1;
     setClickCount(newCount);

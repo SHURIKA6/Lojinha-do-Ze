@@ -6,6 +6,18 @@ import { FiDownload, FiFileText, FiTable, FiImage } from 'react-icons/fi';
 /**
  * Componente para exportação de relatórios em diferentes formatos
  */
+interface ExportButtonProps {
+  data: any[];
+  filename?: string;
+  formats?: string[];
+  onExport?: (format: string, data: any[]) => void | Promise<void>;
+  disabled?: boolean;
+  className?: string;
+}
+
+/**
+ * Componente para exportação de relatórios em diferentes formatos
+ */
 export function ExportButton({ 
   data, 
   filename = 'relatorio',
@@ -13,11 +25,11 @@ export function ExportButton({
   onExport,
   disabled = false,
   className = ''
-}) {
+}: ExportButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const handleExport = async (format) => {
+  const handleExport = async (format: string) => {
     if (exporting || disabled) return;
     
     setExporting(true);
@@ -36,7 +48,7 @@ export function ExportButton({
     }
   };
 
-  const defaultExport = async (format, exportData, name) => {
+  const defaultExport = async (format: string, exportData: any[], name: string) => {
     switch (format) {
       case 'pdf':
         await exportToPDF(exportData, name);
@@ -52,19 +64,19 @@ export function ExportButton({
     }
   };
 
-  const exportToPDF = async (exportData, name) => {
+  const exportToPDF = async (exportData: any[], name: string) => {
     // Implementação futura com biblioteca PDF
     console.log('Exportando para PDF:', { data: exportData, filename: name });
     alert('Exportação PDF será implementada em breve!');
   };
 
-  const exportToExcel = async (exportData, name) => {
+  const exportToExcel = async (exportData: any[], name: string) => {
     // Implementação futura com biblioteca Excel
     console.log('Exportando para Excel:', { data: exportData, filename: name });
     alert('Exportação Excel será implementada em breve!');
   };
 
-  const exportToCSV = async (exportData, name) => {
+  const exportToCSV = async (exportData: any[], name: string) => {
     try {
       if (!exportData || !Array.isArray(exportData) || exportData.length === 0) {
         throw new Error('Dados inválidos para exportação');
@@ -104,7 +116,7 @@ export function ExportButton({
     }
   };
 
-  const getFormatIcon = (format) => {
+  const getFormatIcon = (format: string) => {
     switch (format) {
       case 'pdf': return <FiFileText />;
       case 'excel': return <FiTable />;
@@ -113,7 +125,7 @@ export function ExportButton({
     }
   };
 
-  const getFormatLabel = (format) => {
+  const getFormatLabel = (format: string) => {
     switch (format) {
       case 'pdf': return 'PDF';
       case 'excel': return 'Excel';
@@ -238,13 +250,13 @@ export function ExportButton({
 /**
  * Componente para exportação de relatórios específicos
  */
-export function ReportExportButton({ reportType, data, dateRange }) {
+export function ReportExportButton({ reportType, data, dateRange }: { reportType: string; data: any[]; dateRange?: any }) {
   const getFilename = () => {
     const date = new Date().toISOString().split('T')[0];
     return `relatorio-${reportType}-${date}`;
   };
 
-  const handleExport = async (format, exportData) => {
+  const handleExport = async (format: string, exportData: any[]) => {
     // Implementação futura com relatórios específicos
     console.log(`Exportando relatório ${reportType}:`, { format, data: exportData, dateRange });
     alert(`Relatório ${reportType} em ${format.toUpperCase()} será implementado em breve!`);

@@ -63,7 +63,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
   });
   const [customerAddress, setCustomerAddress] = useState<string>('');
   const [customerCoords, setCustomerCoords] = useState<any>(null);
-  const [deliveryType, setDeliveryType] = useState<string>('entrega');
+  const [deliveryType, setDeliveryType] = useState<'entrega' | 'retirada'>('entrega');
   const [paymentMethod, setPaymentMethod] = useState<string>('pix');
   const [isRegistered, setIsRegistered] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -79,7 +79,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     if (!saved) return;
     try {
       const data = JSON.parse(saved);
-      setCustomerForm((prev) => ({
+      setCustomerForm((prev: any) => ({
         ...prev,
         name: data.name || '',
         phone: data.phone || '',
@@ -95,14 +95,14 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
   useEffect(() => {
     if (!user) return;
 
-    setCustomerForm((prev) => ({
+    setCustomerForm((prev: any) => ({
       ...prev,
       name: prev.name || user.name || '',
       phone: prev.phone || user.phone || '',
       email: prev.email || user.email || '',
     }));
 
-    setCustomerAddress((prev) => prev || formatAddress(user.address) || '');
+    setCustomerAddress((prev: string) => prev || formatAddress(user.address) || '');
     if (user.name && user.phone && !isRegistered) {
       setIsRegistered(true);
     }
@@ -213,7 +213,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
             identificationNumber: customerForm.cpf.replace(/\D/g, ''),
           });
 
-          setOrderResult((prev) => prev ? ({ ...prev, pix: payment }) : null);
+          setOrderResult((prev: any) => prev ? ({ ...prev, pix: payment }) : null);
         } catch (paymentErr: any) {
           console.error('Erro ao gerar Pix:', paymentErr);
           toast.error(

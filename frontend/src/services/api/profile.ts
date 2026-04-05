@@ -1,6 +1,6 @@
 import { request } from './client';
 
-export function updateProfile(data) {
+export function updateProfile(data: any) {
   return request('/profile', {
     method: 'PUT',
     body: JSON.stringify(data),

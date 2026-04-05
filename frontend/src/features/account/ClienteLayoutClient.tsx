@@ -10,7 +10,7 @@ const navLinks = [
   { href: '/conta/perfil', label: 'Meu Perfil' },
 ];
 
-export default function ClienteLayoutClient({ children }) {
+export default function ClienteLayoutClient({ children }: { children: React.ReactNode }) {
   const { user, loading, logout, isAdmin, isCustomer } = useAuth();
   const router = useRouter();
   const pathname = usePathname();

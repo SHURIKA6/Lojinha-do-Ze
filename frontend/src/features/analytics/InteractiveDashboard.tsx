@@ -20,12 +20,27 @@ const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: fa
 const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
 const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
 
+interface Forecast {
+  id: string | number;
+  name: string;
+  currentStock: number;
+  movingAverage: number;
+  regression: number;
+  seasonality: boolean;
+}
+
+interface Sentiment {
+  sentiment: 'positive' | 'neutral' | 'negative';
+  text: string;
+  score: number;
+}
+
 export default function InteractiveDashboard() {
   const { isAdmin } = useAuth();
   const { addToast } = useToast();
   
-  const [forecasts, setForecasts] = useState([]);
-  const [sentiments, setSentiments] = useState([]);
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
+  const [sentiments, setSentiments] = useState<Sentiment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -113,7 +128,7 @@ export default function InteractiveDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {(Array.isArray(forecasts) ? forecasts : []).map((f) => {
+                {(Array.isArray(forecasts) ? forecasts : []).map((f: Forecast) => {
                   const toBuy = f.regression > f.currentStock;
                   return (
                     <tr key={f.id}>
@@ -133,7 +148,7 @@ export default function InteractiveDashboard() {
                   )
                 })}
                 {forecasts.length === 0 && (
-                  <tr><td colSpan="6" style={{textAlign: 'center', padding: '2rem'}}>Nenhum dado preditivo encontrado.</td></tr>
+                  <tr><td colSpan={6} style={{textAlign: 'center', padding: '2rem'}}>Nenhum dado preditivo encontrado.</td></tr>
                 )}
               </tbody>
             </table>
@@ -151,7 +166,7 @@ export default function InteractiveDashboard() {
         </div>
         <div className="dashboard-card__body--padded">
            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {(Array.isArray(sentiments) ? sentiments : []).map((s, idx) => (
+              {(Array.isArray(sentiments) ? sentiments : []).map((s: Sentiment, idx: number) => (
                 <div key={idx} style={{ padding: '1.5rem', border: '1px solid var(--gray-200)', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '0.5rem' }}>
                         {s.sentiment === 'positive' && <FiSmile size={24} color="var(--success-500)" />}

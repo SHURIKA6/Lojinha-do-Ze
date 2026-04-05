@@ -1,10 +1,18 @@
 import { request } from './client';
 
+export interface PixPaymentData {
+  orderId: string | number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  identificationNumber: string;
+  phone?: string;
+}
+
 /**
  * Cria um pagamento via Pix
- * @param {Object} data { orderId, email, firstName, lastName, identificationNumber }
  */
-export async function createPixPayment(data) {
+export async function createPixPayment(data: PixPaymentData) {
   return request('/payments/pix', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -13,9 +21,8 @@ export async function createPixPayment(data) {
 
 /**
  * Consulta o status de um pagamento Pix
- * @param {string} paymentId
  */
-export async function getPixPaymentStatus(paymentId, { orderId, phone }) {
+export async function getPixPaymentStatus(paymentId: string | number, { orderId, phone }: { orderId: string | number; phone?: string }) {
   const query = new URLSearchParams({
     orderId: String(orderId),
     phone: String(phone || ''),

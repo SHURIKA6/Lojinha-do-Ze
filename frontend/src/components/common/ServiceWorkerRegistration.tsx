@@ -13,14 +13,16 @@ export default function ServiceWorkerRegistration() {
             // Verifica atualizações do Service Worker
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Nova versão disponível
-                  if (confirm('Nova versão disponível! Deseja atualizar?')) {
-                    window.location.reload();
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Nova versão disponível
+                    if (confirm('Nova versão disponível! Deseja atualizar?')) {
+                      window.location.reload();
+                    }
                   }
-                }
-              });
+                });
+              }
             });
           })
           .catch((registrationError) => {

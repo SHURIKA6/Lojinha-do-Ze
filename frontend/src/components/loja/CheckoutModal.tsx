@@ -20,7 +20,15 @@ const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
   loading: () => <div className={styles.profileCardNote}>Carregando mapa...</div>,
 });
 
-function ChoiceCard({ active, icon, label, meta, onClick }) {
+interface ChoiceCardProps {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  meta: string;
+  onClick: () => void;
+}
+
+function ChoiceCard({ active, icon, label, meta, onClick }: ChoiceCardProps) {
   return (
     <button
       type="button"
@@ -33,6 +41,40 @@ function ChoiceCard({ active, icon, label, meta, onClick }) {
       <span>{meta}</span>
     </button>
   );
+}
+
+interface CheckoutModalProps {
+  cart: any[];
+  cartTotal: number;
+  checkoutOpen: boolean;
+  customerAddress: string;
+  customerCoords: { lat: number; lng: number } | null;
+  customerForm: {
+    name: string;
+    phone: string;
+    email: string;
+    cpf: string;
+    notes: string;
+  };
+  deliveryType: 'entrega' | 'retirada';
+  editingProfile: boolean;
+  error: string | null;
+  handleCheckout: () => void;
+  isRegistered: boolean;
+  orderResult: any;
+  paymentMethod: string;
+  setCheckoutOpen: (open: boolean) => void;
+  setCustomerAddress: (address: string) => void;
+  setCustomerCoords: (coords: { lat: number; lng: number } | null) => void;
+  setCustomerForm: (form: any) => void;
+  setDeliveryType: (type: 'entrega' | 'retirada') => void;
+  setEditingProfile: (editing: boolean) => void;
+  setOrderResult: (result: any) => void;
+  setPaymentMethod: (method: string) => void;
+  submitting: boolean;
+  pixConfirmed: boolean;
+  setPixConfirmed: (confirmed: boolean) => void;
+  onSendWhatsApp: () => void;
 }
 
 export default function CheckoutModal({
@@ -61,7 +103,7 @@ export default function CheckoutModal({
   pixConfirmed,
   setPixConfirmed,
   onSendWhatsApp,
-}) {
+}: CheckoutModalProps) {
   const checkoutTotal = deliveryType === 'entrega' ? cartTotal + 5 : cartTotal;
 
   if (orderResult) {
@@ -160,7 +202,7 @@ export default function CheckoutModal({
                 disabled={orderResult?._checkingPayment}
                 onClick={async () => {
                   if (!orderResult?.pix?.id) return;
-                  setOrderResult((prev) => ({ ...prev, _checkingPayment: true }));
+                  setOrderResult((prev: any) => ({ ...prev, _checkingPayment: true }));
                   try {
                     const { getPixPaymentStatus } = await import('@/lib/api');
                     const status = await getPixPaymentStatus(orderResult.pix.id, {
@@ -175,7 +217,7 @@ export default function CheckoutModal({
                   } catch {
                     alert('Erro ao verificar pagamento. Tente novamente.');
                   } finally {
-                    setOrderResult((prev) => ({ ...prev, _checkingPayment: false }));
+                    setOrderResult((prev: any) => ({ ...prev, _checkingPayment: false }));
                   }
                 }}
               >
@@ -327,7 +369,7 @@ export default function CheckoutModal({
                 id="checkout-name"
                 className="form-input"
                 value={customerForm.name}
-                onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
+                onChange={(e: any) => setCustomerForm({ ...customerForm, name: e.target.value })}
                 placeholder="Seu nome completo"
                 aria-required="true"
               />
@@ -342,7 +384,7 @@ export default function CheckoutModal({
                 className="form-input"
                 type="tel"
                 value={customerForm.phone}
-                onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                onChange={(e: any) => setCustomerForm({ ...customerForm, phone: e.target.value })}
                 placeholder="(00) 00000-0000"
                 aria-required="true"
               />
@@ -363,7 +405,7 @@ export default function CheckoutModal({
                 className="form-input"
                 type="email"
                 value={customerForm.email}
-                onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                onChange={(e: any) => setCustomerForm({ ...customerForm, email: e.target.value })}
                 placeholder="voce@email.com"
                 aria-required={paymentMethod === 'pix'}
               />
@@ -378,7 +420,7 @@ export default function CheckoutModal({
                 id="checkout-cpf"
                 className="form-input"
                 value={customerForm.cpf}
-                onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
+                onChange={(e: any) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
                 placeholder="000.000.000-00"
                 aria-required={paymentMethod === 'pix'}
               />
@@ -443,7 +485,7 @@ export default function CheckoutModal({
               className="form-input"
               rows={3}
               value={customerForm.notes}
-              onChange={(e) => setCustomerForm({ ...customerForm, notes: e.target.value })}
+              onChange={(e: any) => setCustomerForm({ ...customerForm, notes: e.target.value })}
               placeholder="Algum detalhe sobre o pedido?"
             />
           </div>
