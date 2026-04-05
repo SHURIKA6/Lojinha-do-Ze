@@ -45,24 +45,35 @@ router.post('/login', async (c) => {
       [identifier, onlyDigits]
     );
 
-    const user = rows[0];
-    if (!user) {
+    const userRow = rows[0];
+    if (!userRow) {
       logger.warn('Tentativa de login: usuário não encontrado', { identifier });
       return jsonError(c, 401, 'Credenciais inválidas');
     }
 
-    const validPassword = user.password ? await bcrypt.compare(passwordTrim, user.password) : false;
+    const validPassword = userRow.password ? await bcrypt.compare(passwordTrim, userRow.password) : false;
     if (!validPassword) {
-      logger.warn('Tentativa de login: senha incorreta', { userId: user.id });
+      logger.warn('Tentativa de login: senha incorreta', { userId: userRow.id });
       return jsonError(c, 401, 'Credenciais inválidas');
     }
 
-    const { csrfToken } = await issueSession(c, db, String(user.id));
+    const { csrfToken } = await issueSession(c, db, String(userRow.id));
+    
+    // Busca usuário completo para o estado inicial
+    const { rows: fullUserRows } = await db.query(
+      'SELECT id, name, email, role, phone, cpf, address, avatar, created_at FROM users WHERE id = $1',
+      [userRow.id]
+    );
+
+    const user = {
+      ...fullUserRows[0],
+      createdAt: new Date(fullUserRows[0].created_at)
+    };
     
     const isEasterEgg = identifier.toLowerCase() === 'teste@gmail.com';
     
     return jsonSuccess(c, {
-      user: { id: user.id, role: user.role },
+      user,
       csrfToken,
       easterEgg: isEasterEgg,
     });
@@ -83,25 +94,33 @@ router.post('/logout', async (c) => {
     await destroySession(c, client);
     return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
   } finally {
-    if (client.release) client.release();
+    // db.close() removido para estabilidade em serverless
   }
 });
 
 /**
  * GET /api/auth/me
- * Retorna os dados do usuário autenticado
+ * Retorna o perfil do usuário logado baseado na sessão do cookie
  */
 router.get('/me', async (c) => {
   const db = c.get('db');
   const client = await db.connect();
   try {
     const session = await resolveSession(c, client);
+    
     if (!session) {
       return jsonError(c, 401, 'Não autenticado');
     }
-    return c.json({ user: session.user, csrfToken: session.csrfToken });
+
+    return jsonSuccess(c, {
+      user: session.user,
+      csrfToken: session.csrfToken
+    });
+  } catch (error) {
+    logger.error('Erro ao verificar sessão', error);
+    return jsonError(c, 500, 'Erro interno ao verificar sessão');
   } finally {
-    if (client.release) client.release();
+    // db.close() removido para estabilidade em serverless
   }
 });
 
