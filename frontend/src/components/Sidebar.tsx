@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 import {
+  FiChevronLeft,
+  FiChevronRight,
   FiDollarSign,
   FiFileText,
   FiGrid,
@@ -17,6 +19,7 @@ import {
   FiUsers,
   FiX,
   FiCpu,
+  FiHome,
 } from 'react-icons/fi';
 
 import { IconType } from 'react-icons';
@@ -32,10 +35,16 @@ interface NavSection {
   items: NavItem[];
 }
 
+interface SidebarProps {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}
+
 const navItems: NavSection[] = [
   {
     section: 'Principal',
     items: [
+      { href: '/', icon: FiHome, label: 'Voltar para a Loja' },
       { href: '/admin/dashboard', icon: FiGrid, label: 'Dashboard' },
       { href: '/admin/ia', icon: FiCpu, label: 'Inteligência Artificial' }
     ],
@@ -58,14 +67,60 @@ const navItems: NavSection[] = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 921px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setMobileOpen(false);
+      }
+    };
+
+    if (mediaQuery.matches) {
+      setMobileOpen(false);
+    }
+
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
+
   const handleLogout = () => {
+    setMobileOpen(false);
     logout();
   };
+
+  const userTitle = `${user?.name || 'Usuário'} - perfil e sessão`;
+  const sidebarClassName = [
+    styles.sidebar,
+    collapsed ? styles.collapsed : '',
+    mobileOpen ? styles.mobileOpen : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
@@ -73,24 +128,46 @@ export default function Sidebar() {
         type="button"
         className={styles.toggle}
         onClick={() => setMobileOpen((value) => !value)}
+        aria-controls="admin-sidebar"
+        aria-expanded={mobileOpen}
         aria-label={mobileOpen ? 'Fechar navegação' : 'Abrir navegação'}
       >
         {mobileOpen ? <FiX /> : <FiMenu />}
       </button>
 
-      <aside className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ''}`}>
-        <div className={styles.brand}>
-          <div className={styles.logo}>LZ</div>
-          <div>
-            <div className={styles.brandName}>Lojinha do Zé</div>
-            <div className={styles.brandSub}>Operação e gestão</div>
+      <aside id="admin-sidebar" className={sidebarClassName}>
+        <div className={styles.header}>
+          <div className={styles.brand} title={collapsed ? 'Lojinha do Zé' : undefined}>
+            <div className={styles.logo}>LZ</div>
+            <div className={styles.brandCopy} aria-hidden={collapsed}>
+              <div className={styles.brandName}>Lojinha do Zé</div>
+              <div className={styles.brandSub}>Operação e gestão</div>
+            </div>
           </div>
+
+          <button
+            type="button"
+            className={styles.desktopToggle}
+            onClick={onToggleCollapsed}
+            aria-controls="admin-sidebar"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expandir navegação lateral' : 'Recolher navegação lateral'}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
+          </button>
         </div>
 
         <nav className={styles.nav}>
           {(Array.isArray(navItems) ? navItems : []).map((section) => (
             <div key={section.section} className={styles.section}>
-              <div className={styles.sectionTitle}>{section.section}</div>
+              <div
+                className={styles.sectionTitle}
+                aria-hidden={collapsed}
+                title={collapsed ? section.section : undefined}
+              >
+                {section.section}
+              </div>
               {(Array.isArray(section.items) ? section.items : []).map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -101,11 +178,15 @@ export default function Sidebar() {
                     href={item.href}
                     className={`${styles.link} ${isActive ? styles.active : ''}`}
                     onClick={() => setMobileOpen(false)}
+                    title={collapsed ? item.label : undefined}
+                    aria-label={collapsed ? item.label : undefined}
                   >
                     <span className={styles.linkIcon}>
                       <Icon />
                     </span>
-                    <span>{item.label}</span>
+                    <span className={styles.linkLabel} aria-hidden={collapsed}>
+                      {item.label}
+                    </span>
                   </Link>
                 );
               })}
@@ -114,14 +195,38 @@ export default function Sidebar() {
         </nav>
 
         <div className={styles.footer}>
-          <Link href="/login" className={styles.user} onClick={handleLogout} title="Sair">
-            <div className={styles.avatar}>{user?.avatar || 'U'}</div>
-            <div>
-              <div className={styles.userName}>{user?.name || 'Usuário'}</div>
-              <div className={styles.userRole}>Administrador</div>
-            </div>
-            <FiLogOut style={{ marginLeft: 'auto', opacity: 0.7, flexShrink: 0 }} />
-          </Link>
+          <div className={styles.user} title={collapsed ? userTitle : undefined}>
+            <Link
+              href="/admin/perfil"
+              className={styles.avatar}
+              onClick={() => setMobileOpen(false)}
+              title={collapsed ? 'Abrir perfil' : undefined}
+              aria-label={collapsed ? 'Abrir perfil' : undefined}
+            >
+              {user?.avatar || (user?.name ? user.name[0].toUpperCase() : 'U')}
+            </Link>
+            <Link
+              href="/admin/perfil"
+              className={styles.userInfo}
+              onClick={() => setMobileOpen(false)}
+              aria-hidden={collapsed}
+              tabIndex={collapsed ? -1 : undefined}
+            >
+              <div className={styles.userName}>{user?.name || 'Administrador'}</div>
+              <div className={styles.userRole}>
+                {user?.role === 'shura' ? '💎 SHURA' : 'Administrador'}
+              </div>
+            </Link>
+            <button
+              type="button"
+              className={styles.logoutBtn}
+              onClick={handleLogout}
+              title={collapsed ? 'Encerrar sessão' : 'Encerrar Sessão'}
+              aria-label={collapsed ? 'Encerrar sessão' : undefined}
+            >
+              <FiLogOut />
+            </button>
+          </div>
         </div>
       </aside>
 

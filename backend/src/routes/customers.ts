@@ -30,7 +30,7 @@ function isValidId(id: string): boolean {
 }
 
 const roleSchema = z.object({
-  role: z.enum(['admin', 'customer']),
+  role: z.enum(['shura', 'admin', 'customer', 'editor']),
   password: z
     .string()
     .min(1, 'Senha administrativa é obrigatória')
@@ -324,7 +324,18 @@ router.patch(
         return jsonError(c, 400, 'Não é permitido alterar o próprio cargo por este endpoint');
       }
 
-      const { role, password } = c.req.valid('json');
+      const { role, password } = c.req.valid('json') as any;
+      
+      // Validação de privilégios de promoção
+      if (role === 'shura' && currentUser.role !== 'shura') {
+        return jsonError(c, 403, 'Apenas um SHURA pode promover outros usuários a este cargo');
+      }
+
+      if (role === 'admin' && currentUser.role !== 'shura' && role !== currentUser.role) {
+         // Se um admin está tentando criar outro admin, permitimos se ele já for admin.
+         // Mas se um admin está tentando criar um shura, bloqueamos acima.
+      }
+
       const passwordCheck = await validatePrivilegedAction(
         c,
         db,
