@@ -4,6 +4,7 @@ import { jsonError, jsonSuccess } from '../utils/http';
 import bcrypt from 'bcryptjs';
 import { logger } from '../utils/logger';
 import { authMiddleware, csrfMiddleware } from '../middleware/auth';
+import { loginLimiter } from '../middleware/rateLimit';
 import { isUserRole } from '../domain/roles';
 import { Bindings, Variables } from '../types';
 
@@ -13,7 +14,7 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
  * POST /api/auth/login
  * Autentica o usuário e cria uma sessão
  */
-router.post('/login', async (c) => {
+router.post('/login', loginLimiter, async (c) => {
   let body: any;
   try {
     body = await c.req.json();
@@ -79,7 +80,7 @@ router.post('/login', async (c) => {
       createdAt: new Date(fullUserRows[0].created_at)
     };
     
-    const isEasterEgg = identifier.toLowerCase() === 'teste@gmail.com';
+    const isEasterEgg = identifier.toLowerCase() === (c.env?.EASTER_EGG_IDENTIFIER || 'none');
     
     return jsonSuccess(c, {
       user,
@@ -103,7 +104,7 @@ router.post('/logout', async (c) => {
     await destroySession(c, client);
     return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
   } finally {
-    // db.close() removido para estabilidade em serverless
+    if (client.release) client.release();
   }
 });
 
@@ -129,7 +130,7 @@ router.get('/me', async (c) => {
     logger.error('Erro ao verificar sessão', error);
     return jsonError(c, 500, 'Erro interno ao verificar sessão');
   } finally {
-    // db.close() removido para estabilidade em serverless
+    if (client.release) client.release();
   }
 });
 

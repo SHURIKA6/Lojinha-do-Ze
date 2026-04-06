@@ -27,26 +27,27 @@ aiRoutes.post('/chat', authMiddleware, adminOnly, async (c) => {
     logger.info('Iniciando consulta ao Guardião da Lojinha...', { messageLength: message.length });
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          system_instruction: {
+            parts: [
+              {
+                text: `Você é o "Guardião da Lojinha", um assistente místico e inteligente da "Lojinha do Zé", um e-commerce de produtos naturais e artesanais.
+                  Seu objetivo é ajudar o administrador com dados da loja, dicas de marketing e suporte. 
+                  Mantenha um tom profissional, porém leve e levemente rústico (como um conselheiro sábio).
+                  Responda de forma concisa em português do Brasil.`
+              }
+            ]
+          },
           contents: [
             {
               role: 'user',
-              parts: [
-                {
-                  text: `Você é o "Guardião da Lojinha", um assistente místico e inteligente da "Lojinha do Zé", um e-commerce de produtos naturais e artesanais.
-                  Seu objetivo é ajudar o administrador com dados da loja, dicas de marketing e suporte. 
-                  Mantenha um tom profissional, porém leve e levemente rústico (como um conselheiro sábio).
-                  Responda de forma concisa em português do Brasil.
-                  
-                  Pergunta do usuário: ${message}`
-                }
-              ]
+              parts: [{ text: message }]
             }
           ]
         }),

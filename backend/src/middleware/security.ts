@@ -185,12 +185,6 @@ export const originGuardMiddleware: MiddlewareHandler<{ Bindings: Bindings }> = 
 
   const origin = c.req.header('origin');
   if (origin && !isAllowedOrigin(origin, c)) {
-    const fetchSite = String(c.req.header('sec-fetch-site') || '').toLowerCase();
-    if (fetchSite === 'same-origin' || fetchSite === 'same-site') {
-      await next();
-      return;
-    }
-
     return jsonError(c as any, 403, 'Origem não permitida');
   }
 
