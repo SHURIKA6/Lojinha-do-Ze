@@ -1,6 +1,7 @@
 import { Context, Next, MiddlewareHandler } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../domain/constants';
+import { isShuraRole, isStaffRole, type UserRole } from '../domain/roles';
 import { resolveSession } from '../services/authService';
 import { isSafeMethod, jsonError } from '../utils/http';
 import { isAllowedOrigin } from './security';
@@ -76,7 +77,7 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
 
 export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const user = c.get('user');
-  if (!user || (user.role !== 'admin' && user.role !== 'shura')) {
+  if (!user || !isStaffRole(user.role)) {
     return jsonError(c as any, 403, 'Acesso restrito a administradores');
   }
 
@@ -88,7 +89,7 @@ export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Varia
  */
 export const shuraOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const user = c.get('user');
-  if (!user || user.role !== 'shura') {
+  if (!user || !isShuraRole(user.role)) {
     return jsonError(c as any, 403, 'Acesso restrito ao proprietário do sistema');
   }
 
@@ -98,7 +99,7 @@ export const shuraOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Varia
 /**
  * Middleware para verificar se o usuário possui um cargo (role) específico.
  */
-export function hasRole(role: string): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
+export function hasRole(role: UserRole): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
   return async (c, next) => {
     const user = c.get('user');
     if (!user || user.role !== role) {
@@ -111,7 +112,7 @@ export function hasRole(role: string): MiddlewareHandler<{ Bindings: Bindings; V
 /**
  * Middleware para verificar se o usuário possui qualquer um dos cargos (roles) especificados.
  */
-export function hasAnyRole(roles: string[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
+export function hasAnyRole(roles: UserRole[]): MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> {
   return async (c, next) => {
     const user = c.get('user');
     if (!user || !roles.includes(user.role)) {

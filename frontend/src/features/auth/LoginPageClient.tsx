@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getHomePathForRole } from '@/lib/roles';
 
 export default function LoginPageClient() {
   const [identifier, setIdentifier] = useState('');
@@ -33,13 +34,20 @@ export default function LoginPageClient() {
       setSubmitting(false);
 
       if (result?.success) {
-        // Easter egg: Redirecionar para a página especial se for o usuário de teste
+        // Easter eggs: Redirecionar para as páginas especiais
         if (result.easterEgg) {
+          console.log('🐣 Easter Egg Detectado!');
           router.push('/easter-egg');
           return;
         }
+
+        if (result.shuraEgg) {
+          console.log('💎 Shura Tavern Detectada!');
+          router.push('/shura');
+          return;
+        }
         
-        router.push(result.user?.role === 'admin' ? '/admin/dashboard' : '/conta');
+        router.push(getHomePathForRole(result.user?.role));
         return;
       }
 

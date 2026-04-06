@@ -1,11 +1,13 @@
 import { request } from './client';
+import type { CustomerRecord } from '@/types';
+import type { UserRole } from '@/lib/roles';
 
 export function getCustomers() {
-  return request('/customers');
+  return request<CustomerRecord[]>('/customers');
 }
 
 export function getCustomer(id: string | number) {
-  return request(`/customers/${id}`);
+  return request<CustomerRecord>(`/customers/${id}`);
 }
 
 export function getCustomerOrders(id: string | number) {
@@ -38,7 +40,7 @@ export function resetCustomerPassword(id: string | number) {
   });
 }
 
-export function updateUserRole(id: string | number, role: string, password?: string) {
+export function updateUserRole(id: string | number, role: UserRole, password?: string) {
   return request(`/customers/${id}/role`, {
     method: 'PATCH',
     body: JSON.stringify({ role, password }),

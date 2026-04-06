@@ -19,8 +19,9 @@ jest.unstable_mockModule('../src/middleware/auth', () => ({
     await next();
   },
   adminOnly: async (c: Context, next: Next) => {
-    if ((c.get('user') as any)?.role !== 'admin') {
-      return c.json({ error: 'Acesso restrito ao administrador' }, 403);
+    const role = (c.get('user') as any)?.role;
+    if (role !== 'admin' && role !== 'shura') {
+      return c.json({ error: 'Acesso restrito a administradores' }, 403);
     }
     await next();
   },
@@ -102,6 +103,10 @@ describe('Customers and Profile Security', () => {
   it('exige confirmação de senha para alterar cargo', async () => {
     const db = buildDbMock({
       query: async (text: string, params: any[] = []) => {
+        if (text.includes('SELECT id, name, role FROM users WHERE id = $1')) {
+          return { rows: [{ id: params[0], name: 'Ana', role: 'customer' }] };
+        }
+
         if (text.includes('SELECT password FROM users WHERE id = $1')) {
           return { rows: [{ password: 'hash:SenhaForte#123' }] };
         }
@@ -137,6 +142,189 @@ describe('Customers and Profile Security', () => {
       role: 'customer',
     });
     expect(db.query).toHaveBeenCalledWith('SELECT password FROM users WHERE id = $1', ['1']);
+  });
+
+  it('impede que admin promova para shura ou altere um shura existente', async () => {
+    const db = buildDbMock({
+      query: async (text: string, params: any[] = []) => {
+        if (text.includes('SELECT id, name, role FROM users WHERE id = $1')) {
+          if (params[0] === '2') {
+            return { rows: [{ id: '2', name: 'Bia', role: 'customer' }] };
+          }
+
+          if (params[0] === '3') {
+            return { rows: [{ id: '3', name: 'Kai', role: 'shura' }] };
+          }
+        }
+
+        throw new Error(`Query não tratada no teste: ${text}`);
+      },
+    });
+    const app = buildApp(customersRoutes, db);
+
+    const promoteToShura = await app.request('/2/role', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-test-user-role': 'admin' },
+      body: JSON.stringify({ role: 'shura', password: 'SenhaForte#123' }),
+    });
+
+    expect(promoteToShura.status).toBe(403);
+    await expect(promoteToShura.json()).resolves.toEqual({
+      error: 'Apenas um SHURA pode promover outros usuários a este cargo',
+    });
+
+    const editExistingShura = await app.request('/3/role', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-test-user-role': 'admin' },
+      body: JSON.stringify({ role: 'customer', password: 'SenhaForte#123' }),
+    });
+
+    expect(editExistingShura.status).toBe(403);
+    await expect(editExistingShura.json()).resolves.toEqual({
+      error: 'Apenas um SHURA pode alterar o cargo de outro SHURA',
+    });
+  });
+
+  it('permite que shura promova e rebaixe cargos privilegiados de terceiros', async () => {
+    const db = buildDbMock({
+      query: async (text: string, params: any[] = []) => {
+        if (text.includes('SELECT id, name, role FROM users WHERE id = $1')) {
+          if (params[0] === '5') {
+            return { rows: [{ id: '5', name: 'Lia', role: 'admin' }] };
+          }
+
+          if (params[0] === '6') {
+            return { rows: [{ id: '6', name: 'Ryu', role: 'shura' }] };
+          }
+        }
+
+        if (text.includes('SELECT password FROM users WHERE id = $1')) {
+          return { rows: [{ password: 'hash:SenhaForte#123' }] };
+        }
+
+        if (text.includes('UPDATE users SET role = $1')) {
+          return { rows: [{ id: params[1], name: params[1] === '5' ? 'Lia' : 'Ryu', role: params[0] }] };
+        }
+
+        throw new Error(`Query não tratada no teste: ${text}`);
+      },
+    });
+    const app = buildApp(customersRoutes, db);
+
+    const promote = await app.request('/5/role', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-test-user-role': 'shura',
+        'x-test-user-id': '99',
+      },
+      body: JSON.stringify({ role: 'shura', password: 'SenhaForte#123' }),
+    });
+
+    expect(promote.status).toBe(200);
+    await expect(promote.json()).resolves.toEqual({
+      id: '5',
+      name: 'Lia',
+      role: 'shura',
+    });
+
+    const demote = await app.request('/6/role', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-test-user-role': 'shura',
+        'x-test-user-id': '99',
+      },
+      body: JSON.stringify({ role: 'admin', password: 'SenhaForte#123' }),
+    });
+
+    expect(demote.status).toBe(200);
+    await expect(demote.json()).resolves.toEqual({
+      id: '6',
+      name: 'Ryu',
+      role: 'admin',
+    });
+  });
+
+  it('retorna convidados com customer_type guest e role nulo na listagem', async () => {
+    const db = buildDbMock({
+      query: async (text: string, _params: any[] = []) => {
+        if (text.includes('combined_customers')) {
+          return {
+            rows: [
+              {
+                id: '1',
+                name: 'Alice',
+                email: 'alice@example.com',
+                phone: '65999999999',
+                cpf: null,
+                address: 'Rua A',
+                notes: null,
+                avatar: 'A',
+                role: 'customer',
+                customer_type: 'registered',
+                created_at: '2026-04-01T00:00:00.000Z',
+                updated_at: '2026-04-02T00:00:00.000Z',
+              },
+              {
+                id: '77',
+                name: 'Convidado',
+                email: null,
+                phone: '65988888888',
+                cpf: null,
+                address: 'Rua B',
+                notes: 'Cliente convidado',
+                avatar: null,
+                role: null,
+                customer_type: 'guest',
+                created_at: '2026-04-03T00:00:00.000Z',
+                updated_at: null,
+              },
+            ],
+          };
+        }
+
+        throw new Error(`Query não tratada no teste: ${text}`);
+      },
+    });
+    const app = buildApp(customersRoutes, db);
+
+    const res = await app.request('/', {
+      method: 'GET',
+      headers: { 'x-test-user-role': 'admin' },
+    });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual([
+      {
+        id: '1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        phone: '65999999999',
+        cpf: null,
+        address: 'Rua A',
+        notes: null,
+        avatar: 'A',
+        role: 'customer',
+        customer_type: 'registered',
+        created_at: '2026-04-01T00:00:00.000Z',
+        updated_at: '2026-04-02T00:00:00.000Z',
+      },
+      {
+        id: '77',
+        name: 'Convidado',
+        email: null,
+        phone: '65988888888',
+        cpf: null,
+        address: 'Rua B',
+        notes: 'Cliente convidado',
+        avatar: null,
+        role: null,
+        customer_type: 'guest',
+        created_at: '2026-04-03T00:00:00.000Z',
+        updated_at: null,
+      },
+    ]);
   });
 
   it('impede autoexclusão e exclusão sem senha válida', async () => {

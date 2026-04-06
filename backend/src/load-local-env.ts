@@ -21,10 +21,28 @@ export function loadLocalEnv() {
  * @throws Erro se a variável não estiver definida
  */
 export function getRequiredEnv(c: any, key?: string): string {
-  const isGlobal = typeof key === 'undefined';
-  const envKey = isGlobal ? c : key;
-  const envSource = isGlobal ? process.env : (c.env || c);
-  const value = envSource[envKey];
+  const envKey = key || c;
+  const isCContext = c && typeof c === 'object' && ('env' in c || 'get' in c);
+  
+  let value: string | undefined;
+  
+  if (isCContext) {
+    // Try c.env first (Cloudflare Workers bindings)
+    value = c.env?.[envKey];
+    
+    // Then try process.env as fallback
+    if (!value) {
+      value = process.env[envKey];
+    }
+
+    // Finally try c directly if it's a simple object
+    if (!value && typeof c === 'object') {
+      value = c[envKey];
+    }
+  } else {
+    // If c is not a context, try process.env directly
+    value = process.env[envKey];
+  }
   
   if (!value) {
     throw new Error(`Variável de ambiente obrigatória ausente: ${envKey}`);

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  getHomePathForRole,
+  isStaffRole,
+  isUserRole,
+  type UserRole,
+} from './src/lib/roles';
 
 interface AuthUser {
   id: string;
-  role: 'admin' | 'shura' | 'customer' | 'editor';
+  role: UserRole;
   email: string;
 }
 
@@ -34,7 +40,13 @@ async function fetchMe(request: NextRequest): Promise<AuthResult> {
     }
 
     const data = await res.json();
-    return { kind: 'auth', user: data.data?.user || data.user };
+    const user = data.data?.user || data.user;
+
+    if (!user || !isUserRole(user.role)) {
+      return { kind: 'error' };
+    }
+
+    return { kind: 'auth', user };
   } catch {
     return { kind: 'error' };
   }
@@ -115,11 +127,7 @@ Disallow: /easter-egg-nao-existe
 
   if (pathname === '/login') {
     if (result.kind === 'auth' && result.user) {
-      const isStaff = result.user.role === 'admin' || result.user.role === 'shura' || result.user.role === 'editor';
-      return redirect(
-        request,
-        isStaff ? '/admin/dashboard' : '/conta'
-      );
+      return redirect(request, getHomePathForRole(result.user.role));
     }
     return NextResponse.next();
   }
@@ -129,8 +137,7 @@ Disallow: /easter-egg-nao-existe
       return redirect(request, '/login');
     }
 
-    const isStaff = result.user.role === 'admin' || result.user.role === 'shura' || result.user.role === 'editor';
-    if (isStaff) {
+    if (isStaffRole(result.user.role)) {
       return NextResponse.next();
     }
 
@@ -145,8 +152,7 @@ Disallow: /easter-egg-nao-existe
       return redirect(request, '/login');
     }
 
-    const isStaff = result.user.role === 'admin' || result.user.role === 'shura' || result.user.role === 'editor';
-    if (isStaff) {
+    if (isStaffRole(result.user.role)) {
       return redirect(request, '/admin/dashboard');
     }
 
