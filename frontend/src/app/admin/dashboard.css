@@ -1,74 +1,92 @@
-/* Admin Dashboard Styles */
+/* 
+  Lojinha do Zé - CSS de Administração (Premium) 
+  Sistema de design unificado para o Dashboard e Módulos.
+*/
+
 :root {
-  --admin-card-bg: var(--bg-secondary);
-  --admin-border: var(--gray-200);
+  --admin-card-bg: rgba(255, 255, 255, 0.85);
+  --admin-card-blur: blur(20px);
+  --admin-border: rgba(64, 57, 47, 0.08);
+  --admin-accent: var(--primary-600);
+  --admin-shadow: 0 12px 36px rgba(16, 23, 19, 0.08);
 }
 
-.admin-dashboard {
-  padding: 2rem;
+/* Layout Utilities */
+.surface-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.animate-fadeIn {
+  animation: fadeIn var(--transition-base) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Page Headers & Navigation */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-4);
+}
+
+.page-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-600);
+  font-weight: 700;
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-2);
+}
+
+.page-header__subtitle {
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+}
+
+/* Advanced Dashboard (Legacy Classes) */
+.admin-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-12);
 }
 
 .admin-dashboard__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.admin-dashboard__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .admin-dashboard__metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.metric-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--gray-200);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  display: flex;
-  gap: 1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.metric-card__icon {
-  background: color-mix(in srgb, var(--metric-color, var(--primary-500)), transparent 85%);
-  color: var(--metric-color, var(--primary-500));
-  width: 48px;
-  height: 48px;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-}
-
-.metric-card__label {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--gray-500);
-  margin-bottom: 0.25rem;
-}
-
-.metric-card__value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
 }
 
 .admin-dashboard__charts {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 @media (max-width: 1024px) {
@@ -77,16 +95,18 @@
   }
 }
 
+/* Advanced Cards */
 .dashboard-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--gray-200);
-  border-radius: 1rem;
+  background: white;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--admin-shadow);
   overflow: hidden;
 }
 
 .dashboard-card__header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--gray-200);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--admin-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -96,16 +116,312 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1rem;
+  font-size: var(--font-md);
+  font-weight: 700;
+}
+
+.dashboard-card__body--padded {
+  padding: var(--space-6);
+}
+
+/* Metric & Stat Cards */
+.metric-card, .stat-card {
+  position: relative;
+  background: white;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  gap: var(--space-4);
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-xs);
+}
+
+.metric-card:hover, .stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1rem;
+  background: rgba(41, 68, 58, 0.05);
+  color: var(--metric-color, var(--primary-600));
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.metric-card__content {
+  flex: 1;
+}
+
+.metric-card__label, .stat-card__label {
+  display: block;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.metric-card__value, .stat-card__value {
+  font-size: var(--font-xl);
+  font-weight: 800;
+  color: var(--gray-900);
+  font-family: var(--font-display), serif;
+  line-height: 1.1;
+}
+
+.metric-card__change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.metric-card__change--positive { color: var(--success-600); }
+.metric-card__change--negative { color: var(--danger-600); }
+
+/* Advanced Filter/Controls */
+.admin-dashboard__date-filter {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  gap: 8px;
+}
+
+.admin-dashboard__date-select {
+  border: none;
+  background: transparent;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--gray-700);
+  outline: none;
+  cursor: pointer;
+}
+
+/* --- Forms & Inputs --- */
+.admin-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-input-group__icon {
+  position: absolute;
+  left: 1rem;
+  font-size: 1.1rem;
+  color: var(--gray-400);
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.admin-input-group input:focus + .admin-input-group__icon {
+  color: var(--primary-500);
+}
+
+.admin-input-group .form-input,
+.admin-input-group .input {
+  padding-left: 3rem !important;
+  margin: 0;
+  width: 100%;
+}
+
+.admin-dashboard__refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border: 1px solid rgba(115, 144, 114, 0.2);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: var(--font-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.admin-dashboard__refresh-btn:hover:not(:disabled) {
+  background: var(--primary-100);
+}
+
+/* Componentes de Data Table e Listas */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-table th {
+  background: var(--gray-50);
+  color: var(--gray-500);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: var(--space-4) var(--space-6);
+  text-align: left;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table td {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--admin-border);
+  font-size: var(--font-sm);
+  color: var(--gray-700);
+}
+
+.admin-table tr:hover td {
+  background-color: var(--primary-50);
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* BI & Analytics Indicators */
+.performance-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.performance-indicator__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: var(--font-sm);
   font-weight: 600;
 }
 
+.performance-indicator__bar {
+  height: 10px;
+  background: var(--gray-100);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.performance-indicator__fill {
+  height: 100%;
+  background: var(--info-500);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.performance-indicator__fill--success { background: var(--success-500); }
+.performance-indicator__fill--primary { background: var(--primary-500); }
+
+/* Inventory Progress Bar */
+.inventory-bar {
+  height: 6px;
+  background: var(--gray-100);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.inventory-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* Segmented Control */
+.segmented-control {
+  display: flex;
+  background: rgba(64, 57, 47, 0.05);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  gap: 4px;
+}
+
+.segmented-control__item {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: var(--font-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.segmented-control__item.active {
+  background: white;
+  color: var(--gray-900);
+  box-shadow: 0 4px 12px rgba(16, 23, 19, 0.08);
+}
+
+/* Loading Skeleton */
 .admin-dashboard-loading {
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-8);
   animation: pulse 2s infinite ease-in-out;
+}
+
+.admin-dashboard-loading__metric {
+  height: 100px;
+  background: var(--gray-100);
+  border-radius: var(--radius-lg);
+}
+
+.admin-dashboard-loading__chart {
+  height: 300px;
+  background: var(--gray-100);
+  border-radius: var(--radius-lg);
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* Search Bar (Tables) */
+.table-search {
+  position: relative;
+  max-width: 380px;
+  width: 100%;
+}
+
+.table-search input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px 0 44px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border);
+  background: white;
+  outline: none;
+  font-size: var(--font-sm);
+  transition: border-color 0.2s;
+}
+
+.table-search input:focus {
+  border-color: var(--primary-500);
+}
+
+.table-search__icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400);
+  font-size: 1.2rem;
 }

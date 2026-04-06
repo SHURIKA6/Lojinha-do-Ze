@@ -97,26 +97,53 @@ export default function ReportsManagement() {
 
       <div className="grid grid--cols-4" style={{ marginBottom: 'var(--space-6)' }}>
         <div className="stat-card">
-          <FiTrendingUp className="text-primary" style={{ marginBottom: '8px', fontSize: '1.2rem' }} />
-          <span className="stat-card__label">Faturamento Mensal</span>
-          <span className="stat-card__value">{formatCurrency(metrics?.monthRevenue || 0)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span className="stat-card__label">Faturamento Mensal</span>
+              <span className="stat-card__value">{formatCurrency(metrics?.monthRevenue || 0)}</span>
+            </div>
+            <div className="stat-card__icon" style={{ backgroundColor: 'var(--primary-100)', color: 'var(--primary-600)' }}>
+              <FiTrendingUp />
+            </div>
+          </div>
         </div>
+
         <div className="stat-card">
-          <FiTarget className="text-success" style={{ marginBottom: '8px', fontSize: '1.2rem' }} />
-          <span className="stat-card__label">Total de Vendas</span>
-          <span className="stat-card__value">{metrics?.totalSales || 0}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span className="stat-card__label">Total de Vendas</span>
+              <span className="stat-card__value">{metrics?.totalSales || 0}</span>
+            </div>
+            <div className="stat-card__icon" style={{ backgroundColor: 'var(--success-100)', color: 'var(--success-600)' }}>
+              <FiTarget />
+            </div>
+          </div>
         </div>
+
         <div className="stat-card">
-          <FiActivity className="text-warning" style={{ marginBottom: '8px', fontSize: '1.2rem' }} />
-          <span className="stat-card__label">Ticket Médio</span>
-          <span className="stat-card__value">
-            {formatCurrency((metrics?.monthRevenue || 0) / (metrics?.totalSales || 1))}
-          </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span className="stat-card__label">Ticket Médio</span>
+              <span className="stat-card__value">
+                {formatCurrency((metrics?.monthRevenue || 0) / (metrics?.totalSales || 1))}
+              </span>
+            </div>
+            <div className="stat-card__icon" style={{ backgroundColor: 'var(--warning-100)', color: 'var(--warning-600)' }}>
+              <FiActivity />
+            </div>
+          </div>
         </div>
+
         <div className="stat-card">
-          <FiCalendar className="text-info" style={{ marginBottom: '8px', fontSize: '1.2rem' }} />
-          <span className="stat-card__label">Pedidos Ativos</span>
-          <span className="stat-card__value">{metrics?.activeOrders || 0}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span className="stat-card__label">Pedidos Ativos</span>
+              <span className="stat-card__value">{metrics?.activeOrders || 0}</span>
+            </div>
+            <div className="stat-card__icon" style={{ backgroundColor: 'var(--info-100)', color: 'var(--info-600)' }}>
+              <FiCalendar />
+            </div>
+          </div>
         </div>
       </div>
 
