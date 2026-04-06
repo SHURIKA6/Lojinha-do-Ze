@@ -1,13 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
+import { buildBackendApiUrl } from '@/lib/backend-url';
 
 export async function POST(req: NextRequest) {
   try {
     const { message } = await req.json();
-    
-    // URL do seu Back-end no Cloudflare
-    const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+    const backendUrl = buildBackendApiUrl('/admin/chat');
 
-    const response = await fetch(`${BACKEND_URL}/api/admin/chat`, {
+    const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,8 +21,8 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       console.error('AI Backend Error:', {
         status: response.status,
-        url: `${BACKEND_URL}/api/admin/chat`,
-        data
+        url: backendUrl,
+        data,
       });
     }
 
@@ -31,7 +30,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Proxy AI Critical Error:', error);
     return NextResponse.json(
-      { error: 'Erro ao conectar com o portal da IA.', details: error instanceof Error ? error.message : String(error) }, 
+      {
+        error: 'Erro ao conectar com o portal da IA.',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }
