@@ -24,7 +24,7 @@ import { Bindings, Variables, Database, type CustomerRecord } from '../types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-const CUSTOMER_SAFE_COLUMNS = 'id, name, email, phone, cpf, address, notes, avatar, role, created_at, updated_at';
+const CUSTOMER_SAFE_COLUMNS = 'id::text as id, name, email, phone, cpf, address, notes, avatar, role, created_at, updated_at';
 const REGISTERED_CUSTOMER_SELECT = `${CUSTOMER_SAFE_COLUMNS}, 'registered'::text as customer_type`;
 const GUEST_CUSTOMER_SELECT = `
   MIN(id)::text as id,
@@ -36,9 +36,9 @@ const GUEST_CUSTOMER_SELECT = `
   'Cliente convidado'::text as notes,
   NULL::text as avatar,
   NULL::text as role,
-  'guest'::text as customer_type,
   MIN(created_at) as created_at,
-  NULL::timestamp as updated_at
+  NULL::timestamp as updated_at,
+  'guest'::text as customer_type
 `;
 
 function isValidId(id: string): boolean {
