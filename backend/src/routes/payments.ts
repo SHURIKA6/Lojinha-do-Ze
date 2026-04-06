@@ -18,11 +18,14 @@ const getService = (c: any) => {
 };
 
 function getPaymentLookupSecret(c: any) {
-  return (
-    c.env?.PAYMENT_LOOKUP_SECRET ||
-    c.env?.MERCADO_PAGO_WEBHOOK_SECRET ||
-    getRequiredEnv(c, 'MERCADO_PAGO_ACCESS_TOKEN')
-  );
+  const secret = c.env?.PAYMENT_LOOKUP_SECRET || c.env?.MERCADO_PAGO_WEBHOOK_SECRET;
+  
+  if (!secret) {
+    logger.error('Nenhum segredo de lookup configurado (PAYMENT_LOOKUP_SECRET ou MERCADO_PAGO_WEBHOOK_SECRET)');
+    throw new Error('Configuração de segurança de pagamentos ausente');
+  }
+  
+  return secret;
 }
 
 async function signLookupValue(secret: string, value: string) {
