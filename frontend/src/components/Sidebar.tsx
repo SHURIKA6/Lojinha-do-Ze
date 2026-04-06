@@ -16,6 +16,7 @@ import {
   FiUser,
   FiUsers,
   FiX,
+  FiCpu,
 } from 'react-icons/fi';
 
 import { IconType } from 'react-icons';
@@ -34,7 +35,10 @@ interface NavSection {
 const navItems: NavSection[] = [
   {
     section: 'Principal',
-    items: [{ href: '/admin/dashboard', icon: FiGrid, label: 'Dashboard' }],
+    items: [
+      { href: '/admin/dashboard', icon: FiGrid, label: 'Dashboard' },
+      { href: '/admin/ia', icon: FiCpu, label: 'Inteligência Artificial' }
+    ],
   },
   {
     section: 'Operação',

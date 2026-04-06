@@ -74,6 +74,8 @@ interface DashboardData {
   categoryChart: CategoryChartItem[];
 }
 
+import AdminAssistant from './AdminAssistant';
+
 export default function AdvancedDashboard() {
   const { user, isAdmin }: AuthContextType = useAuth();
   const toast = useToast();
@@ -336,6 +338,9 @@ export default function AdvancedDashboard() {
           </div>
         </div>
       </div>
+      
+      {/* Assistente de IA */}
+      <AdminAssistant />
     </div>
   );
 }
