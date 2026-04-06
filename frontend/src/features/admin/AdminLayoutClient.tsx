@@ -34,7 +34,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="layout">
+    <div className="admin-view layout">
       <Sidebar />
       <main className="layout__main">{children}</main>
     </div>
