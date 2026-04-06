@@ -47,6 +47,9 @@ next-env.d.ts
 AUDITORIA_TECNICA.md
 .cocoindex_code/
 
+# Fotos e uploads (usar R2/Bunny em prod)
+/Fotos Produtos/
+
 !package.json
 !tsconfig.json
 !jsconfig.json
