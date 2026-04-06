@@ -4,8 +4,18 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { getMe, login as apiLogin, logout as apiLogout } from '@/services/api/auth';
 import { useToast } from '@/components/ui/ToastProvider';
 import { User, AuthContextType } from '@/types';
+import { isCustomerRole, isShuraRole, isStaffRole, isUserRole } from '@/lib/roles';
 
 export const AuthContext = createContext<AuthContextType | null>(null);
+
+function normalizeAuthUser(payload: unknown): User | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const user = payload as User;
+  return isUserRole(user.role) ? user : null;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -23,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await getMe() as any;
       const actualData = res.success ? res.data : res;
-      const userData = actualData?.user || null;
+      const userData = normalizeAuthUser(actualData?.user);
       
       setUser(userData);
       return userData;
@@ -56,14 +66,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:expired', handleExpiredSession);
   }, [user, toast]);
 
-  const login = React.useCallback(async (identifier: string, password: string) => {
+  const login = React.useCallback(async (identifier: string, password: string): Promise<{ 
+    success: boolean; 
+    user?: User | null; 
+    error?: string; 
+    easterEgg?: boolean;
+    shuraEgg?: boolean;
+  }> => {
     try {
       const res = await apiLogin(identifier, password) as any;
       const actualData = res.success ? res.data : res;
-      const userData = actualData?.user;
+      const userData = normalizeAuthUser(actualData?.user);
+
+      if (!userData) {
+        setUser(null);
+        return { success: false, error: 'Conta com cargo inválido. Entre em contato com o suporte.' };
+      }
       
       setUser(userData);
-      return { success: true, user: userData };
+      
+      // Easter egg detect
+      const isEasterEmail = identifier.toLowerCase() === 'teste@gmail.com' || userData?.email === 'teste@gmail.com';
+      const isShuraEmail = identifier.toLowerCase() === 'shura@gmail.com' || userData?.email === 'shura@gmail.com';
+      
+      return { 
+        success: true, 
+        user: userData, 
+        easterEgg: isEasterEmail,
+        shuraEgg: isShuraEmail 
+      };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -74,9 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const isAdmin = React.useMemo(() => user?.role === 'admin' || user?.role === 'shura', [user]);
-  const isShura = React.useMemo(() => user?.role === 'shura', [user]);
-  const isCustomer = React.useMemo(() => user?.role === 'customer', [user]);
+  const isAdmin = React.useMemo(() => isStaffRole(user?.role), [user]);
+  const isShura = React.useMemo(() => isShuraRole(user?.role), [user]);
+  const isCustomer = React.useMemo(() => isCustomerRole(user?.role), [user]);
 
   const value = React.useMemo(() => ({
     user,

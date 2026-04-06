@@ -8,31 +8,44 @@ import {
   FiShield, 
   FiRefreshCw, 
   FiTrash2, 
-  FiMoreVertical,
   FiUserCheck,
   FiUserX,
-  FiKey
+  FiKey,
+  FiEdit,
+  FiXCircle,
+  FiSave
 } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
+import { getRoleLabel, type UserRole } from '@/lib/roles';
 import { 
   getCustomers, 
   deleteCustomer, 
   resetCustomerPassword,
   updateUserRole,
+  updateCustomer,
   formatDateTime 
 } from '@/lib/api';
-import { User } from '@/types';
+import { CustomerRecord } from '@/types';
 import '@/app/admin/dashboard.css';
 
+type EditableCustomerForm = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  cpf?: string;
+};
+
 export default function CustomerManagement() {
-  const { isAdmin, isShura } = useAuth();
+  const { user, isAdmin, isShura } = useAuth();
   const { addToast } = useToast();
   
-  const [customers, setCustomers] = useState<User[]>([]);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditableCustomerForm>({});
 
   const loadCustomers = async () => {
     try {
@@ -53,6 +66,41 @@ export default function CustomerManagement() {
     }
   }, [isAdmin, isShura]);
 
+  const handleStartEdit = (customer: CustomerRecord) => {
+    setEditingId(String(customer.id));
+    setEditForm({
+      name: customer.name,
+      email: customer.email || '',
+      phone: customer.phone || '',
+      cpf: customer.cpf || ''
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({});
+  };
+
+  const handleSaveEdit = async (id: string | number) => {
+    if (!editForm.name || (!editForm.email && !editForm.phone)) {
+      addToast('Nome e pelo menos um contato são obrigatórios.', 'error');
+      return;
+    }
+
+    try {
+      setActionId(String(id));
+      const updated = await updateCustomer(id, editForm);
+      setCustomers(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+      addToast('Informações atualizadas.', 'success');
+      setEditingId(null);
+    } catch (err) {
+      console.error('Erro ao editar:', err);
+      addToast('Erro ao salvar edições.', 'error');
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const handleResetPassword = async (id: string, name: string) => {
     if (!window.confirm(`Deseja resetar a senha de ${name}? Um e-mail será enviado.`)) return;
 
@@ -68,9 +116,9 @@ export default function CustomerManagement() {
     }
   };
 
-  const handleUpdateRole = async (id: string | number, name: string, newRole: string) => {
-    const roleName = newRole === 'shura' ? 'SHURA' : newRole === 'admin' ? 'Administrador' : 'Cliente';
-    const password = window.prompt(`Confirmação de Segurança: Digite sua senha administrativa para promover ${name} a ${roleName}:`);
+  const handleUpdateRole = async (id: string | number, name: string, newRole: UserRole) => {
+    const roleName = getRoleLabel(newRole);
+    const password = window.prompt(`Confirmação de Segurança: Digite sua senha administrativa para definir ${name} como ${roleName}:`);
     
     if (password === null) return;
     if (!password) {
@@ -82,10 +130,10 @@ export default function CustomerManagement() {
       setActionId(String(id));
       await updateUserRole(id, newRole, password);
       addToast(`${name} agora é ${roleName}.`, 'success');
-      loadCustomers(); // Recarregar para refletir o badge
+      await loadCustomers();
     } catch (err: any) {
       console.error('Erro ao atualizar cargo:', err);
-      addToast(err.message || 'Erro ao processar promoção.', 'error');
+      addToast(err.message || 'Erro ao atualizar o cargo.', 'error');
     } finally {
       setActionId(null);
     }
@@ -93,10 +141,17 @@ export default function CustomerManagement() {
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`EXCLUSÃO CRÍTICA: Tem certeza que deseja remover ${name} do sistema?`)) return;
+    const password = window.prompt(`Digite sua senha administrativa para excluir ${name}:`);
+
+    if (password === null) return;
+    if (!password) {
+      addToast('A senha é obrigatória para excluir usuários.', 'error');
+      return;
+    }
 
     try {
       setActionId(id);
-      await deleteCustomer(id);
+      await deleteCustomer(id, password);
       setCustomers(prev => prev.filter(c => c.id !== id));
       addToast(`Cliente ${name} removido com sucesso.`, 'success');
     } catch (err) {
@@ -112,11 +167,34 @@ export default function CustomerManagement() {
       const searchLower = searchTerm.toLowerCase();
       return (
         c.name.toLowerCase().includes(searchLower) ||
-        c.email.toLowerCase().includes(searchLower) ||
+        (c.email || '').toLowerCase().includes(searchLower) ||
         (c.phone || '').includes(searchTerm)
       );
     });
   }, [customers, searchTerm]);
+
+  const currentUserId = String(user?.id ?? '');
+
+  const canEditRecord = (customer: CustomerRecord) => {
+    if (customer.customer_type !== 'registered' || String(customer.id) === currentUserId) return false;
+    if (customer.role === 'shura') return false;
+    if (customer.role === 'admin' && !isShura) return false;
+    return isAdmin || isShura;
+  };
+
+  const canResetPasswordFor = (customer: CustomerRecord) => {
+    if (customer.customer_type !== 'registered' || String(customer.id) === currentUserId) return false;
+    if (customer.role === 'shura') return false;
+    if (customer.role === 'admin' && !isShura) return false;
+    return isAdmin || isShura;
+  };
+
+  const canDeleteRecord = (customer: CustomerRecord) => {
+    if (customer.customer_type !== 'registered' || String(customer.id) === currentUserId) return false;
+    if (customer.role === 'shura') return false;
+    if (customer.role === 'admin' && !isShura) return false;
+    return isAdmin || isShura;
+  };
 
   if (loading && customers.length === 0) {
     return (
@@ -182,7 +260,7 @@ export default function CustomerManagement() {
             <tbody>
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map((c) => (
-                  <tr key={c.id} style={{ opacity: actionId === c.id ? 0.6 : 1 }}>
+                  <tr key={c.id} style={{ opacity: actionId === String(c.id) ? 0.6 : 1 }}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                         <div style={{ 
@@ -200,25 +278,64 @@ export default function CustomerManagement() {
                           {(c.name || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 600 }}>{c.name}</div>
+                          {editingId === String(c.id) ? (
+                            <input 
+                              className="form-input form-input--sm"
+                              value={editForm.name || ''}
+                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            />
+                          ) : (
+                            <div style={{ fontWeight: 600 }}>{c.name}</div>
+                          )}
                           <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)' }}>ID: {c.id}</div>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--font-sm)' }}>
-                        <FiMail style={{ color: 'var(--gray-400)' }} />
-                        {c.email}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: 'var(--font-sm)' }}>
+                        {editingId === String(c.id) ? (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <FiMail style={{ color: 'var(--gray-400)' }} />
+                              <input 
+                                className="form-input form-input--sm"
+                                value={editForm.email || ''}
+                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                              />
+                            </div>
+                            <input 
+                               className="form-input form-input--sm"
+                               placeholder="Telefone"
+                               value={editForm.phone || ''}
+                               onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <FiMail style={{ color: 'var(--gray-400)' }} />
+                              {c.email || 'Sem e-mail cadastrado'}
+                            </div>
+                            {c.phone && <div style={{ color: 'var(--gray-500)' }}>{c.phone}</div>}
+                            {c.customer_type === 'guest' && (
+                              <div style={{ color: 'var(--gray-500)' }}>Cliente convidado sem conta de acesso</div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </td>
                     <td>
-                      <span className={`badge badge--${c.role === 'shura' ? 'shura' : c.role === 'admin' ? 'primary' : 'neutral'}`}>
+                      <span className={`badge badge--${c.customer_type === 'guest' ? 'neutral' : c.role === 'shura' ? 'shura' : c.role === 'admin' ? 'primary' : 'neutral'}`}>
                         <FiShield style={{ marginRight: '4px' }} />
-                        {c.role === 'shura' ? 'SHURA' : c.role === 'admin' ? 'Administrador' : 'Cliente'}
+                        {c.customer_type === 'guest' ? 'Convidado' : getRoleLabel(c.role)}
                       </span>
                     </td>
                     <td>
-                      {c.is_active !== false ? (
+                      {c.customer_type === 'guest' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--gray-500)', fontSize: 'var(--font-sm)' }}>
+                          <FiUsers /> Pedido avulso
+                        </div>
+                      ) : c.is_active !== false ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--success-600)', fontSize: 'var(--font-sm)' }}>
                           <FiUserCheck /> Ativo
                         </div>
@@ -233,42 +350,93 @@ export default function CustomerManagement() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-                        {isShura && c.role !== 'shura' && (
-                          <button 
-                            className="btn btn--sm btn--primary" 
-                            title="Promover a SHURA"
-                            onClick={() => handleUpdateRole(c.id, c.name, 'shura')}
-                            disabled={!!actionId}
-                          >
-                            <FiShield />
-                          </button>
+                        {editingId === String(c.id) ? (
+                          <>
+                            <button 
+                              className="btn btn--sm btn--primary" 
+                              title="Salvar"
+                              onClick={() => handleSaveEdit(c.id)}
+                            >
+                              <FiSave />
+                            </button>
+                            <button 
+                              className="btn btn--sm btn--secondary" 
+                              title="Cancelar"
+                              onClick={handleCancelEdit}
+                            >
+                              <FiXCircle />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {isAdmin && c.customer_type === 'registered' && c.role === 'customer' && String(c.id) !== currentUserId && (
+                              <button 
+                                className="btn btn--sm btn--secondary" 
+                                title="Promover para Administrador"
+                                onClick={() => handleUpdateRole(c.id, c.name, 'admin')}
+                                disabled={!!actionId}
+                              >
+                                <FiUserCheck />
+                              </button>
+                            )}
+                            {isAdmin && c.customer_type === 'registered' && c.role === 'admin' && String(c.id) !== currentUserId && (
+                              <button 
+                                className="btn btn--sm btn--secondary" 
+                                title="Rebaixar para Cliente"
+                                onClick={() => handleUpdateRole(c.id, c.name, 'customer')}
+                                disabled={!!actionId}
+                              >
+                                <FiUserX />
+                              </button>
+                            )}
+                            {isShura && c.customer_type === 'registered' && c.role !== 'shura' && String(c.id) !== currentUserId && (
+                              <button 
+                                className="btn btn--sm btn--primary" 
+                                title="Promover a SHURA"
+                                onClick={() => handleUpdateRole(c.id, c.name, 'shura')}
+                                disabled={!!actionId}
+                              >
+                                <FiShield />
+                              </button>
+                            )}
+                            {isShura && c.customer_type === 'registered' && c.role === 'shura' && String(c.id) !== currentUserId && (
+                              <button 
+                                className="btn btn--sm btn--secondary" 
+                                title="Rebaixar SHURA para Administrador"
+                                onClick={() => handleUpdateRole(c.id, c.name, 'admin')}
+                                disabled={!!actionId}
+                              >
+                                <FiShield />
+                              </button>
+                            )}
+                            {canEditRecord(c) && (
+                              <button 
+                                className="btn btn--sm btn--secondary" 
+                                title="Editar Usuário"
+                                onClick={() => handleStartEdit(c)}
+                                disabled={!!actionId}
+                              >
+                                <FiEdit />
+                              </button>
+                            )}
+                            <button 
+                              className="btn btn--sm btn--secondary" 
+                              title="Resetar Senha"
+                              onClick={() => handleResetPassword(c.id, c.name)}
+                              disabled={!!actionId || !canResetPasswordFor(c)}
+                            >
+                              <FiKey />
+                            </button>
+                            <button 
+                              className="btn btn--sm btn--danger" 
+                              title="Excluir"
+                              onClick={() => handleDelete(c.id, c.name)}
+                              disabled={!!actionId || !canDeleteRecord(c)}
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </>
                         )}
-                        {isShura && c.role === 'customer' && (
-                          <button 
-                            className="btn btn--sm btn--secondary" 
-                            title="Promover a Administrador"
-                            onClick={() => handleUpdateRole(c.id, c.name, 'admin')}
-                            disabled={!!actionId}
-                          >
-                            <FiUserCheck />
-                          </button>
-                        )}
-                        <button 
-                          className="btn btn--sm btn--secondary" 
-                          title="Resetar Senha"
-                          onClick={() => handleResetPassword(c.id, c.name)}
-                          disabled={!!actionId || (c.role === 'admin' && !isShura) || c.role === 'shura'}
-                        >
-                          <FiKey />
-                        </button>
-                        <button 
-                          className="btn btn--sm btn--danger" 
-                          title="Excluir"
-                          onClick={() => handleDelete(c.id, c.name)}
-                          disabled={!!actionId || c.role === 'admin' || c.role === 'shura'}
-                        >
-                          <FiTrash2 />
-                        </button>
                       </div>
                     </td>
                   </tr>

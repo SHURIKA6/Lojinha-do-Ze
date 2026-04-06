@@ -25,6 +25,7 @@ import {
   findOpenSetupToken,
   revokeOpenSetupTokensForUser,
 } from '../repositories/passwordSetupRepository';
+import { isUserRole } from '../domain/roles';
 import { Bindings, User } from '../types';
 
 function isSecureRequest(c: Context): boolean {
@@ -48,6 +49,10 @@ function sessionCookieOptions(c: Context<any>, maxAge = SESSION_TTL_SECONDS, htt
 }
 
 function serializeUser(row: any): User {
+  if (!isUserRole(row.role)) {
+    throw new Error(`Cargo inválido na sessão: ${String(row.role)}`);
+  }
+
   return {
     id: row.id,
     name: row.name,

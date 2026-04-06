@@ -4,6 +4,7 @@ import { jsonError, jsonSuccess } from '../utils/http';
 import bcrypt from 'bcryptjs';
 import { logger } from '../utils/logger';
 import { authMiddleware, csrfMiddleware } from '../middleware/auth';
+import { isUserRole } from '../domain/roles';
 import { Bindings, Variables } from '../types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -55,6 +56,14 @@ router.post('/login', async (c) => {
     if (!validPassword) {
       logger.warn('Tentativa de login: senha incorreta', { userId: userRow.id });
       return jsonError(c, 401, 'Credenciais inválidas');
+    }
+
+    if (!isUserRole(userRow.role)) {
+      logger.error('Tentativa de login com cargo inválido persistido', new Error('Invalid stored role'), {
+        userId: userRow.id,
+        role: userRow.role,
+      });
+      return jsonError(c, 500, 'Usuário com cargo inválido. Corrija os dados da conta.');
     }
 
     const { csrfToken } = await issueSession(c, db, String(userRow.id));

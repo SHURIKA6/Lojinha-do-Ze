@@ -1,3 +1,5 @@
+import type { CustomerType, UserRole } from '../domain/roles';
+
 // ============================================
 // Types Index - Lojinha do Zé
 // ============================================
@@ -11,9 +13,27 @@ export interface User {
   phone?: string;
   address?: Address;
   avatar?: string;
-  role: 'shura' | 'admin' | 'editor' | 'customer';
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CustomerRecord {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  cpf?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  avatar?: string | null;
+  role: UserRole | null;
+  customer_type: CustomerType;
+  created_at?: string;
+  updated_at?: string;
+  is_active?: boolean | null;
+  total_spent?: number;
+  order_count?: number;
 }
 
 export interface AuthTokens {

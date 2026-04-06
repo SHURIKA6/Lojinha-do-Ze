@@ -6,6 +6,7 @@ import * as migration005 from './005_add_mercado_pago_fields_to_orders';
 import * as migration006 from './006_guest_customers_idx';
 import * as migration007 from './007_add_refresh_tokens';
 import * as migration008 from './008_add_performance_indexes';
+import * as migration009 from './009_normalize_user_roles';
 import { Database } from '../types/index';
 
 const migrations = [
@@ -16,7 +17,8 @@ const migrations = [
   migration005, 
   migration006,
   migration007,
-  migration008
+  migration008,
+  migration009
 ];
 
 export async function runMigrations(db: Database) {

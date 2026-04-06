@@ -7,6 +7,7 @@ import { FiArrowRight, FiCheckCircle, FiKey, FiLock, FiShield } from 'react-icon
 import { setupPassword } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
+import { getHomePathForRole } from '@/lib/roles';
 
 export default function SetupPasswordPageClient() {
   const searchParams = useSearchParams();
@@ -37,7 +38,7 @@ export default function SetupPasswordPageClient() {
 
       const user = await refreshUser().catch(() => null);
       toast.success('Conta ativada com sucesso. Você já está autenticado.');
-      router.push(user?.role === 'admin' ? '/admin/dashboard' : '/conta');
+      router.push(getHomePathForRole(user?.role));
     } catch (submitError: any) {
       setError(submitError.message || 'Não foi possível ativar sua conta.');
     } finally {
