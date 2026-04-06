@@ -171,39 +171,34 @@ export default function FinancialManagement() {
 
       <div className="panel" style={{ padding: 'var(--space-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-            <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+          <div className="table-search">
+            <FiSearch className="table-search__icon" />
             <input 
               type="text" 
               placeholder="Buscar por descrição ou ID do pedido..." 
-              className="input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '40px', margin: 0 }}
             />
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <FiFilter style={{ opacity: 0.5 }} />
-            <div className="segmented-control" style={{ display: 'flex', backgroundColor: 'var(--gray-100)', borderRadius: '8px', padding: '4px' }}>
+            <div className="segmented-control">
               <button 
-                className={`btn btn--sm ${filterType === 'all' ? 'btn--secondary' : 'btn--ghost'}`}
+                className={`segmented-control__item ${filterType === 'all' ? 'active' : ''}`}
                 onClick={() => setFilterType('all')}
-                style={{ fontSize: 'var(--font-xs)', padding: '4px 12px' }}
               >
                 Todos
               </button>
               <button 
-                className={`btn btn--sm ${filterType === 'income' ? 'btn--success' : 'btn--ghost'}`}
+                className={`segmented-control__item ${filterType === 'income' ? 'active' : ''}`}
                 onClick={() => setFilterType('income')}
-                style={{ fontSize: 'var(--font-xs)', padding: '4px 12px' }}
               >
                 Entradas
               </button>
               <button 
-                className={`btn btn--sm ${filterType === 'expense' ? 'btn--danger' : 'btn--ghost'}`}
+                className={`segmented-control__item ${filterType === 'expense' ? 'active' : ''}`}
                 onClick={() => setFilterType('expense')}
-                style={{ fontSize: 'var(--font-xs)', padding: '4px 12px' }}
               >
                 Saídas
               </button>
@@ -214,7 +209,7 @@ export default function FinancialManagement() {
 
       <div className="table-container">
         <div className="table-responsive">
-          <table>
+          <table className="admin-table">
             <thead>
               <tr>
                 <th style={{ width: '150px' }}>Data</th>

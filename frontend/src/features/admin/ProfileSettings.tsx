@@ -107,35 +107,33 @@ export default function ProfileSettings() {
             <h4 style={{ margin: 0 }}>Informações Pessoais</h4>
           </div>
           <form className="panel__content" style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }} onSubmit={handleUpdate}>
-            <div className="form-field">
-              <label className="label">Nome Completo</label>
-              <div style={{ position: 'relative' }}>
-                <FiUser style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            <div className="form-group">
+              <label className="form-label">Nome Completo</label>
+              <div className="admin-input-group">
                 <input 
                   type="text" 
                   name="name"
-                  className="input" 
-                  style={{ paddingLeft: '40px' }}
+                  className="form-input" 
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Seu nome completo"
                 />
+                <FiUser className="admin-input-group__icon" />
               </div>
             </div>
 
-            <div className="form-field">
-              <label className="label">E-mail Administrativo</label>
-              <div style={{ position: 'relative' }}>
-                <FiMail style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            <div className="form-group">
+              <label className="form-label">E-mail Administrativo</label>
+              <div className="admin-input-group">
                 <input 
                   type="email" 
                   name="email"
-                  className="input" 
-                  style={{ paddingLeft: '40px' }}
+                  className="form-input" 
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="seu@email.com"
                 />
+                <FiMail className="admin-input-group__icon" />
               </div>
             </div>
 
@@ -160,38 +158,36 @@ export default function ProfileSettings() {
             <h4 style={{ margin: 0 }}>Segurança e Acesso</h4>
           </div>
           <form className="panel__content" style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }} onSubmit={handleChangePassword}>
-            <div className="form-field">
-              <label className="label">Nova Senha</label>
-              <div style={{ position: 'relative' }}>
-                <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            <div className="form-group">
+              <label className="form-label">Nova Senha</label>
+              <div className="admin-input-group">
                 <input 
                   type="password" 
                   name="password"
-                  className="input" 
-                  style={{ paddingLeft: '40px' }}
+                  className="form-input" 
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
                 />
+                <FiLock className="admin-input-group__icon" />
               </div>
               <p style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-500)', marginTop: '4px' }}>
                 Mínimo de 8 caracteres. Use letras, números e símbolos.
               </p>
             </div>
 
-            <div className="form-field">
-              <label className="label">Confirmar Nova Senha</label>
-              <div style={{ position: 'relative' }}>
-                <FiLock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            <div className="form-group">
+              <label className="form-label">Confirmar Nova Senha</label>
+              <div className="admin-input-group">
                 <input 
                   type="password" 
                   name="confirmPassword"
-                  className="input" 
-                  style={{ paddingLeft: '40px' }}
+                  className="form-input" 
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="••••••••"
                 />
+                <FiLock className="admin-input-group__icon" />
               </div>
             </div>
 

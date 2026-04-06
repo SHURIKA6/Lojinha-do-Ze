@@ -149,25 +149,23 @@ export default function StockManagement() {
 
       <div className="panel" style={{ padding: 'var(--space-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-            <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+          <div className="table-search">
+            <FiSearch className="table-search__icon" />
             <input 
               type="text" 
               placeholder="Buscar por Nome ou Código SKU..." 
-              className="input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '40px', margin: 0 }}
             />
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <FiFilter style={{ opacity: 0.5 }} />
             <select 
-              className="input" 
+              className="form-select" 
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              style={{ margin: 0, width: '200px' }}
+              style={{ margin: 0, width: '200px', minHeight: '3rem' }}
             >
               <option value="all">Todas Categorias</option>
               {categories.map(cat => (
@@ -180,7 +178,7 @@ export default function StockManagement() {
 
       <div className="table-container">
         <div className="table-responsive">
-          <table>
+          <table className="admin-table">
             <thead>
               <tr>
                 <th style={{ width: '60px' }}>Foto</th>

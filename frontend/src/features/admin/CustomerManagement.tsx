@@ -130,15 +130,13 @@ export default function CustomerManagement() {
 
       <div className="panel" style={{ padding: 'var(--space-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
-            <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+          <div className="table-search">
+            <FiSearch className="table-search__icon" />
             <input 
               type="text" 
               placeholder="Buscar por Nome, E-mail ou Telefone..." 
-              className="input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '40px', margin: 0 }}
             />
           </div>
         </div>
@@ -146,7 +144,7 @@ export default function CustomerManagement() {
 
       <div className="table-container">
         <div className="table-responsive">
-          <table>
+          <table className="admin-table">
             <thead>
               <tr>
                 <th>Usuário</th>
