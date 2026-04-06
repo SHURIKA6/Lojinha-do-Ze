@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 interface AuthUser {
   id: string;
-  role: 'admin' | 'customer';
+  role: 'admin' | 'shura' | 'customer' | 'editor';
   email: string;
 }
 
@@ -115,18 +115,25 @@ Disallow: /easter-egg-nao-existe
 
   if (pathname === '/login') {
     if (result.kind === 'auth' && result.user) {
+      const isStaff = result.user.role === 'admin' || result.user.role === 'shura' || result.user.role === 'editor';
       return redirect(
         request,
-        result.user.role === 'admin' ? '/admin/dashboard' : '/conta'
+        isStaff ? '/admin/dashboard' : '/conta'
       );
     }
     return NextResponse.next();
   }
 
   if (pathname.startsWith('/admin')) {
-    if (result.kind === 'auth' && result.user?.role === 'admin') {
+    if (result.kind !== 'auth') {
+      return redirect(request, '/login');
+    }
+
+    const isStaff = result.user.role === 'admin' || result.user.role === 'shura' || result.user.role === 'editor';
+    if (isStaff) {
       return NextResponse.next();
     }
+
     // Retorna 404 em vez de redirecionar para esconder a existência da rota
     const url = request.nextUrl.clone();
     url.pathname = '/404-not-found'; // Rota inexistente para forçar 404
@@ -134,11 +141,12 @@ Disallow: /easter-egg-nao-existe
   }
 
   if (pathname.startsWith('/conta')) {
-    if (result.kind !== 'auth' || !result.user) {
+    if (result.kind !== 'auth') {
       return redirect(request, '/login');
     }
 
-    if (result.user.role === 'admin') {
+    const isStaff = result.user.role === 'admin' || result.user.role === 'shura' || result.user.role === 'editor';
+    if (isStaff) {
       return redirect(request, '/admin/dashboard');
     }
 
