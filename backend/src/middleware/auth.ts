@@ -76,8 +76,20 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
 
 export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const user = c.get('user');
-  if (!user || user.role !== 'admin') {
-    return jsonError(c as any, 403, 'Acesso restrito ao administrador');
+  if (!user || (user.role !== 'admin' && user.role !== 'shura')) {
+    return jsonError(c as any, 403, 'Acesso restrito a administradores');
+  }
+
+  await next();
+};
+
+/**
+ * Middleware para acesso exclusivo do proprietário (SHURA).
+ */
+export const shuraOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
+  const user = c.get('user');
+  if (!user || user.role !== 'shura') {
+    return jsonError(c as any, 403, 'Acesso restrito ao proprietário do sistema');
   }
 
   await next();

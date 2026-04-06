@@ -11,7 +11,7 @@ export interface User {
   phone?: string;
   address?: Address;
   avatar?: string;
-  role: 'admin' | 'customer';
+  role: 'shura' | 'admin' | 'editor' | 'customer';
   createdAt: Date;
   updatedAt: Date;
 }

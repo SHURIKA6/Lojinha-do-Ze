@@ -281,6 +281,16 @@
   border-bottom: 1px solid var(--admin-border);
 }
 
+.badge--primary { background-color: var(--primary-100); color: var(--primary-700); border: 1px solid var(--primary-200); }
+.badge--shura { 
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+  color: #92400e; 
+  border: 1px solid #f59e0b;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
+}
+.badge--neutral { background-color: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
+
 .admin-table td {
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--admin-border);
