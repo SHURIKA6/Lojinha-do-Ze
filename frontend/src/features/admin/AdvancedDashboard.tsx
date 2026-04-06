@@ -201,12 +201,12 @@ export default function AdvancedDashboard() {
   }
 
   return (
-    <div className="admin-dashboard">
+    <div className="fade-in admin-dashboard">
       {/* Header com controles */}
       <header className="admin-dashboard__header">
         <div className="admin-dashboard__header-info">
-          <h1 className="admin-dashboard__title">Dashboard Avançado</h1>
-          <p className="admin-dashboard__subtitle">
+          <h1 className="admin-dashboard__title" style={{ color: 'white' }}>Dashboard Avançado</h1>
+          <p className="admin-dashboard__subtitle" style={{ color: 'rgba(255,255,255,0.8)' }}>
             Olá, {user?.name || 'Administrador'}. Aqui está o panorama detalhado do mês atual.
           </p>
         </div>
@@ -226,30 +226,19 @@ export default function AdvancedDashboard() {
           </div>
           
           <button 
-            className="admin-dashboard__refresh-btn"
+            className="btn-admin"
             onClick={handleRefresh}
             disabled={refreshing}
           >
             <FiRefreshCw className={refreshing ? 'animate-spin' : ''} />
             {refreshing ? 'Atualizando...' : 'Atualizar'}
           </button>
-          
-          <div className="admin-dashboard__export-dropdown">
-            <button className="admin-dashboard__export-btn">
-              <FiDownload /> Exportar
-            </button>
-            <div className="admin-dashboard__export-options">
-              <button onClick={() => handleExport('PDF')}>📄 PDF</button>
-              <button onClick={() => handleExport('Excel')}>📊 Excel</button>
-              <button onClick={() => handleExport('CSV')}>📈 CSV</button>
-            </div>
-          </div>
         </div>
       </header>
 
       {/* Métricas principais */}
       <div className="admin-dashboard__metrics">
-        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' } as React.CSSProperties}>
+        <div className="metric-card">
           <div className="metric-card__icon">
             <FiDollarSign />
           </div>
@@ -258,39 +247,30 @@ export default function AdvancedDashboard() {
             <span className="metric-card__value">
               {formatCurrency(metrics?.totalRevenue || 0)}
             </span>
-            <span className="metric-card__change metric-card__change--positive">
-              <FiArrowUp /> +12.5%
-            </span>
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' } as React.CSSProperties}>
+        <div className="metric-card">
           <div className="metric-card__icon">
             <FiShoppingBag />
           </div>
           <div className="metric-card__content">
             <span className="metric-card__label">Vendas Concluídas</span>
             <span className="metric-card__value">{metrics?.totalSales || 0}</span>
-            <span className="metric-card__change metric-card__change--positive">
-              <FiArrowUp /> +8.3%
-            </span>
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' } as React.CSSProperties}>
+        <div className="metric-card">
           <div className="metric-card__icon">
             <FiPackage />
           </div>
           <div className="metric-card__content">
             <span className="metric-card__label">Pedidos Ativos</span>
             <span className="metric-card__value">{metrics?.activeOrders || 0}</span>
-            <span className="metric-card__change metric-card__change--negative">
-              <FiArrowDown /> -2.1%
-            </span>
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' } as React.CSSProperties}>
+        <div className="metric-card">
           <div className="metric-card__icon">
             <FiTrendingUp />
           </div>
@@ -299,80 +279,42 @@ export default function AdvancedDashboard() {
             <span className="metric-card__value">
               {formatCurrency(metrics?.profit || 0)}
             </span>
-            <span className="metric-card__change metric-card__change--positive">
-              <FiArrowUp /> +15.7%
-            </span>
-          </div>
-        </div>
-
-        <div className="metric-card" style={{ '--metric-color': 'var(--danger-500)' } as React.CSSProperties}>
-          <div className="metric-card__icon">
-            <FiPercent />
-          </div>
-          <div className="metric-card__content">
-            <span className="metric-card__label">Margem de Lucro</span>
-            <span className="metric-card__value">
-              {metrics?.profitMargin?.toFixed(1) || 0}%
-            </span>
-            <span className="metric-card__change metric-card__change--positive">
-              <FiArrowUp /> +3.2%
-            </span>
-          </div>
-        </div>
-
-        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' } as React.CSSProperties}>
-          <div className="metric-card__icon">
-            <FiTarget />
-          </div>
-          <div className="metric-card__content">
-            <span className="metric-card__label">Ticket Médio</span>
-            <span className="metric-card__value">
-              {formatCurrency(metrics?.avgOrderValue || 0)}
-            </span>
-            <span className="metric-card__change metric-card__change--positive">
-              <FiArrowUp /> +5.8%
-            </span>
           </div>
         </div>
       </div>
 
       {/* Gráficos avançados */}
       <div className="admin-dashboard__charts">
-        <div className="dashboard-card admin-dashboard__chart-main">
+        <div className="dashboard-card" style={{ gridColumn: 'span 2' }}>
           <div className="dashboard-card__header">
             <h3 className="dashboard-card__title">
-              <FiBarChart2 className="dashboard-card__title-icon" style={{ color: 'var(--info-500)' }} />
+              <FiBarChart2 className="dashboard-card__title-icon" style={{ color: 'var(--admin-accent)' }} />
               Fluxo Financeiro Diário
             </h3>
-            <div className="dashboard-card__actions">
-              <button className="dashboard-card__action-btn">
-                <FiFilter /> Filtrar
-              </button>
-            </div>
           </div>
           <div className="dashboard-card__body--padded" style={{ height: '400px' }}>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
                   <XAxis 
                     dataKey="day" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
+                    tick={{ fill: '#4a5568', fontSize: 10 }} 
                     dy={10} 
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
+                    tick={{ fill: '#4a5568', fontSize: 10 }} 
                   />
                   <Tooltip 
                     contentStyle={{ 
                       borderRadius: '12px', 
                       border: 'none', 
-                      boxShadow: 'var(--shadow-md)',
-                      backgroundColor: 'var(--bg-primary)'
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      backgroundColor: 'white'
                     }}
                     formatter={(value: any, name: any) => [
                       formatCurrency(Number(value)),
@@ -380,157 +322,17 @@ export default function AdvancedDashboard() {
                       name === 'despesa' ? 'Despesa' : 'Lucro'
                     ]}
                   />
-                  <Bar dataKey="receita" fill="var(--success-500)" radius={[4, 4, 0, 0]} barSize={20} name="receita" />
-                  <Bar dataKey="despesa" fill="var(--danger-500)" radius={[4, 4, 0, 0]} barSize={20} name="despesa" />
-                  <Line type="monotone" dataKey="lucro" stroke="var(--primary-500)" strokeWidth={3} dot={false} name="lucro" />
+                  <Bar dataKey="receita" fill="#667eea" radius={[4, 4, 0, 0]} barSize={20} name="receita" />
+                  <Bar dataKey="despesa" fill="#e53e3e" radius={[4, 4, 0, 0]} barSize={20} name="despesa" />
+                  <Line type="monotone" dataKey="lucro" stroke="#764ba2" strokeWidth={3} dot={false} name="lucro" />
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              <div className="dashboard-empty dashboard-empty--centered">
-                <FiBarChart2 className="dashboard-empty__icon" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5 }}>
+                <FiBarChart2 size={48} />
                 <p>Sem dados suficientes para gerar o gráfico.</p>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiPieChart className="dashboard-card__title-icon" style={{ color: 'var(--primary-500)' }} />
-              Categorias
-            </h3>
-          </div>
-          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
-            {data?.categoryChart && data.categoryChart.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.categoryChart}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                  {(Array.isArray(data.categoryChart) ? data.categoryChart : []).map((_entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: any) => [value, 'Produtos']} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="dashboard-empty dashboard-empty--centered">
-                <FiPieChart className="dashboard-empty__icon" />
-                <p>Sem categorias cadastradas.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Gráfico de margem de lucro */}
-      <div className="admin-dashboard__charts">
-        <div className="dashboard-card">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiActivity className="dashboard-card__title-icon" style={{ color: 'var(--success-500)' }} />
-              Margem de Lucro Diária
-            </h3>
-          </div>
-          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
-                  <XAxis 
-                    dataKey="day" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
-                    unit="%" 
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: '12px', 
-                      border: 'none', 
-                      boxShadow: 'var(--shadow-md)',
-                      backgroundColor: 'var(--bg-primary)'
-                    }}
-                    formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Margem']}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="margem" 
-                    stroke="var(--success-500)" 
-                    fill="var(--success-500)" 
-                    fillOpacity={0.3}
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="dashboard-empty dashboard-empty--centered">
-                <FiActivity className="dashboard-empty__icon" />
-                <p>Sem dados para exibir.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="dashboard-card__header">
-            <h3 className="dashboard-card__title">
-              <FiUsers className="dashboard-card__title-icon" style={{ color: 'var(--info-500)' }} />
-              Indicadores de Performance
-            </h3>
-          </div>
-          <div className="dashboard-card__body--padded">
-            <div className="performance-indicators">
-              <div className="performance-indicator">
-                <div className="performance-indicator__header">
-                  <span className="performance-indicator__label">Taxa de Conversão</span>
-                  <span className="performance-indicator__value">{metrics?.conversionRate}%</span>
-                </div>
-                <div className="performance-indicator__bar">
-                  <div 
-                    className="performance-indicator__fill" 
-                    style={{ width: `${metrics?.conversionRate}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="performance-indicator">
-                <div className="performance-indicator__header">
-                  <span className="performance-indicator__label">Satisfação do Cliente</span>
-                  <span className="performance-indicator__value">{metrics?.customerSatisfaction}%</span>
-                </div>
-                <div className="performance-indicator__bar">
-                  <div 
-                    className="performance-indicator__fill performance-indicator__fill--success" 
-                    style={{ width: `${metrics?.customerSatisfaction}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="performance-indicator">
-                <div className="performance-indicator__header">
-                  <span className="performance-indicator__label">Margem de Lucro</span>
-                  <span className="performance-indicator__value">{metrics?.profitMargin?.toFixed(1)}%</span>
-                </div>
-                <div className="performance-indicator__bar">
-                  <div 
-                    className="performance-indicator__fill performance-indicator__fill--primary" 
-                    style={{ width: `${Math.min(metrics?.profitMargin || 0, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
