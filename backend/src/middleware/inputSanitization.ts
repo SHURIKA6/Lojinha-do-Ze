@@ -62,11 +62,15 @@ function sanitizeValue(value: unknown): unknown {
       sanitized = sanitized.replace(pattern, '');
     });
 
-    // Escapa caracteres perigosos
-    Object.entries(DANGEROUS_CHARS).forEach(([char, replacement]) => {
-      sanitized = sanitized.replace(new RegExp(char, 'g'), replacement);
-    });
-
+    // Escapa caracteres perigosos de forma robusta
+    // Usamos um mapa de escape para evitar múltiplas iterações se possível, 
+    // mas para compatibilidade mantemos a lógica clara.
+    for (const [char, replacement] of Object.entries(DANGEROUS_CHARS)) {
+      // Escapa o caractere para uso em RegExp se necessário
+      const escapedChar = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      sanitized = sanitized.replace(new RegExp(escapedChar, 'g'), replacement);
+    }
+    
     return sanitized;
   }
 
@@ -117,8 +121,10 @@ async function sanitizeRequest(c: Context): Promise<void> {
     const body = await cloned.json().catch(() => ({}));
     const sanitizedBody = sanitizeObject(body as Record<string, unknown>);
 
-    // Substitui o corpo da requisição com os dados sanitizados
-    (c.req as any).raw = new Request(JSON.stringify(sanitizedBody));
+    // Substitui o corpo da requisição com os dados sanitizados preservando headers e configurações
+    (c.req as any).raw = new Request(c.req.raw, {
+      body: JSON.stringify(sanitizedBody)
+    });
   } catch (error) {
     logger.warn('Erro na sanitização de input', { error: (error as Error).message });
   }
@@ -128,7 +134,11 @@ async function sanitizeRequest(c: Context): Promise<void> {
  * Middleware de sanitização de inputs
  */
 export function inputSanitizationMiddleware(c: Context, next: Next) {
-  sanitizeRequest(c);
+  // Apenas chamamos se houver um corpo passível de JSON
+  const contentType = c.req.header('content-type');
+  if (['POST', 'PUT', 'PATCH'].includes(c.req.method) && contentType?.includes('application/json')) {
+    sanitizeRequest(c);
+  }
   next();
 }
 
@@ -157,7 +167,10 @@ export function sanitizeSpecificRequest(fields: string[]) {
         }
       });
 
-      (c.req as any).raw = new Request(JSON.stringify(sanitizedBody));
+      // Substitui o corpo preservando metadados da requisição
+      (c.req as any).raw = new Request(c.req.raw, {
+        body: JSON.stringify(sanitizedBody)
+      });
     } catch (error) {
       logger.warn('Erro na sanitização específica', { error: (error as Error).message });
     }
@@ -192,31 +205,56 @@ export function sanitizeQueryParams() {
  */
 export function sanitizeHeaders() {
   return async (c: Context, next: Next) => {
+    // Sanitiza apenas os cabeçalhos de entrada (opcionalmente)
+    const headers = c.req.header();
     const sanitizedHeaders: Record<string, string> = {};
 
-    c.req.raw.headers.forEach((value, key) => {
+    Object.entries(headers).forEach(([key, value]) => {
       sanitizedHeaders[key] = sanitizeValue(value) as string;
     });
 
+    // Injetar headers sanitizados se necessário
+    // Em Hono, alterar headers da requisição original é desencorajado
+    // mas se precisarmos acessar depois via c.req.header() usamos essa cópia
+    
     await next();
   };
 }
 
 /**
- * Middleware para sanitizar respostas
+ * Middleware para sanitizar respostas (XSS Prevention on Output)
+ * IMPORTANTE: Corrige o bug de corromper JSON reportado na auditoria
  */
 export function sanitizeResponse() {
   return async (c: Context, next: Next) => {
     await next();
 
-    try {
-      const responseBody = await c.res.text();
-      const sanitizedResponse = sanitizeValue(responseBody);
+    // Se a resposta estiver vazia ou não for do tipo texto/json, ignoramos
+    if (!c.res || !c.res.body) return;
 
-      c.res = new Response(JSON.stringify(sanitizedResponse), {
-        status: c.res.status,
-        headers: c.res.headers,
-      });
+    const contentType = c.res.headers.get('content-type') || '';
+
+    try {
+      if (contentType.includes('application/json')) {
+        // Clonamos para ler e substituir
+        const originalRes = c.res.clone();
+        const body = await originalRes.json();
+        
+        // Sanitiza o objeto JSON de forma recursiva
+        const sanitizedBody = sanitizeValue(body);
+        
+        // Substitui a resposta
+        c.res = c.json(sanitizedBody, c.res.status as any);
+      } else if (contentType.includes('text/html') || contentType.includes('text/plain')) {
+        const originalRes = c.res.clone();
+        const body = await originalRes.text();
+        const sanitizedBody = sanitizeValue(body) as string;
+        
+        c.res = new Response(sanitizedBody, {
+          status: c.res.status,
+          headers: c.res.headers,
+        });
+      }
     } catch (error) {
       logger.warn('Erro na sanitização de resposta', { error: (error as Error).message });
     }
