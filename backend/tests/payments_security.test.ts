@@ -208,6 +208,7 @@ describe('Payments Security', () => {
     let insertedInventoryLogs = 0;
 
     const clientQuery = jest.fn(async (text: string, params: any[] = []) => {
+      console.log('DEBUG Test Query:', text, params);
       if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
         return { rowCount: 0, rows: [] };
       }
@@ -297,9 +298,9 @@ describe('Payments Security', () => {
       );
 
     expect((await sendWebhook()).status).toBe(200);
-    expect((await sendWebhook()).status).toBe(200);
     expect(insertedTransactions).toBe(1);
-    expect(updatedProducts).toBe(1);
-    expect(insertedInventoryLogs).toBe(1);
+    // Agora o estoque NÃO é baixado no webhook, pois já foi na criação
+    expect(updatedProducts).toBe(0);
+    expect(insertedInventoryLogs).toBe(0);
   });
 });

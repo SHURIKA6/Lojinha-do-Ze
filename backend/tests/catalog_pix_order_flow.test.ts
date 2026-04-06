@@ -41,7 +41,7 @@ describe('Catalog Pix Order Flow', () => {
     jest.clearAllMocks();
   });
 
-  it('cria pedido Pix sem baixar estoque antes da aprovacao', async () => {
+  it('cria pedido Pix baixando estoque no momento da criação para reserva', async () => {
     let insertedStatus = '';
     let updatedProducts = 0;
     let inventoryLogs = 0;
@@ -120,11 +120,12 @@ describe('Catalog Pix Order Flow', () => {
     await expect(response.json()).resolves.toEqual(
       expect.objectContaining({
         order: expect.objectContaining({ status: 'novo' }),
-        message: expect.stringContaining('aguardando pagamento Pix'),
+        message: expect.stringContaining('criado com sucesso!'),
       })
     );
     expect(insertedStatus).toBe('novo');
-    expect(updatedProducts).toBe(0);
-    expect(inventoryLogs).toBe(0);
+    // Agora esperamos que o estoque SEJA baixado
+    expect(updatedProducts).toBe(1);
+    expect(inventoryLogs).toBe(1);
   });
 });

@@ -327,7 +327,8 @@ router.post('/webhook', async (c) => {
 
             if (rows.length && rows[0].payment_method === 'pix' && rows[0].status === 'novo') {
               const order = rows[0];
-              await commitPixOrderStock(client, order);
+              // O estoque já foi reservado na criação do pedido (catalog.ts)
+              // await commitPixOrderStock(client, order);
 
               await client.query('UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1', [
                 orderId,

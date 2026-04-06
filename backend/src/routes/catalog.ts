@@ -143,8 +143,8 @@ router.post(
       const mergedItems = mergeOrderItems(payload.items);
       const deliveryFeeValue = parseFloat(c.env?.DELIVERY_FEE || '5');
       const deliveryFee = payload.delivery_type === 'entrega' ? deliveryFeeValue : 0;
-      const shouldCommitStockNow = payload.payment_method !== 'pix';
-      const initialStatus = shouldCommitStockNow ? 'recebido' : 'novo';
+      const shouldCommitStockNow = true;
+      const initialStatus = payload.payment_method !== 'pix' ? 'recebido' : 'novo';
 
       let subtotal = 0;
       const enrichedItems: EnrichedOrderItem[] = [];

@@ -32,7 +32,9 @@ async function restoreOrderStock(client: any, order: any) {
 }
 
 function shouldRestoreOrderStock(order: any) {
-  return order.payment_method !== 'pix' || order.payment_status === 'approved';
+  // Sempre restaura o estoque ao cancelar, pois agora todos os métodos (inclusive PIX) 
+  // reservam estoque no momento da criação (veja catalog.ts).
+  return true;
 }
 
 router.get('/', authMiddleware, async (c) => {
