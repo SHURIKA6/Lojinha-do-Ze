@@ -17,7 +17,7 @@ import { updateProfile } from '@/lib/api';
 import '@/app/admin/dashboard.css';
 
 export default function ProfileSettings() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, isShura } = useAuth();
   const { addToast } = useToast();
   
   const [loading, setLoading] = useState(false);
@@ -206,25 +206,28 @@ export default function ProfileSettings() {
         </div>
       </div>
 
-      <div className="panel" style={{ marginTop: 'var(--space-6)', borderLeft: '4px solid var(--primary-500)' }}>
+      <div className={`panel ${isShura ? 'panel--shura' : ''}`} style={{ marginTop: 'var(--space-6)', borderLeft: '4px solid var(--primary-500)' }}>
         <div style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
           <div style={{ 
             width: '48px', 
             height: '48px', 
             borderRadius: '12px', 
-            backgroundColor: 'var(--primary-100)',
-            color: 'var(--primary-600)',
+            backgroundColor: isShura ? 'var(--amber-100)' : 'var(--primary-100)',
+            color: isShura ? 'var(--amber-700)' : 'var(--primary-600)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '1.5rem'
+            fontSize: '1.5rem',
+            boxShadow: isShura ? '0 0 15px var(--amber-200)' : 'none'
           }}>
-            <FiShield />
+            {isShura ? '💎' : <FiShield />}
           </div>
           <div>
-            <h4 style={{ margin: 0 }}>Nível de Acesso: Administrador</h4>
+            <h4 style={{ margin: 0 }}>Nível de Acesso: {isShura ? '💎 S H U R A' : 'Administrador'}</h4>
             <p style={{ margin: 0, fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
-              Sua conta possui permissões totais sobre o sistema, faturamento e base de clientes.
+              {isShura 
+                ? 'Você detém o cargo máximo e absoluto sobre toda a infraestrutura e dados do sistema.' 
+                : 'Sua conta possui permissões totais sobre o sistema, faturamento e base de clientes.'}
             </p>
           </div>
         </div>

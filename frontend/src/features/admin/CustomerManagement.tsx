@@ -19,6 +19,7 @@ import {
   getCustomers, 
   deleteCustomer, 
   resetCustomerPassword,
+  updateUserRole,
   formatDateTime 
 } from '@/lib/api';
 import { User } from '@/types';
@@ -62,6 +63,29 @@ export default function CustomerManagement() {
     } catch (err) {
       console.error('Erro ao resetar senha:', err);
       addToast('Erro ao processar redefinição.', 'error');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleUpdateRole = async (id: string | number, name: string, newRole: string) => {
+    const roleName = newRole === 'shura' ? 'SHURA' : newRole === 'admin' ? 'Administrador' : 'Cliente';
+    const password = window.prompt(`Confirmação de Segurança: Digite sua senha administrativa para promover ${name} a ${roleName}:`);
+    
+    if (password === null) return;
+    if (!password) {
+      addToast('A senha é obrigatória para esta ação.', 'error');
+      return;
+    }
+
+    try {
+      setActionId(String(id));
+      await updateUserRole(id, newRole, password);
+      addToast(`${name} agora é ${roleName}.`, 'success');
+      loadCustomers(); // Recarregar para refletir o badge
+    } catch (err: any) {
+      console.error('Erro ao atualizar cargo:', err);
+      addToast(err.message || 'Erro ao processar promoção.', 'error');
     } finally {
       setActionId(null);
     }
@@ -209,6 +233,26 @@ export default function CustomerManagement() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+                        {isShura && c.role !== 'shura' && (
+                          <button 
+                            className="btn btn--sm btn--primary" 
+                            title="Promover a SHURA"
+                            onClick={() => handleUpdateRole(c.id, c.name, 'shura')}
+                            disabled={!!actionId}
+                          >
+                            <FiShield />
+                          </button>
+                        )}
+                        {isShura && c.role === 'customer' && (
+                          <button 
+                            className="btn btn--sm btn--secondary" 
+                            title="Promover a Administrador"
+                            onClick={() => handleUpdateRole(c.id, c.name, 'admin')}
+                            disabled={!!actionId}
+                          >
+                            <FiUserCheck />
+                          </button>
+                        )}
                         <button 
                           className="btn btn--sm btn--secondary" 
                           title="Resetar Senha"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
@@ -8,6 +8,8 @@ import Sidebar from '@/components/Sidebar';
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [hasLoadedSidebarPreference, setHasLoadedSidebarPreference] = useState(false);
 
   useEffect(() => {
     if (loading) {
@@ -24,6 +26,24 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     }
   }, [user, loading, isAdmin, router]);
 
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem('admin-sidebar-collapsed');
+
+    if (storedPreference === 'true' || storedPreference === 'false') {
+      setIsSidebarCollapsed(storedPreference === 'true');
+    }
+
+    setHasLoadedSidebarPreference(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedSidebarPreference) {
+      return;
+    }
+
+    window.localStorage.setItem('admin-sidebar-collapsed', String(isSidebarCollapsed));
+  }, [hasLoadedSidebarPreference, isSidebarCollapsed]);
+
   if (loading || !user || !isAdmin) {
     return (
       <div className="app-loader" aria-live="polite">
@@ -34,8 +54,14 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="admin-view layout">
-      <Sidebar />
+    <div
+      className="admin-view layout"
+      data-sidebar-collapsed={isSidebarCollapsed ? 'true' : 'false'}
+    >
+      <Sidebar
+        collapsed={isSidebarCollapsed}
+        onToggleCollapsed={() => setIsSidebarCollapsed((value) => !value)}
+      />
       <main className="layout__main">{children}</main>
     </div>
   );

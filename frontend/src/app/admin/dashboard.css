@@ -2,6 +2,7 @@
   --admin-primary: var(--primary-500);
   --admin-secondary: var(--forest-600);
   --admin-accent: var(--gold-400);
+  --sidebar-width-collapsed: 92px;
   --admin-bg: #f7f2e7;
   --admin-surface: rgba(255, 255, 255, 0.8);
   --admin-surface-strong: rgba(255, 255, 255, 0.92);
@@ -17,6 +18,7 @@
 }
 
 .admin-view {
+  --admin-sidebar-width-current: var(--sidebar-width);
   position: relative;
   min-height: 100vh;
   background:
@@ -42,8 +44,14 @@
   z-index: 1;
 }
 
+.admin-view[data-sidebar-collapsed='true'] {
+  --admin-sidebar-width-current: var(--sidebar-width-collapsed);
+}
+
 .admin-view .layout__main {
   position: relative;
+  margin-left: var(--admin-sidebar-width-current);
+  transition: margin-left var(--transition-base), padding var(--transition-base);
 }
 
 .admin-view h1,
@@ -1082,6 +1090,14 @@
   box-shadow: 0 20px 40px rgba(33, 54, 47, 0.32);
 }
 
+.loja-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 23, 19, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1142,6 +1158,10 @@
   .surface-stack > .page-header,
   .admin-dashboard__header {
     padding: 1.35rem;
+  }
+
+  .admin-view .layout__main {
+    margin-left: 0;
   }
 
   .surface-stack > .page-header .page-header__actions,
