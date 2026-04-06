@@ -31,6 +31,10 @@ async function restoreOrderStock(client: any, order: any) {
   }
 }
 
+function shouldRestoreOrderStock(order: any) {
+  return order.payment_method !== 'pix' || order.payment_status === 'approved';
+}
+
 router.get('/', authMiddleware, async (c) => {
   try {
     const db = c.get('db');
@@ -95,7 +99,7 @@ router.patch(
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
       const { status } = c.req.valid('json');
       const { rows: currentRows } = await client.query(
-        `SELECT id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, payment_id, payment_method, delivery_type, address, notes
+        `SELECT id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, payment_id, payment_method, payment_status, delivery_type, address, notes
          FROM orders
          WHERE id = $1
          FOR UPDATE`,
@@ -112,7 +116,8 @@ router.patch(
       if (
         status === 'cancelado' &&
         currentOrder.status !== 'cancelado' &&
-        currentOrder.status !== 'concluido'
+        currentOrder.status !== 'concluido' &&
+        shouldRestoreOrderStock(currentOrder)
       ) {
         await restoreOrderStock(client, currentOrder);
 
@@ -130,7 +135,11 @@ router.patch(
         }
       }
 
-      if (status === 'concluido' && currentOrder.status !== 'concluido') {
+      if (
+        status === 'concluido' &&
+        currentOrder.status !== 'concluido' &&
+        !(currentOrder.payment_method === 'pix' && currentOrder.payment_status === 'approved')
+      ) {
         await client.query(
           `INSERT INTO transactions (type, category, description, value, date, order_id)
            VALUES ($1, $2, $3, $4, NOW(), $5)`,
@@ -176,7 +185,7 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
       return jsonError(c, 400, 'ID inválido');
     }
     const { rows } = await client.query(
-      `SELECT id, customer_name, items, status, payment_id
+      `SELECT id, customer_name, items, status, payment_id, payment_method, payment_status
        FROM orders
        WHERE id = $1
        FOR UPDATE`,
@@ -189,7 +198,11 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
     }
 
     const order = rows[0];
-    if (order.status !== 'cancelado' && order.status !== 'concluido') {
+    if (
+      order.status !== 'cancelado' &&
+      order.status !== 'concluido' &&
+      shouldRestoreOrderStock(order)
+    ) {
       await restoreOrderStock(client, order);
     }
 

@@ -8,9 +8,15 @@ interface CatalogCategory {
   products: Product[];
 }
 
+interface CatalogCategorySummary {
+  name: string;
+  count: number;
+}
+
 interface CatalogData {
   categories: CatalogCategory[];
   total: number;
+  availableCategories?: CatalogCategorySummary[];
 }
 
 export interface CategoryTab {
@@ -18,15 +24,27 @@ export interface CategoryTab {
   count: number;
 }
 
+function mapCategoryTabs(data: CatalogData | null): CategoryTab[] {
+  if (Array.isArray(data?.availableCategories) && data.availableCategories.length > 0) {
+    return data.availableCategories.map((category) => ({
+      name: category.name,
+      count: category.count,
+    }));
+  }
+
+  return Array.isArray(data?.categories)
+    ? data.categories.map((category: CatalogCategory) => ({
+        name: category.name,
+        count: Array.isArray(category.products) ? category.products.length : 0,
+      }))
+    : [];
+}
+
 export function useCatalog(initialCatalog: CatalogData | null = null) {
   const hasInitialCatalog = Boolean(initialCatalog?.categories);
   const [catalogData, setCatalogData] = useState<CatalogData>(() => initialCatalog || { categories: [], total: 0 });
-  const [categoryTabs, setCategoryTabs] = useState<CategoryTab[]>(() => {
-    return Array.isArray(initialCatalog?.categories)
-      ? initialCatalog.categories.map((c: CatalogCategory) => ({ name: c.name, count: Array.isArray(c.products) ? c.products.length : 0 }))
-      : [];
-  });
-  const [activeCategory, setActiveCategory] = useState(() => (initialCatalog?.categories?.[0] as CatalogCategory)?.name || '');
+  const [categoryTabs, setCategoryTabs] = useState<CategoryTab[]>(() => mapCategoryTabs(initialCatalog));
+  const [activeCategory, setActiveCategory] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(() => !hasInitialCatalog);
   const [error, setError] = useState('');
@@ -53,9 +71,7 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
           
           if (page === 1) {
             setCatalogData(data || { categories: [], total: 0 });
-            if (!activeCategory && !search) {
-              setCategoryTabs((data?.categories || []).map((c: CatalogCategory) => ({ name: c.name, count: Array.isArray(c.products) ? c.products.length : 0 })));
-            }
+            setCategoryTabs(mapCategoryTabs(data || null));
           } else {
             setCatalogData(prev => {
               const newCategories = [...(prev?.categories || [])];
@@ -69,10 +85,6 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
               });
               return { ...prev, categories: newCategories, total: data.total };
             });
-          }
-
-          if (!activeCategory && data?.categories?.length > 0 && page === 1) {
-            setActiveCategory(data.categories[0].name);
           }
         })
         .catch((err) => {
@@ -106,12 +118,22 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
 
   const allProducts = useMemo(() => {
     const categories = Array.isArray(catalogData?.categories) ? catalogData.categories : [];
-    return categories.flatMap((c) => Array.isArray(c?.products) ? c.products : []);
+    return categories
+      .flatMap((c) => Array.isArray(c?.products) ? c.products : [])
+      .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' }));
   }, [catalogData]);
 
   const filteredProducts = useMemo(() => {
     return Array.isArray(allProducts) ? allProducts : [];
   }, [allProducts]);
+
+  const totalProductsCount = useMemo(() => {
+    if (categoryTabs.length > 0) {
+      return categoryTabs.reduce((sum, category) => sum + category.count, 0);
+    }
+
+    return catalogData.total || 0;
+  }, [categoryTabs, catalogData.total]);
 
   return {
     catalogData,
@@ -125,6 +147,7 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
     loading,
     error,
     setError,
+    totalProductsCount,
     hasMore,
     loadMore
   };

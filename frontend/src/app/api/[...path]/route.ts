@@ -16,17 +16,54 @@ const STRIP_REQUEST_HEADERS = new Set([
   'keep-alive',
   'upgrade',
   'http2-settings',
+  'forwarded',
+  'x-real-ip',
+]);
+
+const ALLOWED_REQUEST_HEADERS = new Set([
+  'accept',
+  'accept-language',
+  'cache-control',
+  'content-type',
+  'cookie',
+  'origin',
+  'pragma',
+  'referer',
+  'user-agent',
+  'x-csrf-token',
+]);
+
+const ALLOWED_RESPONSE_HEADERS = new Set([
+  'cache-control',
+  'content-disposition',
+  'content-language',
+  'content-type',
+  'etag',
+  'expires',
+  'last-modified',
+  'vary',
 ]);
 
 /**
  * Constrói os headers a serem enviados ao backend.
  * Repassa o cookie e demais cabeçalhos relevantes, removendo os problemáticos.
  */
-function buildProxyHeaders(request: NextRequest): Record<string, string> {
-  const headers: Record<string, string> = {};
+function buildProxyHeaders(request: NextRequest): Headers {
+  const headers = new Headers();
   for (const [key, value] of request.headers.entries()) {
-    if (!STRIP_REQUEST_HEADERS.has(key.toLowerCase())) {
-      headers[key] = value;
+    const normalizedKey = key.toLowerCase();
+    if (
+      STRIP_REQUEST_HEADERS.has(normalizedKey) ||
+      normalizedKey.startsWith('x-forwarded-')
+    ) {
+      continue;
+    }
+
+    if (
+      ALLOWED_REQUEST_HEADERS.has(normalizedKey) ||
+      normalizedKey.startsWith('sec-fetch-')
+    ) {
+      headers.set(key, value);
     }
   }
   return headers;
@@ -35,12 +72,17 @@ function buildProxyHeaders(request: NextRequest): Record<string, string> {
 /**
  * Cria uma resposta Next.js que repassa os Set-Cookie e demais headers do backend.
  */
-function buildProxyResponse(backendResponse: Response, body: any): NextResponse {
-  const response = new NextResponse(JSON.stringify(body), {
+function buildProxyResponse(backendResponse: Response): NextResponse {
+  const headers = new Headers();
+  for (const [key, value] of backendResponse.headers.entries()) {
+    if (ALLOWED_RESPONSE_HEADERS.has(key.toLowerCase())) {
+      headers.set(key, value);
+    }
+  }
+
+  const response = new NextResponse(backendResponse.body, {
     status: backendResponse.status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
   });
 
   // Repassar todos os Set-Cookie do backend para o browser
@@ -57,24 +99,6 @@ function buildProxyResponse(backendResponse: Response, body: any): NextResponse 
   return response;
 }
 
-async function parseBackendResponse(response: Response): Promise<any> {
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    try {
-      return await response.json();
-    } catch {
-      return { error: 'Resposta inválida do servidor' };
-    }
-  }
-
-  try {
-    const text = await response.text();
-    return { error: text || 'Erro desconhecido' };
-  } catch {
-    return { error: 'Erro ao ler resposta do servidor' };
-  }
-}
-
 async function proxyRequest(request: NextRequest, params: { path: string[] } | Promise<{ path: string[] }>, method: string): Promise<NextResponse> {
   // Next.js 15+: params é uma Promise
   const resolvedParams = await params;
@@ -89,27 +113,19 @@ async function proxyRequest(request: NextRequest, params: { path: string[] } | P
   const fetchOptions: RequestInit = {
     method,
     headers,
+    cache: 'no-store',
   };
 
-  // Ler o body para métodos que o exigem
-  if (method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
-    try {
-      const contentType = request.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const body = await request.json();
-        fetchOptions.body = JSON.stringify(body);
-      } else {
-        fetchOptions.body = await request.text();
-      }
-    } catch {
-      // Body vazio é válido para algumas requisições
+  if (method !== 'GET' && method !== 'HEAD') {
+    const body = await request.arrayBuffer();
+    if (body.byteLength > 0) {
+      fetchOptions.body = body;
     }
   }
 
   try {
     const response = await fetch(backendUrl, fetchOptions);
-    const data = await parseBackendResponse(response);
-    return buildProxyResponse(response, data);
+    return buildProxyResponse(response);
   } catch (error: any) {
     console.error(`Proxy error (${method} /api/${path}):`, error?.message || error);
     return NextResponse.json(

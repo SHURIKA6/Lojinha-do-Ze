@@ -25,19 +25,7 @@ export default function ProductCard({
   const hasStock = availableStock > 0;
 
   return (
-    <article
-      className={styles.product}
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(product)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onOpen(product);
-        }
-      }}
-      aria-label={`Ver detalhes de ${product.name}`}
-    >
+    <article className={styles.product}>
       <div className={styles.image}>
         <div className={styles.stock}>
           {hasStock ? `${availableStock} un.` : 'Sem estoque'}
@@ -61,18 +49,29 @@ export default function ProductCard({
         <p className={styles.desc}>
           {product.description || 'Produto natural selecionado para uma compra rápida e segura.'}
         </p>
+      </div>
 
-        <div className={styles.footer}>
-          <div>
-            <span className={styles.price}>{formatCurrency(product.sale_price)}</span>
-            <div className={styles.subinfo}>
-              {cartItem
-                ? `${cartItem.quantity} no carrinho`
-                : hasStock
-                  ? 'Pronto para adicionar'
-                  : 'Indisponível'}
-            </div>
+      <div className={styles.footer}>
+        <div>
+          <span className={styles.price}>{formatCurrency(product.sale_price)}</span>
+          <div className={styles.subinfo}>
+            {cartItem
+              ? `${cartItem.quantity} no carrinho`
+              : hasStock
+                ? 'Pronto para adicionar'
+                : 'Indisponível'}
           </div>
+        </div>
+
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.details}
+            onClick={() => onOpen(product)}
+            aria-label={`Ver detalhes de ${product.name}`}
+          >
+            Ver detalhes
+          </button>
 
           <button
             type="button"
@@ -92,4 +91,3 @@ export default function ProductCard({
     </article>
   );
 }
-

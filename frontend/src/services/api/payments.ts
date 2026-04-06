@@ -9,6 +9,11 @@ export interface PixPaymentData {
   phone?: string;
 }
 
+export interface PixPaymentStatusLookup {
+  orderId: string | number;
+  lookupToken: string;
+}
+
 /**
  * Cria um pagamento via Pix
  */
@@ -22,11 +27,15 @@ export async function createPixPayment(data: PixPaymentData) {
 /**
  * Consulta o status de um pagamento Pix
  */
-export async function getPixPaymentStatus(paymentId: string | number, { orderId, phone }: { orderId: string | number; phone?: string }) {
-  const query = new URLSearchParams({
-    orderId: String(orderId),
-    phone: String(phone || ''),
+export async function getPixPaymentStatus(
+  paymentId: string | number,
+  { orderId, lookupToken }: PixPaymentStatusLookup
+) {
+  return request(`/payments/pix/${paymentId}/status`, {
+    method: 'POST',
+    body: JSON.stringify({
+      orderId,
+      lookupToken,
+    }),
   });
-
-  return request(`/payments/pix/${paymentId}?${query.toString()}`);
 }

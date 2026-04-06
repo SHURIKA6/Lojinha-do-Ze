@@ -156,20 +156,39 @@ describe('Payments Security', () => {
     );
 
     expect(created.status).toBe(201);
-    await expect(created.json()).resolves.toEqual(
-      expect.objectContaining({ id: 999, external_reference: '12' })
+    const createdJson = await created.json() as any;
+    expect(createdJson).toEqual(
+      expect.objectContaining({
+        id: 999,
+        external_reference: '12',
+        lookup_token: expect.any(String),
+      })
     );
 
     const forbiddenStatus = await app.request(
-      '/pix/999?orderId=12&phone=(11)%2099999-9999',
-      undefined,
+      '/pix/999/status',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: 12,
+          lookupToken: 'f'.repeat(64),
+        }),
+      },
       { MERCADO_PAGO_ACCESS_TOKEN: 'token' }
     );
     expect(forbiddenStatus.status).toBe(403);
 
     const status = await app.request(
-      '/pix/999?orderId=12&phone=(65)%2099999-0000',
-      undefined,
+      '/pix/999/status',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: 12,
+          lookupToken: createdJson.lookup_token,
+        }),
+      },
       { MERCADO_PAGO_ACCESS_TOKEN: 'token' }
     );
 
@@ -185,16 +204,35 @@ describe('Payments Security', () => {
   it('processa webhook assinado de forma idempotente', async () => {
     let orderStatus = 'novo';
     let insertedTransactions = 0;
+    let updatedProducts = 0;
+    let insertedInventoryLogs = 0;
 
     const clientQuery = jest.fn(async (text: string, params: any[] = []) => {
       if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
         return { rowCount: 0, rows: [] };
       }
 
-      if (text.includes('SELECT total, status, customer_name FROM orders WHERE id = $1 FOR UPDATE')) {
+      if (text.includes('SELECT id, total, status, customer_name, items, payment_method FROM orders WHERE id = $1 FOR UPDATE')) {
         return {
-          rows: [{ total: 15, status: orderStatus, customer_name: 'Ana' }],
+          rows: [{
+            id: 12,
+            total: 15,
+            status: orderStatus,
+            customer_name: 'Ana',
+            items: [{ productId: '1', name: 'Erva', quantity: 1 }],
+            payment_method: 'pix',
+          }],
         };
+      }
+
+      if (text.includes('UPDATE products AS p')) {
+        updatedProducts += 1;
+        return { rowCount: 1, rows: [{ id: 1 }] };
+      }
+
+      if (text.startsWith('INSERT INTO inventory_log')) {
+        insertedInventoryLogs += 1;
+        return { rowCount: 1, rows: [] };
       }
 
       if (text.includes('UPDATE orders SET status = $2')) {
@@ -261,5 +299,7 @@ describe('Payments Security', () => {
     expect((await sendWebhook()).status).toBe(200);
     expect((await sendWebhook()).status).toBe(200);
     expect(insertedTransactions).toBe(1);
+    expect(updatedProducts).toBe(1);
+    expect(insertedInventoryLogs).toBe(1);
   });
 });

@@ -39,6 +39,7 @@ export default function StorefrontPageClient({ initialCatalog = null }: { initia
     allProducts,
     loading,
     error: catalogError,
+    totalProductsCount,
     hasMore,
     loadMore
   } = useCatalog(initialCatalog);
@@ -187,6 +188,18 @@ export default function StorefrontPageClient({ initialCatalog = null }: { initia
 
       <nav className={styles.categories} aria-label="Categorias do catálogo">
         <div className={styles.categoriesInner}>
+          <button
+            type="button"
+            className={`${styles.categoriesTab} ${!activeCategory && !search ? styles.active : ''}`}
+            onClick={() => {
+              setActiveCategory('');
+              setSearch('');
+            }}
+          >
+            Todos
+            <span className={styles.categoriesCount}>{totalProductsCount}</span>
+          </button>
+
           {(categoryTabs?.length > 0 ? categoryTabs : []).map((category: CategoryTab) => (
             <button
               key={category.name}

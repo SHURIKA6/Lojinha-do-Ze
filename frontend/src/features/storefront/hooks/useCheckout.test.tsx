@@ -30,6 +30,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
             refreshUser: jest.fn(),
             setUser: jest.fn(),
             isAdmin: false,
+            isShura: false,
             isCustomer: false,
           }}
         >
@@ -52,7 +53,7 @@ describe('useCheckout', () => {
         items: [{ productId: 1, name: 'Erva', quantity: 1, price: 10 }],
       },
     });
-    mockCreatePixPayment.mockResolvedValue({ id: 'pix-1', status: 'pending' });
+    mockCreatePixPayment.mockResolvedValue({ id: 'pix-1', status: 'pending', lookup_token: 'lookup-token-1' });
   });
 
   it('envia Pix com e-mail e telefone reais e persiste apenas dados mínimos', async () => {
@@ -96,8 +97,6 @@ describe('useCheckout', () => {
       name: 'Ana Silva',
       phone: '(65) 99999-0000',
       email: 'ana@example.com',
-      address: 'Rua A, 123',
-      coords: null,
     });
   });
 });

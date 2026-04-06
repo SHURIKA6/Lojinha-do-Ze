@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
 import { formatCurrency } from '@/lib/api';
+import { useToast } from '@/components/ui/ToastProvider';
 import {
   FiCheckCircle,
   FiCreditCard,
@@ -105,6 +107,12 @@ export default function CheckoutModal({
   onSendWhatsApp,
 }: CheckoutModalProps) {
   const checkoutTotal = deliveryType === 'entrega' ? cartTotal + 5 : cartTotal;
+  const toast = useToast();
+  const [pixCodeCopied, setPixCodeCopied] = useState(false);
+
+  useEffect(() => {
+    setPixCodeCopied(false);
+  }, [orderResult?.pix?.id]);
 
   if (orderResult) {
     const isPix = orderResult._paymentMethod === 'pix';
@@ -167,13 +175,18 @@ export default function CheckoutModal({
                     <button 
                       type="button" 
                       className="btn btn--outline btn--full" 
-                      onClick={() => {
-                        navigator.clipboard.writeText(orderResult.pix.qr_code);
-                        alert('Código Pix Copia e Cola copiado!');
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(orderResult.pix.qr_code);
+                          setPixCodeCopied(true);
+                          toast.success('Código Pix copiado.', 'PIX');
+                        } catch {
+                          toast.error('Não foi possível copiar o código Pix.', 'PIX');
+                        }
                       }}
                       style={{ marginBottom: 'var(--space-3)' }}
                     >
-                      Copiar Código Pix (Copia e Cola)
+                      {pixCodeCopied ? 'Código Pix copiado' : 'Copiar Código Pix (Copia e Cola)'}
                     </button>
                     
                     <div className={styles.pollingStatus}>
@@ -207,15 +220,16 @@ export default function CheckoutModal({
                     const { getPixPaymentStatus } = await import('@/lib/api');
                     const status = await getPixPaymentStatus(orderResult.pix.id, {
                       orderId: orderResult.order.id,
-                      phone: orderResult.order.customer_phone,
+                      lookupToken: orderResult.pix.lookup_token,
                     });
                     if (status.status === 'approved') {
                       setPixConfirmed(true);
+                      toast.success('Pagamento Pix confirmado!', 'PIX');
                     } else {
-                      alert('Pagamento ainda não confirmado. Complete o Pix e tente novamente.');
+                      toast.info('Pagamento ainda não confirmado. Complete o Pix e tente novamente.', 'PIX');
                     }
                   } catch {
-                    alert('Erro ao verificar pagamento. Tente novamente.');
+                    toast.error('Erro ao verificar pagamento. Tente novamente.', 'PIX');
                   } finally {
                     setOrderResult((prev: any) => ({ ...prev, _checkingPayment: false }));
                   }

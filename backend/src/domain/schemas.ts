@@ -243,3 +243,12 @@ export const pixPaymentSchema = z.object({
   lastName: z.string().min(2, 'Sobrenome é muito curto'),
   identificationNumber: z.string().min(11, 'CPF/CNPJ inválido'),
 });
+
+export const pixStatusLookupSchema = z.object({
+  orderId: z.coerce.number().int('ID de pedido inválido'),
+  lookupToken: z
+    .string()
+    .trim()
+    .min(32, 'Token de consulta inválido')
+    .max(255, 'Token de consulta inválido'),
+});
