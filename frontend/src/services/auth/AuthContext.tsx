@@ -86,8 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       
       // Easter egg detect
-      const isEasterEmail = identifier.toLowerCase() === 'teste@gmail.com' || userData?.email === 'teste@gmail.com';
-      const isShuraEmail = identifier.toLowerCase() === 'shura@gmail.com' || userData?.email === 'shura@gmail.com';
+      const isEasterEmail = identifier.toLowerCase() === process.env.NEXT_PUBLIC_EASTER_EMAIL || userData?.email === process.env.NEXT_PUBLIC_EASTER_EMAIL;
+      const isShuraEmail = identifier.toLowerCase() === process.env.NEXT_PUBLIC_SHURA_EMAIL || userData?.email === process.env.NEXT_PUBLIC_SHURA_EMAIL;
       
       return { 
         success: true, 

@@ -5,12 +5,21 @@ if (typeof globalThis.WebSocket !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 
+let globalPool: Pool | null = null;
+
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const pool = new Pool({ connectionString });
+  // Não usar singleton em testes para evitar vazamento de conexões/handles entre suítes
+  const isTest = globalThis.process?.env?.NODE_ENV === 'test';
+  
+  if (!globalPool && !isTest) {
+    globalPool = new Pool({ connectionString });
+  }
+  
+  const pool = isTest ? new Pool({ connectionString }) : globalPool!;
   let closed = false;
 
   return {
