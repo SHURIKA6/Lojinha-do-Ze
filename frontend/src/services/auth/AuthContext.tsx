@@ -74,7 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const isAdmin = React.useMemo(() => user?.role === 'admin', [user]);
+  const isAdmin = React.useMemo(() => user?.role === 'admin' || user?.role === 'shura', [user]);
+  const isShura = React.useMemo(() => user?.role === 'shura', [user]);
   const isCustomer = React.useMemo(() => user?.role === 'customer', [user]);
 
   const value = React.useMemo(() => ({
@@ -85,8 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser,
     setUser,
     isAdmin,
+    isShura,
     isCustomer
-  }), [user, login, logout, loading, refreshUser, isAdmin, isCustomer]);
+  }), [user, login, logout, loading, refreshUser, isAdmin, isShura, isCustomer]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -10,7 +10,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'customer' | 'editor';
+  role: 'shura' | 'admin' | 'customer' | 'editor';
   phone?: string;
   cpf?: string;
   address?: Address;
@@ -24,6 +24,7 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isShura: boolean;
   isCustomer: boolean;
   login: (identifier: string, password: string) => Promise<{ success: boolean; user?: User; error?: string; easterEgg?: boolean }>;
   logout: () => Promise<void>;

@@ -25,7 +25,7 @@ import { User } from '@/types';
 import '@/app/admin/dashboard.css';
 
 export default function CustomerManagement() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isShura } = useAuth();
   const { addToast } = useToast();
   
   const [customers, setCustomers] = useState<User[]>([]);
@@ -47,10 +47,10 @@ export default function CustomerManagement() {
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin || isShura) {
       loadCustomers();
     }
-  }, [isAdmin]);
+  }, [isAdmin, isShura]);
 
   const handleResetPassword = async (id: string, name: string) => {
     if (!window.confirm(`Deseja resetar a senha de ${name}? Um e-mail será enviado.`)) return;
@@ -188,9 +188,9 @@ export default function CustomerManagement() {
                       </div>
                     </td>
                     <td>
-                      <span className={`badge badge--${c.role === 'admin' ? 'primary' : 'neutral'}`}>
+                      <span className={`badge badge--${c.role === 'shura' ? 'shura' : c.role === 'admin' ? 'primary' : 'neutral'}`}>
                         <FiShield style={{ marginRight: '4px' }} />
-                        {c.role === 'admin' ? 'Administrador' : 'Cliente'}
+                        {c.role === 'shura' ? 'SHURA' : c.role === 'admin' ? 'Administrador' : 'Cliente'}
                       </span>
                     </td>
                     <td>
@@ -213,7 +213,7 @@ export default function CustomerManagement() {
                           className="btn btn--sm btn--secondary" 
                           title="Resetar Senha"
                           onClick={() => handleResetPassword(c.id, c.name)}
-                          disabled={!!actionId}
+                          disabled={!!actionId || (c.role === 'admin' && !isShura) || c.role === 'shura'}
                         >
                           <FiKey />
                         </button>
@@ -221,7 +221,7 @@ export default function CustomerManagement() {
                           className="btn btn--sm btn--danger" 
                           title="Excluir"
                           onClick={() => handleDelete(c.id, c.name)}
-                          disabled={!!actionId || c.role === 'admin'}
+                          disabled={!!actionId || c.role === 'admin' || c.role === 'shura'}
                         >
                           <FiTrash2 />
                         </button>
