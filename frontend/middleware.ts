@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildBackendApiUrl } from './src/lib/backend-url';
 import {
   getHomePathForRole,
   isStaffRole,
@@ -17,12 +18,9 @@ type AuthResult =
   | { kind: 'unauth' }
   | { kind: 'error' };
 
-async function fetchMe(request: NextRequest): Promise<AuthResult> {
-  // Chamada direta para o backend para evitar problemas de proxy interno no middleware
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://lojinha-do-ze-backend.fernandoriaddasilvaribeiro.workers.dev/api';
-  const meUrl = `${backendUrl}/auth/me`;
-
+export async function fetchMe(request: NextRequest): Promise<AuthResult> {
   try {
+    const meUrl = buildBackendApiUrl('/auth/me');
     const res = await fetch(meUrl, {
       method: 'GET',
       headers: {

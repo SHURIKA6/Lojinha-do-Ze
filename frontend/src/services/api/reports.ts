@@ -1,4 +1,4 @@
-import { request } from './client';
+import { API_BASE, ApiError, getCsrfToken, request } from './client';
 
 export function getDashboard() {
   return request('/dashboard');
@@ -9,19 +9,43 @@ export function getReport(type: string) {
 }
 
 export async function exportReportCsv(reportType: string) {
-  // Using native fetch since it returns a file blob
-  const token = localStorage.getItem('@LojinhaDoZe:token');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/reports/export/csv`, {
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+  });
+  const csrfToken = getCsrfToken();
+
+  if (csrfToken) {
+    headers.set('X-CSRF-Token', csrfToken);
+  }
+
+  const response = await fetch(`${API_BASE}/reports/export/csv`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ reportType })
+    headers,
+    body: JSON.stringify({ reportType }),
+    credentials: 'include',
+    cache: 'no-store',
   });
 
   if (!response.ok) {
-    throw new Error('Falha ao exportar relatório');
+    let payload: any = null;
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      payload = await response.json().catch(() => null);
+    } else {
+      const text = await response.text().catch(() => '');
+      payload = text ? { error: text } : null;
+    }
+
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:expired'));
+    }
+
+    throw new ApiError(
+      payload?.error || 'Falha ao exportar relatório',
+      response.status,
+      payload
+    );
   }
 
   const blob = await response.blob();

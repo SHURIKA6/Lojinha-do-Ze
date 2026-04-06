@@ -1,9 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? 'https://lojinha-do-ze-backend.riad777.workers.dev' 
-    : 'http://127.0.0.1:8788');
+import { buildBackendApiUrl } from '@/lib/backend-url';
 
 /**
  * Headers que NÃO devem ser repassados ao backend.
@@ -106,7 +102,7 @@ async function proxyRequest(request: NextRequest, params: { path: string[] } | P
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
   const queryString = searchParams ? `?${searchParams}` : '';
-  const backendUrl = `${BACKEND_URL}/api/${path}${queryString}`;
+  const backendUrl = buildBackendApiUrl(`/${path}${queryString}`);
 
   const headers = buildProxyHeaders(request);
 

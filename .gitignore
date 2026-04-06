@@ -51,3 +51,7 @@ AUDITORIA_TECNICA.md
 !tsconfig.json
 !jsconfig.json
 !manifest.json
+
+.github
+
+.vercel
