@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { FiMessageSquare, FiX, FiSend, FiStar } from 'react-icons/fi';
+import { request } from '@/services/api/client';
 
 interface Message {
   role: 'bot' | 'user';
@@ -34,17 +35,10 @@ export default function AdminAssistant() {
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/admin/chat', {
+      const data = await request('/admin/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ message: userMsg }),
       });
-
-      const data = await response.json();
-      
-      if (data.error) throw new Error(data.error);
 
       setMessages(prev => [...prev, { role: 'bot', content: data.reply }]);
     } catch (err) {
