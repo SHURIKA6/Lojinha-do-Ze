@@ -1,3 +1,4 @@
+import './dashboard.css';
 import { ReactNode } from 'react';
 import AdminLayoutClient from '@/features/admin/AdminLayoutClient';
 
