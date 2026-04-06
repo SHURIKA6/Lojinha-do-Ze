@@ -85,9 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(userData);
       
-      // Easter egg detect
-      const isEasterEmail = identifier.toLowerCase() === process.env.NEXT_PUBLIC_EASTER_EMAIL || userData?.email === process.env.NEXT_PUBLIC_EASTER_EMAIL;
-      const isShuraEmail = identifier.toLowerCase() === process.env.NEXT_PUBLIC_SHURA_EMAIL || userData?.email === process.env.NEXT_PUBLIC_SHURA_EMAIL;
+      // Easter egg detect - somente se as variáveis estiverem definidas
+      const easterEmail = process.env.NEXT_PUBLIC_EASTER_EMAIL;
+      const shuraEmail = process.env.NEXT_PUBLIC_SHURA_EMAIL;
+      
+      const isEasterEmail = Boolean(easterEmail) && (identifier.toLowerCase() === easterEmail?.toLowerCase() || userData?.email === easterEmail);
+      const isShuraEmail = Boolean(shuraEmail) && (identifier.toLowerCase() === shuraEmail?.toLowerCase() || userData?.email === shuraEmail);
       
       return { 
         success: true, 
@@ -96,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         shuraEgg: isShuraEmail 
       };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Erro ao realizar login' };
     }
   }, []);
 

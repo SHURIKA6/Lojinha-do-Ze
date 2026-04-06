@@ -18,11 +18,16 @@ async function loadSession(c: Context<{ Bindings: Bindings; Variables: Variables
     return cached;
   }
 
-  const client = await db.connect();
   try {
-    return await resolveSession(c, client);
-  } finally {
-    if (client.release) client.release();
+    const client = await db.connect();
+    try {
+      return await resolveSession(c, client);
+    } finally {
+      if (client.release) client.release();
+    }
+  } catch (error) {
+    logger.error('Erro ao carregar sessão do banco', error as Error);
+    return null;
   }
 }
 

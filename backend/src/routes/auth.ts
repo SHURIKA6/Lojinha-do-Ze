@@ -30,10 +30,10 @@ router.post('/login', loginLimiter, async (c) => {
     return jsonError(c, 400, 'Identificador e senha são obrigatórios');
   }
 
-  try {
-    const identifier = String(email).trim();
-    const passwordTrim = String(password).trim();
+  const identifier = String(email).trim();
+  const passwordTrim = String(password).trim();
 
+  try {
     // Normaliza identificador (remove caracteres especiais de telefone ou CPF)
     const onlyDigits = identifier.replace(/\D/g, '');
     
@@ -75,20 +75,30 @@ router.post('/login', loginLimiter, async (c) => {
       [userRow.id]
     );
 
+    if (!fullUserRows[0]) {
+      logger.error('Login process fail: full user record vanished', new Error('User vanished'), { userId: userRow.id });
+      return jsonError(c, 500, 'Erro ao recuperar dados do usuário');
+    }
+
+    const { created_at, ...userData } = fullUserRows[0];
     const user = {
-      ...fullUserRows[0],
-      createdAt: new Date(fullUserRows[0].created_at)
+      ...userData,
+      createdAt: created_at ? new Date(created_at) : new Date(),
     };
     
-    const isEasterEgg = identifier.toLowerCase() === (c.env?.EASTER_EGG_IDENTIFIER || 'none');
+    const easterEggId = c.env?.EASTER_EGG_IDENTIFIER;
+    const isEasterEgg = Boolean(easterEggId) && identifier.toLowerCase() === easterEggId?.toLowerCase();
     
     return jsonSuccess(c, {
       user,
       csrfToken,
       easterEgg: isEasterEgg,
     });
-  } catch (error) {
-    logger.error('Erro no processamento do login', error);
+  } catch (error: any) {
+    logger.error('Erro crítico no processamento do login', error, {
+      identifier: identifier?.substring(0, 3) + '***', // Logging seguro
+      errorStack: error?.stack 
+    });
     return jsonError(c, 500, 'Erro interno ao processar login');
   }
 });
