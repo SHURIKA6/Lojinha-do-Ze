@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-width: max-content;
+  min-width: 0;
 }
 
 .logo {
@@ -151,8 +151,17 @@
 }
 
 @media (max-width: 980px) {
+  .inner {
+    flex-wrap: wrap;
+  }
+
   .search {
-    display: none;
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .actions {
+    margin-left: auto;
   }
 }
 

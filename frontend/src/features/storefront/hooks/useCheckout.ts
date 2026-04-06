@@ -35,6 +35,7 @@ interface OrderResult {
     id: string | number;
     qr_code_base64?: string;
     qr_code?: string;
+    lookup_token?: string;
   };
   _paymentMethod?: string;
 }
@@ -239,12 +240,15 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
   // Polling para confirmação de pagamento Pix
   useEffect(() => {
     let interval: any;
-    if (orderResult?.pix?.id && !pixConfirmed) {
+    if (orderResult?.pix?.id && orderResult?.pix?.lookup_token && !pixConfirmed) {
       interval = setInterval(async () => {
         try {
+          const lookupToken = orderResult.pix?.lookup_token;
+          if (!lookupToken) return;
+
           const status = await getPixPaymentStatus(orderResult.pix!.id as string, {
             orderId: orderResult.order.id as string,
-            phone: orderResult.order.customer_phone,
+            lookupToken,
           });
           if (status.status === 'approved') {
             setPixConfirmed(true);

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  if (process.env.NODE_ENV !== 'development') {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
   const debugInfo = `{
   "status": "🚨 DEBUG MODE ATIVADO 🚨",
   "message": "VOCÊ ENCONTROU O ENDPOINT DE DEBUG!",

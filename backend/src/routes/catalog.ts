@@ -59,14 +59,26 @@ router.get('/', async (c) => {
     return c.json(cached);
   }
 
-  const whereClauses = ['is_active = TRUE', 'quantity > 0'];
-  const queryParams: any[] = [];
+  const baseWhereClauses = ['is_active = TRUE', 'quantity > 0'];
+  const baseQueryParams: any[] = [];
 
   if (search) {
-    queryParams.push(`%${escapeIlike(search)}%`);
-    whereClauses.push(`name ILIKE $${queryParams.length}`);
+    baseQueryParams.push(`%${escapeIlike(search)}%`);
+    baseWhereClauses.push(`name ILIKE $${baseQueryParams.length}`);
   }
 
+  const baseWhereSql = baseWhereClauses.join(' AND ');
+  const { rows: categoryRows } = await db.query(
+    `SELECT category, COUNT(*)::int AS count
+     FROM products
+     WHERE ${baseWhereSql}
+     GROUP BY category
+     ORDER BY category, MIN(name)`,
+    baseQueryParams
+  );
+
+  const whereClauses = [...baseWhereClauses];
+  const queryParams = [...baseQueryParams];
   if (category) {
     queryParams.push(category);
     whereClauses.push(`category = $${queryParams.length}`);
@@ -82,7 +94,7 @@ router.get('/', async (c) => {
     `SELECT id, code, name, description, photo, category, sale_price, quantity
      FROM products
      WHERE ${whereSql}
-     ORDER BY category, name
+     ORDER BY name, category
      LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`,
     queryParams
   );
@@ -100,6 +112,10 @@ router.get('/', async (c) => {
 
   const response = {
     categories: Object.values(categories),
+    availableCategories: categoryRows.map((row: { category: string; count: string | number }) => ({
+      name: row.category,
+      count: Number(row.count),
+    })),
     total: totalCount,
     limit,
     offset,
@@ -127,6 +143,8 @@ router.post(
       const mergedItems = mergeOrderItems(payload.items);
       const deliveryFeeValue = parseFloat(c.env?.DELIVERY_FEE || '5');
       const deliveryFee = payload.delivery_type === 'entrega' ? deliveryFeeValue : 0;
+      const shouldCommitStockNow = payload.payment_method !== 'pix';
+      const initialStatus = shouldCommitStockNow ? 'recebido' : 'novo';
 
       let subtotal = 0;
       const enrichedItems: EnrichedOrderItem[] = [];
@@ -174,8 +192,8 @@ router.post(
 
       const total = subtotal + deliveryFee;
       const { rows: orderRows } = await client.query(
-        `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at`,
         [
           customerId,
@@ -185,6 +203,7 @@ router.post(
           subtotal,
           deliveryFee,
           total,
+          initialStatus,
           payload.delivery_type,
           cleanOptionalString(payload.address) || '',
           payload.payment_method,
@@ -192,7 +211,7 @@ router.post(
         ]
       );
 
-      if (enrichedItems.length > 0) {
+      if (shouldCommitStockNow && enrichedItems.length > 0) {
         const productIds = enrichedItems.map((i) => parseInt(i.productId));
         const quantities = enrichedItems.map((i) => i.quantity);
         const names = enrichedItems.map((i) => i.name);
@@ -223,7 +242,9 @@ router.post(
       return c.json(
         {
           order: orderRows[0],
-          message: `Pedido #${orderRows[0].id} criado com sucesso!`,
+          message: shouldCommitStockNow
+            ? `Pedido #${orderRows[0].id} criado com sucesso!`
+            : `Pedido #${orderRows[0].id} criado e aguardando pagamento Pix!`,
         },
         201
       );
