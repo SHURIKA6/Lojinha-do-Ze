@@ -1,4 +1,5 @@
 import type { CustomerType, UserRole } from '../domain/roles';
+import { QueryResultRow } from '@neondatabase/serverless';
 
 // ============================================
 // Types Index - Lojinha do Zé
@@ -188,9 +189,10 @@ export interface RequestWithUser {
 
 // Database Types
 export interface Database {
-  query<T = any>(text: string, params?: any[]): Promise<any>;
-  connect(): Promise<any>;
+  query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<{ rows: T[]; rowCount?: number | null }>;
+  connect(): Promise<Database>;
   close(): Promise<void>;
+  release?(): void;
 }
 
 export interface DatabaseConfig {

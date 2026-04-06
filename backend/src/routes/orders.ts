@@ -53,16 +53,21 @@ router.get('/', authMiddleware, async (c) => {
     }
 
     if (user?.role === 'customer') {
-      const { rows } = await db.query(
-        `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
-         FROM orders
-         WHERE customer_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [user.id, limit, offset]
-      );
-      setNoStore(c as any);
-      return c.json(rows);
+      try {
+        const { rows } = await db.query(
+          `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+           FROM orders
+           WHERE customer_id = $1
+           ORDER BY created_at DESC
+           LIMIT $2 OFFSET $3`,
+          [user.id, limit, offset]
+        );
+        setNoStore(c as any);
+        return c.json(rows);
+      } catch (dbError) {
+        logger.error('Erro na query de pedidos do cliente', dbError as Error, { userId: user.id });
+        throw dbError; // Deixa o catch externo do route lidar com isso
+      }
     }
 
     const params: any[] = [];
@@ -76,9 +81,14 @@ router.get('/', authMiddleware, async (c) => {
     }
     query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
-    const { rows } = await db.query(query, [...params, limit, offset]);
-    setNoStore(c as any);
-    return c.json(rows);
+    try {
+      const { rows } = await db.query(query, [...params, limit, offset]);
+      setNoStore(c as any);
+      return c.json(rows);
+    } catch (dbError) {
+      logger.error('Erro na query de pedidos do admin', dbError as Error, { statusQuery });
+      throw dbError;
+    }
   } catch (error) {
     logger.error('Erro no GET de Pedidos', error as Error);
     return jsonError(c, 500, 'Erro ao carregar a lista de pedidos.');

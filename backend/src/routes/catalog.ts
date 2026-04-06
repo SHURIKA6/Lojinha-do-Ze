@@ -25,6 +25,13 @@ interface EnrichedOrderItem {
   subtotal: number;
 }
 
+interface ProductRow {
+  id: number;
+  name: string;
+  sale_price: string;
+  quantity: number;
+}
+
 function mergeOrderItems(items: OrderItem[]): OrderItem[] {
   const merged = new Map<string, number>();
 
@@ -132,6 +139,9 @@ router.post(
   zValidator('json', orderCreateSchema, validationError),
   async (c) => {
     const db = c.get('db');
+    if (!db.connect) {
+      return jsonError(c, 500, 'Erro de configuração do banco de dados');
+    }
     const client = await db.connect();
 
     try {
@@ -149,21 +159,26 @@ router.post(
       let subtotal = 0;
       const enrichedItems: EnrichedOrderItem[] = [];
 
-      for (const item of mergedItems) {
-        const { rows } = await client.query(
-          `SELECT id, name, sale_price, quantity
-           FROM products
-           WHERE id = $1 AND is_active = TRUE
-           FOR UPDATE`,
-          [item.productId]
-        );
+      // Otimização: Busca todos os produtos de uma vez para evitar N+1 queries
+      const productIds = mergedItems.map(i => i.productId);
+      const { rows: productsFromDb } = await client.query<ProductRow>(
+        `SELECT id, name, sale_price, quantity
+         FROM products
+         WHERE id = ANY($1::int[]) AND is_active = TRUE
+         FOR UPDATE`,
+        [productIds]
+      );
 
-        if (!rows.length) {
+      const productMap = new Map(productsFromDb.map((p: ProductRow) => [p.id.toString(), p]));
+
+      for (const item of mergedItems) {
+        const product = productMap.get(item.productId);
+
+        if (!product) {
           await client.query('ROLLBACK');
-          return jsonError(c, 400, `Produto ID ${item.productId} não encontrado`);
+          return jsonError(c, 400, `Produto ID ${item.productId} não encontrado ou inativo`);
         }
 
-        const product = rows[0];
         if (product.quantity < item.quantity) {
           await client.query('ROLLBACK');
           return jsonError(c, 400, `Estoque insuficiente para ${product.name}`);
@@ -172,7 +187,7 @@ router.post(
         const itemSubtotal = parseFloat(product.sale_price) * item.quantity;
         subtotal += itemSubtotal;
         enrichedItems.push({
-          productId: product.id,
+          productId: product.id.toString(),
           name: product.name,
           price: parseFloat(product.sale_price),
           quantity: item.quantity,

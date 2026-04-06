@@ -27,14 +27,28 @@ export function createDb(connectionString: string): Database {
       return pool.query<T>(text, params);
     },
 
-    connect() {
-      return pool.connect();
+    async connect(): Promise<Database> {
+      const client = await pool.connect();
+      return {
+        query: client.query.bind(client),
+        connect: async () => {
+          throw new Error('Já conectado. Use o cliente atual ou crie uma nova conexão do Pool.');
+        },
+        close: async () => {
+          client.release();
+        },
+        release: client.release.bind(client),
+      };
     },
 
     async close() {
       if (closed) return;
       closed = true;
-      await pool.end();
+      // No singleton global, o close não deve destruir o pool que outros requests estão usando.
+      // Em testes (onde o pool é local), precisamos fechar para não vazar handles.
+      if (isTest) {
+        await pool.end();
+      }
     },
   };
 }

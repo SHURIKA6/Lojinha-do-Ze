@@ -210,12 +210,19 @@ router.post(
     return jsonError(c, 400, 'ID de pagamento inválido');
   }
 
-  const { rows } = await db.query(
-    `SELECT id, customer_id, payment_id
-     FROM orders
-     WHERE id = $1`,
-    [orderId]
-  );
+  let rows;
+  try {
+    const res = await db.query(
+      `SELECT id, customer_id, payment_id
+       FROM orders
+       WHERE id = $1`,
+      [orderId]
+    );
+    rows = res.rows;
+  } catch (dbError) {
+    logger.error('Erro na query de verificação de pedido (pix status)', dbError as Error, { orderId });
+    throw dbError;
+  }
   if (!rows.length) {
     return jsonError(c, 404, 'Pedido não encontrado');
   }
