@@ -13,6 +13,7 @@ const defaultAuthValue: AuthContextType = {
   refreshUser: async () => null,
   setUser: () => {},
   isAdmin: false,
+  isShura: false,
   isCustomer: false,
 };
 
