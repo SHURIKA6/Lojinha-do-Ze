@@ -22,6 +22,8 @@ import { loadLocalEnv } from './load-local-env';
 import { apiLimiter } from './middleware/rateLimit';
 import { auditMiddleware } from './middleware/audit';
 import { csrfMiddleware, optionalAuthMiddleware } from './middleware/auth';
+import { inputSanitizationMiddleware } from './middleware/inputSanitization';
+import { validationMiddleware } from './middleware/validation';
 import { Bindings, Variables, Database } from './types';
 
 loadLocalEnv();
@@ -34,6 +36,8 @@ app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
 app.use('/api/*', originGuardMiddleware);
 app.use('/api/*', auditMiddleware);
+app.use('/api/*', inputSanitizationMiddleware);
+app.use('/api/*', validationMiddleware);
 
 app.get('/api/health', async (c) => {
   const isProduction = c.env?.ENVIRONMENT === 'production';
