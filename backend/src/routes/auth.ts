@@ -153,4 +153,110 @@ router.post('/refresh-csrf', authMiddleware, async (c) => {
   return jsonSuccess(c, { csrfToken: session.csrfToken });
 });
 
+
+/**
+ * POST /api/auth/setup-password
+ * Define a senha para a primeira vez (apenas se não houver senha)
+ */
+router.post('/setup-password', authMiddleware, async (c) => {
+  const session = c.get('session');
+  const db = c.get('db');
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch (e) {
+    return jsonError(c, 400, 'Corpo da requisição inválido');
+  }
+
+  const { password, confirmPassword } = body;
+
+  if (!password || !confirmPassword) {
+    return jsonError(c, 400, 'Senha e confirmação são obrigatórias');
+  }
+
+  if (password !== confirmPassword) {
+    return jsonError(c, 400, 'As senhas não coincidem');
+  }
+
+  try {
+    const { rows } = await db.query(
+      'SELECT password FROM users WHERE id = $1',
+      [session.user.id]
+    );
+    const user = rows[0];
+
+    if (!user) {
+      return jsonError(c, 404, 'Usuário não encontrado');
+    }
+
+    if (user.password) {
+      return jsonError(c, 400, 'A senha já foi definida. Use /change-password para alterá-la');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await db.query(
+      'UPDATE users SET password = $1 WHERE id = $2',
+      [hashedPassword, session.user.id]
+    );
+
+    return jsonSuccess(c, { message: 'Senha definida com sucesso' });
+  } catch (error) {
+    logger.error('Erro ao definir senha', error);
+    return jsonError(c, 500, 'Erro interno ao definir senha');
+  }
+});
+
+/**
+ * POST /api/auth/change-password
+ * Altera a senha do usuário autenticado
+ */
+router.post('/change-password', authMiddleware, async (c) => {
+  const session = c.get('session');
+  const db = c.get('db');
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch (e) {
+    return jsonError(c, 400, 'Corpo da requisição inválido');
+  }
+
+  const { oldPassword, newPassword, confirmPassword } = body;
+
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    return jsonError(c, 400, 'Senha atual, nova senha e confirmação são obrigatórias');
+  }
+
+  if (newPassword !== confirmPassword) {
+    return jsonError(c, 400, 'As novas senhas não coincidem');
+  }
+
+  try {
+    const { rows } = await db.query(
+      'SELECT password FROM users WHERE id = $1',
+      [session.user.id]
+    );
+    const user = rows[0];
+
+    if (!user || !user.password) {
+      return jsonError(c, 400, 'Senha não configurada ou usuário não encontrado');
+    }
+
+    const isValidOldPassword = await bcrypt.compare(oldPassword, user.password);
+    if (!isValidOldPassword) {
+      return jsonError(c, 401, 'Senha atual incorreta');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.query(
+      'UPDATE users SET password = $1 WHERE id = $2',
+      [hashedPassword, session.user.id]
+    );
+
+    return jsonSuccess(c, { message: 'Senha alterada com sucesso' });
+  } catch (error) {
+    logger.error('Erro ao alterar senha', error);
+    return jsonError(c, 500, 'Erro interno ao alterar senha');
+  }
+});
+
 export default router;
