@@ -9,9 +9,7 @@ import { Bindings, Variables } from '../types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-router.use('*', authMiddleware, adminOnly);
-
-router.get('/', async (c) => {
+router.get('/', authMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const type = c.req.query('type');
@@ -51,6 +49,8 @@ router.get('/', async (c) => {
 
 router.post(
   '/',
+  authMiddleware,
+  adminOnly,
   csrfMiddleware,
   zValidator('json', transactionCreateSchema, validationError),
   async (c) => {
@@ -77,7 +77,7 @@ router.post(
   }
 );
 
-router.delete('/:id', csrfMiddleware, async (c) => {
+router.delete('/:id', authMiddleware, adminOnly, csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');
     const id = parseInt(c.req.param('id'), 10);

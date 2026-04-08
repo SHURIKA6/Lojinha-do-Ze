@@ -1,3 +1,5 @@
+import type { CustomerType, UserRole } from '@/lib/roles';
+
 // ============================================
 // Frontend Types - Lojinha do Zé
 // ============================================
@@ -10,7 +12,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'customer' | 'editor';
+  role: UserRole;
   phone?: string;
   cpf?: string;
   address?: Address;
@@ -20,12 +22,37 @@ export interface User {
   updated_at?: string;
 }
 
+export interface CustomerRecord {
+  id: string;
+  name: string;
+  email?: string | null;
+  role: UserRole | null;
+  customer_type: CustomerType;
+  phone?: string | null;
+  cpf?: string | null;
+  address?: Address | string | null;
+  avatar?: string | null;
+  notes?: string | null;
+  is_active?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+  total_spent?: number;
+  order_count?: number;
+}
+
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isShura: boolean;
   isCustomer: boolean;
-  login: (identifier: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  login: (identifier: string, password: string) => Promise<{ 
+    success: boolean; 
+    user?: User | null; 
+    error?: string; 
+    easterEgg?: boolean;
+    shuraEgg?: boolean;
+  }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   setUser: (user: User | null) => void;
@@ -133,6 +160,13 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface StoreCartItem {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
 export interface CartContextType {
   items: CartItem[];
   addItem: (product: Product, quantity?: number) => void;
@@ -196,6 +230,7 @@ export interface Notification {
 
 export interface ToastContextType {
   showToast: (payload: { type?: 'success' | 'error' | 'warning' | 'info'; title?: string; message: string; duration?: number }) => void;
+  addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info', duration?: number) => void;
   success: (message: string, title?: string) => void;
   error: (message: string, title?: string) => void;
   info: (message: string, title?: string) => void;

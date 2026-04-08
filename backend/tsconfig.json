@@ -3,16 +3,16 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "dom", "dom.iterable"],
     "strict": true,
     "skipLibCheck": true,
     "rootDir": ".",
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "node"],
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,
     "isolatedModules": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*", "tests/**/*"]
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*"]
 }

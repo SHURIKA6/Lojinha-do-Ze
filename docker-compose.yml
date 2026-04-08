@@ -1,0 +1,67 @@
+services:
+  # Local PostgreSQL para desenvolvimento
+  postgres:
+    image: postgres:17-alpine
+    container_name: lojinha-do-ze-db
+    environment:
+      POSTGRES_USER: lojinha
+      POSTGRES_PASSWORD: lojinha_password
+      POSTGRES_DB: lojinha_do_ze
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lojinha"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: lojinha-do-ze-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_PROXY_BASE=http://backend:8787/api
+    depends_on:
+      - backend
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/package.json
+          target: /app/package.json
+
+  # Backend Hono (simulando Cloudflare Workers localmente)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lojinha-do-ze-backend
+    ports:
+      - "8787:8787"
+    env_file:
+      - backend/.dev.vars
+    environment:
+      - DATABASE_URL=postgres://lojinha:lojinha_password@postgres:5432/lojinha_do_ze?sslmode=disable
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/src
+          target: /app/src
+        - action: sync
+          path: ./backend/package.json
+          target: /app/package.json
+
+volumes:
+  pgdata:

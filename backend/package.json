@@ -2,46 +2,57 @@
   "name": "lojinha-do-ze-backend",
   "version": "1.0.0",
   "description": "Backend API for Lojinha do Zé management system",
-  "main": "src/server.js",
+  "main": "src/server.ts",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "scripts": {
     "dev": "wrangler dev",
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "seed": "node src/db-bootstrap.js",
-    "create-admin": "node scripts/create-admin.js"
+    "seed": "npx tsx scripts/clear-db.ts",
+    "create-admin": "npx tsx scripts/create-admin.ts"
   },
   "dependencies": {
-    "@hono/zod-validator": "^0.7.6",
-    "@neondatabase/serverless": "^1.0.2",
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.4.7",
-    "hono": "^4.12.7",
-    "mercadopago": "^2.12.0",
-    "zod": "^4.3.6"
+    "@hono/zod-validator": "~0.7.6",
+    "@neondatabase/serverless": "~1.0.2",
+    "bcryptjs": "~2.4.3",
+    "dotenv": "~16.4.7",
+    "hono": "~4.12.12",
+    "mercadopago": "~2.12.0",
+    "zod": "~4.3.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260313.1",
-    "@eslint/js": "^10.0.1",
-    "@swc/core": "^1.15.21",
-    "@swc/jest": "^0.2.39",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^25.5.0",
-    "@types/supertest": "^7.2.0",
-    "console-ninja": "^1.0.0",
-    "cross-env": "^10.1.0",
-    "eslint": "^10.0.3",
-    "globals": "^17.4.0",
-    "jest": "^30.3.0",
-    "prettier": "^3.8.1",
-    "supertest": "^7.2.2",
-    "ts-jest": "^29.4.9",
-    "typescript": "^6.0.2",
-    "wrangler": "^4.72.0"
+    "@cloudflare/workers-types": "~4.20260313.1",
+    "@eslint/js": "~10.0.1",
+    "@swc/core": "~1.15.21",
+    "@swc/jest": "~0.2.39",
+    "@types/bcryptjs": "~2.4.6",
+    "@types/jest": "~30.0.0",
+    "@types/node": "~25.5.0",
+    "@types/supertest": "~7.2.0",
+    "cross-env": "~10.1.0",
+    "eslint": "~10.0.3",
+    "globals": "~17.4.0",
+    "husky": "~9.1.7",
+    "jest": "~30.3.0",
+    "lint-staged": "~16.4.0",
+    "prettier": "~3.8.1",
+    "supertest": "~7.2.2",
+    "ts-jest": "~29.4.9",
+    "tsx": "~4.21.0",
+    "typescript": "~6.0.2",
+    "wrangler": "~4.72.0"
   },
   "overrides": {
     "undici": "7.24.2"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }

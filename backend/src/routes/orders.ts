@@ -31,6 +31,12 @@ async function restoreOrderStock(client: any, order: any) {
   }
 }
 
+function shouldRestoreOrderStock(order: any) {
+  // Sempre restaura o estoque ao cancelar, pois agora todos os métodos (inclusive PIX) 
+  // reservam estoque no momento da criação (veja catalog.ts).
+  return true;
+}
+
 router.get('/', authMiddleware, async (c) => {
   try {
     const db = c.get('db');
@@ -47,16 +53,21 @@ router.get('/', authMiddleware, async (c) => {
     }
 
     if (user?.role === 'customer') {
-      const { rows } = await db.query(
-        `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
-         FROM orders
-         WHERE customer_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [user.id, limit, offset]
-      );
-      setNoStore(c as any);
-      return c.json(rows);
+      try {
+        const { rows } = await db.query(
+          `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+           FROM orders
+           WHERE customer_id = $1
+           ORDER BY created_at DESC
+           LIMIT $2 OFFSET $3`,
+          [user.id, limit, offset]
+        );
+        setNoStore(c as any);
+        return c.json(rows);
+      } catch (dbError) {
+        logger.error('Erro na query de pedidos do cliente', dbError as Error, { userId: user.id });
+        throw dbError; // Deixa o catch externo do route lidar com isso
+      }
     }
 
     const params: any[] = [];
@@ -70,9 +81,14 @@ router.get('/', authMiddleware, async (c) => {
     }
     query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
-    const { rows } = await db.query(query, [...params, limit, offset]);
-    setNoStore(c as any);
-    return c.json(rows);
+    try {
+      const { rows } = await db.query(query, [...params, limit, offset]);
+      setNoStore(c as any);
+      return c.json(rows);
+    } catch (dbError) {
+      logger.error('Erro na query de pedidos do admin', dbError as Error, { statusQuery });
+      throw dbError;
+    }
   } catch (error) {
     logger.error('Erro no GET de Pedidos', error as Error);
     return jsonError(c, 500, 'Erro ao carregar a lista de pedidos.');
@@ -95,7 +111,7 @@ router.patch(
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
       const { status } = c.req.valid('json');
       const { rows: currentRows } = await client.query(
-        `SELECT id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, payment_id, payment_method, delivery_type, address, notes
+        `SELECT id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, payment_id, payment_method, payment_status, delivery_type, address, notes
          FROM orders
          WHERE id = $1
          FOR UPDATE`,
@@ -112,7 +128,8 @@ router.patch(
       if (
         status === 'cancelado' &&
         currentOrder.status !== 'cancelado' &&
-        currentOrder.status !== 'concluido'
+        currentOrder.status !== 'concluido' &&
+        shouldRestoreOrderStock(currentOrder)
       ) {
         await restoreOrderStock(client, currentOrder);
 
@@ -130,7 +147,11 @@ router.patch(
         }
       }
 
-      if (status === 'concluido' && currentOrder.status !== 'concluido') {
+      if (
+        status === 'concluido' &&
+        currentOrder.status !== 'concluido' &&
+        !(currentOrder.payment_method === 'pix' && currentOrder.payment_status === 'approved')
+      ) {
         await client.query(
           `INSERT INTO transactions (type, category, description, value, date, order_id)
            VALUES ($1, $2, $3, $4, NOW(), $5)`,
@@ -176,7 +197,7 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
       return jsonError(c, 400, 'ID inválido');
     }
     const { rows } = await client.query(
-      `SELECT id, customer_name, items, status, payment_id
+      `SELECT id, customer_name, items, status, payment_id, payment_method, payment_status
        FROM orders
        WHERE id = $1
        FOR UPDATE`,
@@ -189,7 +210,11 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
     }
 
     const order = rows[0];
-    if (order.status !== 'cancelado' && order.status !== 'concluido') {
+    if (
+      order.status !== 'cancelado' &&
+      order.status !== 'concluido' &&
+      shouldRestoreOrderStock(order)
+    ) {
       await restoreOrderStock(client, order);
     }
 

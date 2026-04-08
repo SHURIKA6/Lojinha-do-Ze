@@ -31,6 +31,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ToastContextType>(
     () => ({
       showToast,
+      addToast: (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', duration?: number) => showToast({ type, message, duration }),
       success: (message: string, title = 'Sucesso') => showToast({ type: 'success', title, message }),
       error: (message: string, title = 'Erro') => showToast({ type: 'error', title, message }),
       info: (message: string, title = 'Informação') => showToast({ type: 'info', title, message }),

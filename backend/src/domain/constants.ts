@@ -1,5 +1,5 @@
-export const ROLE_VALUES = ['admin', 'editor', 'customer'] as const;
-export type Role = typeof ROLE_VALUES[number];
+export { CUSTOMER_TYPE_VALUES, ROLE_VALUES } from './roles';
+export type { CustomerType, UserRole as Role } from './roles';
 
 export const DELIVERY_TYPE_VALUES = ['entrega', 'retirada'] as const;
 export type DeliveryType = typeof DELIVERY_TYPE_VALUES[number];
