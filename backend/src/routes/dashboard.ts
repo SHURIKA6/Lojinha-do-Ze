@@ -20,39 +20,46 @@ router.get('/', async (c) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-    const [revRes, expRes, activeRes, salesRes, lowStockRes, recentRes, dailyTxRes, catRes] =
-      await Promise.all([
-        db.query(
-          `SELECT COALESCE(SUM(value), 0) AS total FROM transactions
-           WHERE type = 'receita' AND date BETWEEN $1 AND $2`,
-          [monthStart, monthEnd]
-        ),
-        db.query(
-          `SELECT COALESCE(SUM(value), 0) AS total FROM transactions
-           WHERE type = 'despesa' AND date BETWEEN $1 AND $2`,
-          [monthStart, monthEnd]
-        ),
-        db.query(
-          `SELECT COUNT(*) AS count FROM orders
-           WHERE status IN ('novo', 'recebido', 'em_preparo', 'saiu_entrega')`
-        ),
-        db.query(`SELECT COUNT(*) AS count FROM orders WHERE status = 'concluido'`),
-        db.query(
-          `SELECT id, name, quantity, min_stock FROM products
-           WHERE quantity <= min_stock ORDER BY quantity ASC`
-        ),
-        db.query(
-          `SELECT id, customer_name, delivery_type, status, total FROM orders
-           ORDER BY created_at DESC LIMIT 5`
-        ),
-        db.query(
-          `SELECT DATE(date) AS day_date, type, SUM(value) AS total FROM transactions
-           WHERE date BETWEEN $1 AND $2
-           GROUP BY DATE(date), type ORDER BY DATE(date)`,
-          [monthStart, monthEnd]
-        ),
-        db.query(`SELECT category AS name, COUNT(*) AS value FROM products GROUP BY category`),
-      ]);
+    const client = await db.connect();
+    
+    let revRes, expRes, activeRes, salesRes, lowStockRes, recentRes, dailyTxRes, catRes;
+    try {
+      [revRes, expRes, activeRes, salesRes, lowStockRes, recentRes, dailyTxRes, catRes] =
+        await Promise.all([
+          client.query(
+            `SELECT COALESCE(SUM(value), 0) AS total FROM transactions
+             WHERE type = 'receita' AND date BETWEEN $1 AND $2`,
+            [monthStart, monthEnd]
+          ),
+          client.query(
+            `SELECT COALESCE(SUM(value), 0) AS total FROM transactions
+             WHERE type = 'despesa' AND date BETWEEN $1 AND $2`,
+            [monthStart, monthEnd]
+          ),
+          client.query(
+            `SELECT COUNT(*) AS count FROM orders
+             WHERE status IN ('novo', 'recebido', 'em_preparo', 'saiu_entrega')`
+          ),
+          client.query(`SELECT COUNT(*) AS count FROM orders WHERE status = 'concluido'`),
+          client.query(
+            `SELECT id, name, quantity, min_stock FROM products
+             WHERE quantity <= min_stock ORDER BY quantity ASC`
+          ),
+          client.query(
+            `SELECT id, customer_name, delivery_type, status, total FROM orders
+             ORDER BY created_at DESC LIMIT 5`
+          ),
+          client.query(
+            `SELECT DATE(date) AS day_date, type, SUM(value) AS total FROM transactions
+             WHERE date BETWEEN $1 AND $2
+             GROUP BY DATE(date), type ORDER BY DATE(date)`,
+            [monthStart, monthEnd]
+          ),
+          client.query(`SELECT category AS name, COUNT(*) AS value FROM products GROUP BY category`),
+        ]);
+    } finally {
+      if (client.release) client.release();
+    }
 
     const chartData: Record<string, { day: string; receita: number; despesa: number }> = {};
     for (const row of (dailyTxRes?.rows ?? [])) {
