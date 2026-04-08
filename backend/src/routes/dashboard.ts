@@ -64,15 +64,15 @@ router.get('/', async (c) => {
 
     setNoStore(c as any);
     return c.json({
-      monthRevenue: parseFloat(revRes.rows[0].total),
-      monthExpenses: parseFloat(expRes.rows[0].total),
-      profit: parseFloat(revRes.rows[0].total) - parseFloat(expRes.rows[0].total),
-      activeOrders: parseInt(activeRes.rows[0].count, 10),
-      totalSales: parseInt(salesRes.rows[0].count, 10),
+      monthRevenue: parseFloat(revRes.rows[0]?.total ?? 0),
+      monthExpenses: parseFloat(expRes.rows[0]?.total ?? 0),
+      profit: parseFloat(revRes.rows[0]?.total ?? 0) - parseFloat(expRes.rows[0]?.total ?? 0),
+      activeOrders: parseInt(activeRes.rows[0]?.count ?? 0, 10),
+      totalSales: parseInt(salesRes.rows[0]?.count ?? 0, 10),
       lowStock: lowStockRes.rows,
       recentOrders: recentRes.rows,
       chartData: Object.values(chartData),
-      categoryChart: catRes.rows.map((item: any) => ({ name: item.name, value: parseFloat(item.value) })),
+      categoryChart: catRes.rows.map((item: any) => ({ name: item.name, value: parseFloat(item.value ?? 0) })),
     });
   } catch (error) {
     logger.error('Erro no Dashboard', error as Error);
