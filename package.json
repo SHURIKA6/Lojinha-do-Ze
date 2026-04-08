@@ -1,0 +1,8 @@
+{
+  "name": "lojinha-do-ze-monorepo",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}

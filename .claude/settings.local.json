@@ -20,7 +20,8 @@
       "Bash(tee output.txt)",
       "Bash(./node_modules/.bin/jest tests/catalog_pix_order_flow.test.ts)",
       "Bash(NODE_OPTIONS=--experimental-vm-modules npx jest tests/payments_security.test.ts)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ]
   },
   "outputStyle": "Explanatory"
