@@ -1,3 +1,6 @@
+import type { CustomerType, UserRole } from '../domain/roles';
+import { QueryResultRow } from '@neondatabase/serverless';
+
 // ============================================
 // Types Index - Lojinha do Zé
 // ============================================
@@ -11,9 +14,27 @@ export interface User {
   phone?: string;
   address?: Address;
   avatar?: string;
-  role: 'admin' | 'customer';
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CustomerRecord {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  cpf?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  avatar?: string | null;
+  role: UserRole | null;
+  customer_type: CustomerType;
+  created_at?: string;
+  updated_at?: string;
+  is_active?: boolean | null;
+  total_spent?: number;
+  order_count?: number;
 }
 
 export interface AuthTokens {
@@ -168,9 +189,10 @@ export interface RequestWithUser {
 
 // Database Types
 export interface Database {
-  query<T = any>(text: string, params?: any[]): Promise<any>;
-  connect(): Promise<any>;
+  query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<{ rows: T[]; rowCount?: number | null }>;
+  connect(): Promise<Database>;
   close(): Promise<void>;
+  release?(): void;
 }
 
 export interface DatabaseConfig {
@@ -187,6 +209,7 @@ export type Bindings = {
   TRUST_PROXY?: string;
   JWT_SECRET?: string;
   NEXT_PUBLIC_VAPID_KEY?: string;
+  BUCKET?: any;
   [key: string]: any;
 };
 

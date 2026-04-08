@@ -56,7 +56,7 @@ async function loadInitialCatalog(): Promise<any> {
   const origin = await getRequestOrigin();
 
   try {
-    const res = await fetch(`${origin}/api/catalog`, { cache: 'no-store' });
+    const res = await fetch(`${origin}/api/catalog?limit=50`, { cache: 'no-store' });
     if (!res.ok) {
       return null;
     }

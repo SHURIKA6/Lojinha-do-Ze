@@ -5,11 +5,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
+FRONTEND_URL = "https://lojinha-do-ze.vercel.app"
+ALLOWED_ORIGINS = "https://lojinha-do-ze.vercel.app,http://localhost:3000"
+TRUST_PROXY = "true"
 
-# Secrets should be configured via Cloudflare dashboard or wrangler secret put
-# DATABASE_URL = ""
-# JWT_SECRET = ""
-# MERCADO_PAGO_ACCESS_TOKEN = ""
-# MERCADO_PAGO_CLIENT_ID = ""
-# MERCADO_PAGO_CLIENT_SECRET = ""
-# GEMINI_API_KEY = ""
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "lojinha-do-ze-bucket"

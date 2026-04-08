@@ -25,6 +25,13 @@ interface EnrichedOrderItem {
   subtotal: number;
 }
 
+interface ProductRow {
+  id: number;
+  name: string;
+  sale_price: string;
+  quantity: number;
+}
+
 function mergeOrderItems(items: OrderItem[]): OrderItem[] {
   const merged = new Map<string, number>();
 
@@ -59,14 +66,26 @@ router.get('/', async (c) => {
     return c.json(cached);
   }
 
-  const whereClauses = ['is_active = TRUE', 'quantity > 0'];
-  const queryParams: any[] = [];
+  const baseWhereClauses = ['is_active = TRUE', 'quantity > 0'];
+  const baseQueryParams: any[] = [];
 
   if (search) {
-    queryParams.push(`%${escapeIlike(search)}%`);
-    whereClauses.push(`name ILIKE $${queryParams.length}`);
+    baseQueryParams.push(`%${escapeIlike(search)}%`);
+    baseWhereClauses.push(`name ILIKE $${baseQueryParams.length}`);
   }
 
+  const baseWhereSql = baseWhereClauses.join(' AND ');
+  const { rows: categoryRows } = await db.query(
+    `SELECT category, COUNT(*)::int AS count
+     FROM products
+     WHERE ${baseWhereSql}
+     GROUP BY category
+     ORDER BY category, MIN(name)`,
+    baseQueryParams
+  );
+
+  const whereClauses = [...baseWhereClauses];
+  const queryParams = [...baseQueryParams];
   if (category) {
     queryParams.push(category);
     whereClauses.push(`category = $${queryParams.length}`);
@@ -82,7 +101,7 @@ router.get('/', async (c) => {
     `SELECT id, code, name, description, photo, category, sale_price, quantity
      FROM products
      WHERE ${whereSql}
-     ORDER BY category, name
+     ORDER BY name, category
      LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`,
     queryParams
   );
@@ -100,6 +119,10 @@ router.get('/', async (c) => {
 
   const response = {
     categories: Object.values(categories),
+    availableCategories: categoryRows.map((row: { category: string; count: string | number }) => ({
+      name: row.category,
+      count: Number(row.count),
+    })),
     total: totalCount,
     limit,
     offset,
@@ -112,10 +135,14 @@ router.get('/', async (c) => {
 
 router.post(
   '/orders',
+  zValidator('json', orderCreateSchema),
   orderLimiter,
-  zValidator('json', orderCreateSchema, validationError),
   async (c) => {
+    console.log('Entering /orders handler');
     const db = c.get('db');
+    if (!db.connect) {
+      return jsonError(c, 500, 'Erro de configuração do banco de dados');
+    }
     const client = await db.connect();
 
     try {
@@ -127,25 +154,32 @@ router.post(
       const mergedItems = mergeOrderItems(payload.items);
       const deliveryFeeValue = parseFloat(c.env?.DELIVERY_FEE || '5');
       const deliveryFee = payload.delivery_type === 'entrega' ? deliveryFeeValue : 0;
+      const shouldCommitStockNow = true;
+      const initialStatus = payload.payment_method !== 'pix' ? 'recebido' : 'novo';
 
       let subtotal = 0;
       const enrichedItems: EnrichedOrderItem[] = [];
 
-      for (const item of mergedItems) {
-        const { rows } = await client.query(
-          `SELECT id, name, sale_price, quantity
-           FROM products
-           WHERE id = $1 AND is_active = TRUE
-           FOR UPDATE`,
-          [item.productId]
-        );
+      // Otimização: Busca todos os produtos de uma vez para evitar N+1 queries
+      const productIds = mergedItems.map(i => i.productId);
+      const { rows: productsFromDb } = await client.query<ProductRow>(
+        `SELECT id, name, sale_price, quantity
+         FROM products
+         WHERE id = ANY($1::int[]) AND is_active = TRUE
+         FOR UPDATE`,
+        [productIds]
+      );
 
-        if (!rows.length) {
+      const productMap = new Map(productsFromDb.map((p: ProductRow) => [p.id.toString(), p]));
+
+      for (const item of mergedItems) {
+        const product = productMap.get(item.productId.toString());
+
+        if (!product) {
           await client.query('ROLLBACK');
-          return jsonError(c, 400, `Produto ID ${item.productId} não encontrado`);
+          return jsonError(c, 400, `Produto ID ${item.productId} não encontrado ou inativo`);
         }
 
-        const product = rows[0];
         if (product.quantity < item.quantity) {
           await client.query('ROLLBACK');
           return jsonError(c, 400, `Estoque insuficiente para ${product.name}`);
@@ -154,7 +188,7 @@ router.post(
         const itemSubtotal = parseFloat(product.sale_price) * item.quantity;
         subtotal += itemSubtotal;
         enrichedItems.push({
-          productId: product.id,
+          productId: product.id.toString(),
           name: product.name,
           price: parseFloat(product.sale_price),
           quantity: item.quantity,
@@ -174,8 +208,8 @@ router.post(
 
       const total = subtotal + deliveryFee;
       const { rows: orderRows } = await client.query(
-        `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at`,
         [
           customerId,
@@ -185,6 +219,7 @@ router.post(
           subtotal,
           deliveryFee,
           total,
+          initialStatus,
           payload.delivery_type,
           cleanOptionalString(payload.address) || '',
           payload.payment_method,
@@ -192,7 +227,7 @@ router.post(
         ]
       );
 
-      if (enrichedItems.length > 0) {
+      if (shouldCommitStockNow && enrichedItems.length > 0) {
         const productIds = enrichedItems.map((i) => parseInt(i.productId));
         const quantities = enrichedItems.map((i) => i.quantity);
         const names = enrichedItems.map((i) => i.name);
@@ -223,7 +258,9 @@ router.post(
       return c.json(
         {
           order: orderRows[0],
-          message: `Pedido #${orderRows[0].id} criado com sucesso!`,
+          message: shouldCommitStockNow
+            ? `Pedido #${orderRows[0].id} criado com sucesso!`
+            : `Pedido #${orderRows[0].id} criado e aguardando pagamento Pix!`,
         },
         201
       );

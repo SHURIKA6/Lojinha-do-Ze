@@ -4,28 +4,52 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { getMe, login as apiLogin, logout as apiLogout } from '@/services/api/auth';
 import { useToast } from '@/components/ui/ToastProvider';
 import { User, AuthContextType } from '@/types';
+import { isCustomerRole, isShuraRole, isStaffRole, isUserRole } from '@/lib/roles';
 
 export const AuthContext = createContext<AuthContextType | null>(null);
+
+function normalizeAuthUser(payload: unknown): User | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const user = payload as User;
+  return isUserRole(user.role) ? user : null;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const isFetchingRef = React.useRef(false);
 
-  const refreshUser = async (): Promise<User | null> => {
+  const refreshUser = React.useCallback(async (): Promise<User | null> => {
+    // Usar ref em vez de estado dentro do callback para evitar dependências cíclicas
+    if (isFetchingRef.current) return null;
+    
+    isFetchingRef.current = true;
+    setIsFetching(true);
+    
     try {
-      const userData = await getMe();
+      const res = await getMe() as any;
+      const actualData = res.success ? res.data : res;
+      const userData = normalizeAuthUser(actualData?.user);
+      
       setUser(userData);
       return userData;
     } catch {
       setUser(null);
       return null;
+    } finally {
+      isFetchingRef.current = false;
+      setIsFetching(false);
+      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    refreshUser()
-      .finally(() => setLoading(false));
-  }, []);
+    refreshUser();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toast = useToast();
   
@@ -42,28 +66,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:expired', handleExpiredSession);
   }, [user, toast]);
 
-  const login = async (identifier: string, password: string) => {
+  const login = React.useCallback(async (identifier: string, password: string): Promise<{ 
+    success: boolean; 
+    user?: User | null; 
+    error?: string; 
+    easterEgg?: boolean;
+    shuraEgg?: boolean;
+  }> => {
     try {
-      const data = await apiLogin(identifier, password);
-      setUser(data.user);
-      return { success: true, user: data.user };
-    } catch (err: any) {
-      return { success: false, error: err.message };
-    }
-  };
+      const res = await apiLogin(identifier, password) as any;
+      const actualData = res.success ? res.data : res;
+      const userData = normalizeAuthUser(actualData?.user);
 
-  const logout = async () => {
+      if (!userData) {
+        setUser(null);
+        return { success: false, error: 'Conta com cargo inválido. Entre em contato com o suporte.' };
+      }
+      
+      setUser(userData);
+      
+      return { 
+        success: true, 
+        user: userData, 
+        easterEgg: actualData.easterEgg || false,
+        shuraEgg: actualData.shuraEgg || false 
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Erro ao realizar login' };
+    }
+  }, []);
+
+  const logout = React.useCallback(async () => {
     await apiLogout().catch(() => {});
     setUser(null);
-  };
+  }, []);
 
-  const isAdmin = user?.role === 'admin';
-  const isCustomer = user?.role === 'customer';
+  const isAdmin = React.useMemo(() => isStaffRole(user?.role), [user]);
+  const isShura = React.useMemo(() => isShuraRole(user?.role), [user]);
+  const isCustomer = React.useMemo(() => isCustomerRole(user?.role), [user]);
+
+  const value = React.useMemo(() => ({
+    user,
+    login,
+    logout,
+    loading,
+    refreshUser,
+    setUser,
+    isAdmin,
+    isShura,
+    isCustomer
+  }), [user, login, logout, loading, refreshUser, isAdmin, isShura, isCustomer]);
 
   return (
-    <AuthContext.Provider
-      value={{ user, login, logout, loading, refreshUser, setUser, isAdmin, isCustomer }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

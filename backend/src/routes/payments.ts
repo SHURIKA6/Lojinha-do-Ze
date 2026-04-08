@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { pixPaymentSchema } from '../domain/schemas';
+import { pixPaymentSchema, pixStatusLookupSchema } from '../domain/schemas';
 import { MercadoPagoService } from '../services/mercadoPagoService';
 import { getRequiredEnv } from '../load-local-env';
 import { jsonError, validationError } from '../utils/http';
@@ -10,11 +10,81 @@ import { normalizePhoneDigits } from '../utils/normalize';
 import { Bindings, Variables } from '../types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+const textEncoder = new TextEncoder();
 
 const getService = (c: any) => {
   const token = getRequiredEnv(c, 'MERCADO_PAGO_ACCESS_TOKEN');
   return new MercadoPagoService(token);
 };
+
+function getPaymentLookupSecret(c: any) {
+  const secret = c.env?.PAYMENT_LOOKUP_SECRET || c.env?.MERCADO_PAGO_WEBHOOK_SECRET;
+  
+  if (!secret) {
+    logger.error('Nenhum segredo de lookup configurado (PAYMENT_LOOKUP_SECRET ou MERCADO_PAGO_WEBHOOK_SECRET)');
+    throw new Error('Configuração de segurança de pagamentos ausente');
+  }
+  
+  return secret;
+}
+
+async function signLookupValue(secret: string, value: string) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(value));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function createPaymentLookupToken(c: any, orderId: string | number, paymentId: string | number) {
+  return signLookupValue(getPaymentLookupSecret(c), `pix:${String(orderId)}:${String(paymentId)}`);
+}
+
+async function isValidPaymentLookupToken(
+  c: any,
+  orderId: string | number,
+  paymentId: string | number,
+  lookupToken: string
+) {
+  const expected = await createPaymentLookupToken(c, orderId, paymentId);
+  return expected === lookupToken;
+}
+
+async function commitPixOrderStock(client: any, order: any) {
+  const items = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]');
+  if (!items.length) {
+    return;
+  }
+
+  const productIds = items.map((item: any) => parseInt(String(item.productId), 10));
+  const quantities = items.map((item: any) => Number(item.quantity));
+  const names = items.map((item: any) => String(item.name || 'Produto'));
+
+  const { rowCount } = await client.query(
+    `UPDATE products AS p
+     SET quantity = p.quantity - u.qty, updated_at = NOW()
+     FROM unnest($1::int[], $2::int[]) AS u(id, qty)
+     WHERE p.id = u.id AND p.quantity >= u.qty
+     RETURNING p.id`,
+    [productIds, quantities]
+  );
+
+  if (rowCount !== items.length) {
+    throw new Error('Estoque insuficiente ou concorrente para um pedido Pix aprovado');
+  }
+
+  await client.query(
+    `INSERT INTO inventory_log (product_id, product_name, type, quantity, reason, date)
+     SELECT u.id, u.name, 'saida', u.qty, $1, NOW()
+     FROM unnest($2::int[], $3::text[], $4::int[]) AS u(id, name, qty)`,
+    [`Pedido #${order.id} (PIX aprovado)`, productIds, names, quantities]
+  );
+}
 
 async function verifyWebhookSignature(c: any, dataId: string) {
   const webhookSecret = c.env?.MERCADO_PAGO_WEBHOOK_SECRET;
@@ -103,39 +173,56 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
       external_reference: String(order.id),
       idempotencyKey: `order-pix-${order.id}`,
     });
+    const paymentId = payment.id;
+
+    if (!paymentId) {
+      throw new Error('Mercado Pago não retornou um identificador de pagamento');
+    }
 
     await db.query(
       'UPDATE orders SET payment_id = $1, payment_status = $2 WHERE id = $3',
-      [payment.id, payment.status, order.id]
+      [paymentId, payment.status, order.id]
     );
 
-    return c.json(payment, 201);
+    return c.json(
+      {
+        ...payment,
+        lookup_token: await createPaymentLookupToken(c, order.id, paymentId),
+      },
+      201
+    );
   } catch (error) {
     logger.error('Erro ao processar pagamento Pix', error as Error);
     return jsonError(c, 500, 'Erro ao criar pagamento no Mercado Pago');
   }
 });
 
-router.get('/pix/:id', async (c) => {
+router.post(
+  '/pix/:id/status',
+  orderLimiter,
+  zValidator('json', pixStatusLookupSchema, validationError),
+  async (c) => {
   const db = c.get('db');
   const paymentId = c.req.param('id');
-  const orderId = c.req.query('orderId');
-  const phone = c.req.query('phone') || '';
+  const { orderId, lookupToken } = c.req.valid('json');
 
   if (!/^\d+$/.test(paymentId)) {
     return jsonError(c, 400, 'ID de pagamento inválido');
   }
 
-  if (!/^\d+$/.test(orderId || '')) {
-    return jsonError(c, 400, 'ID de pedido inválido');
+  let rows;
+  try {
+    const res = await db.query(
+      `SELECT id, customer_id, payment_id
+       FROM orders
+       WHERE id = $1`,
+      [orderId]
+    );
+    rows = res.rows;
+  } catch (dbError) {
+    logger.error('Erro na query de verificação de pedido (pix status)', dbError as Error, { orderId });
+    throw dbError;
   }
-
-  const { rows } = await db.query(
-    `SELECT id, customer_id, customer_phone
-     FROM orders
-     WHERE id = $1`,
-    [orderId]
-  );
   if (!rows.length) {
     return jsonError(c, 404, 'Pedido não encontrado');
   }
@@ -146,9 +233,11 @@ router.get('/pix/:id', async (c) => {
     return jsonError(c, 403, 'Acesso negado a este pedido');
   }
 
-  const normalizedOrderPhone = normalizePhoneDigits(order.customer_phone || '');
-  const normalizedRequestPhone = normalizePhoneDigits(phone);
-  if (!normalizedOrderPhone || normalizedOrderPhone !== normalizedRequestPhone) {
+  if (order.payment_id && String(order.payment_id) !== String(paymentId)) {
+    return jsonError(c, 403, 'Pagamento não corresponde ao pedido informado');
+  }
+
+  if (!(await isValidPaymentLookupToken(c, orderId, paymentId, lookupToken))) {
     return jsonError(c, 403, 'Os dados do pedido não conferem para consultar o pagamento');
   }
 
@@ -169,7 +258,8 @@ router.get('/pix/:id', async (c) => {
   } catch {
     return jsonError(c, 500, 'Erro ao buscar status do pagamento');
   }
-});
+}
+);
 
 router.post('/webhook', async (c) => {
   const contentLength = parseInt(c.req.header('content-length') || '0', 10);
@@ -238,12 +328,14 @@ router.post('/webhook', async (c) => {
             await client.query('BEGIN');
 
             const { rows } = await client.query(
-              'SELECT total, status, customer_name FROM orders WHERE id = $1 FOR UPDATE',
+              'SELECT id, total, status, customer_name, items, payment_method FROM orders WHERE id = $1 FOR UPDATE',
               [orderId]
             );
 
-            if (rows.length && rows[0].status === 'novo') {
+            if (rows.length && rows[0].payment_method === 'pix' && rows[0].status === 'novo') {
               const order = rows[0];
+              // O estoque já foi reservado na criação do pedido (catalog.ts)
+              // await commitPixOrderStock(client, order);
 
               await client.query('UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1', [
                 orderId,

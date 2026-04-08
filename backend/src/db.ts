@@ -5,12 +5,21 @@ if (typeof globalThis.WebSocket !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 
+let globalPool: Pool | null = null;
+
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const pool = new Pool({ connectionString });
+  // Não usar singleton em testes para evitar vazamento de conexões/handles entre suítes
+  const isTest = globalThis.process?.env?.NODE_ENV === 'test';
+  
+  if (!globalPool && !isTest) {
+    globalPool = new Pool({ connectionString });
+  }
+  
+  const pool = isTest ? new Pool({ connectionString }) : globalPool!;
   let closed = false;
 
   return {
@@ -18,14 +27,28 @@ export function createDb(connectionString: string): Database {
       return pool.query<T>(text, params);
     },
 
-    connect() {
-      return pool.connect();
+    async connect(): Promise<Database> {
+      const client = await pool.connect();
+      return {
+        query: client.query.bind(client),
+        connect: async () => {
+          throw new Error('Já conectado. Use o cliente atual ou crie uma nova conexão do Pool.');
+        },
+        close: async () => {
+          client.release();
+        },
+        release: client.release.bind(client),
+      };
     },
 
     async close() {
       if (closed) return;
       closed = true;
-      await pool.end();
+      // No singleton global, o close não deve destruir o pool que outros requests estão usando.
+      // Em testes (onde o pool é local), precisamos fechar para não vazar handles.
+      if (isTest) {
+        await pool.end();
+      }
     },
   };
 }

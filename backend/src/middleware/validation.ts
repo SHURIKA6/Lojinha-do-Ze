@@ -231,6 +231,8 @@ function validateObject(data: any, rules: any) {
 /**
  * Middleware de validação genérico
  */
+export const validationMiddleware = validate({});
+
 export function validate(validationRules: any, options: any = {}) {
   const {
     sanitize = true

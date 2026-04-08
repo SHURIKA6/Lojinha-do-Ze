@@ -1,0 +1,997 @@
+openapi: 3.0.3
+info:
+  title: Lojinha do Zé - API
+  description: |
+    API REST para o sistema de gestão da Lojinha do Zé (e-commerce de produtos naturais e artesanais).
+
+    ## Autenticação
+
+    A API utiliza autenticação baseada em cookies de sessão. Após o login, o cookie `session_id` deve ser incluído nas requisições subsequentes.
+
+    ### Fluxo de Autenticação
+    1. Faça login em `/api/auth/login` para receber um `session_id` cookie e `csrfToken`
+    2. Inclua o cookie `session_id` automaticamente (via browser)
+    3. Inclua o header `X-CSRF-Token: <csrfToken>` em requisições POST/PUT/PATCH/DELETE
+
+    ## Rate Limiting
+
+    | Endpoint | Limite | Janela |
+    |----------|--------|--------|
+    | Login | 5 tentativas | 15 minutos |
+    | Pedidos | 10 pedidos | 1 hora |
+    | API Geral | 60 requisições | 1 minuto |
+
+    ## Códigos de Status
+
+    - `200` - Sucesso
+    - `201` - Criado
+    - `400` - Requisição Inválida
+    - `401` - Não Autenticado
+    - `403` - Proibido (sem permissão)
+    - `404` - Não Encontrado
+    - `409` - Conflito (duplicado)
+    - `429` - Rate Limit Excedido
+    - `500` - Erro Interno
+  version: 1.0.0
+  contact:
+    name: SHURIKA6
+    url: https://github.com/SHURIKA6/Lojinha-do-Ze
+
+servers:
+  - url: http://localhost:8787/api
+    description: Desenvolvimento Local
+  - url: https://lojinha-do-ze-backend.your-subdomain.workers.dev/api
+    description: Produção (Cloudflare Workers)
+
+tags:
+  - name: Auth
+    description: Autenticação e gestão de sessão
+  - name: Clientes
+    description: Gestão de clientes (admin)
+  - name: Catálogo
+    description: Produtos e pedidos (público/cliente)
+  - name: Pedidos
+    description: Gestão de pedidos (admin/cliente)
+  - name: Dashboard
+    description: Métricas e analytics (admin)
+  - name: IA
+    description: Integração com Gemini AI (admin)
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Realiza login
+      description: Autentica usuário por e-mail, telefone ou CPF + senha
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "cliente@email.com"
+                identifier:
+                  type: string
+                  description: E-mail, telefone ou CPF
+                  example: "12345678900"
+                password:
+                  type: string
+                  minLength: 1
+                  example: "Senha123"
+      responses:
+        '200':
+          description: Login bem-sucedido
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Cookie session_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimit'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Realiza logout
+      description: Destrói a sessão atual
+      operationId: logout
+      security: [{ SessionAuth: [] }]
+      responses:
+        '200':
+          description: Logout bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Obtém perfil do usuário logado
+      operationId: getMe
+      security: [{ SessionAuth: [] }]
+      responses:
+        '200':
+          description: Perfil do usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh-csrf:
+    post:
+      tags: [Auth]
+      summary: Atualiza token CSRF
+      operationId: refreshCsrf
+      security: [{ SessionAuth: [] }]
+      responses:
+        '200':
+          description: Novo token CSRF
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken:
+                    type: string
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Altera senha do usuário
+      operationId: changePassword
+      security: [{ SessionAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oldPassword, newPassword, confirmPassword]
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+                  pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)'
+                confirmPassword:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /customers:
+    get:
+      tags: [Clientes]
+      summary: Lista todos os clientes
+      description: Retorna clientes registrados e convidados (compras sem conta)
+      operationId: listCustomers
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Clientes]
+      summary: Cria novo cliente
+      operationId: createCustomer
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreate'
+      responses:
+        '201':
+          description: Cliente criado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Customer'
+                  - type: object
+                    properties:
+                      invite:
+                        type: string
+                        description: Link de convite para definir senha
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Conflito (e-mail/telefone duplicado)
+
+  /customers/{id}:
+    get:
+      tags: [Clientes]
+      summary: Obtém detalhes de um cliente
+      operationId: getCustomer
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes do cliente com histórico
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Customer'
+                  - type: object
+                    properties:
+                      total_spent:
+                        type: number
+                      order_count:
+                        type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Clientes]
+      summary: Atualiza cliente
+      operationId: updateCustomer
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdate'
+      responses:
+        '200':
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+    delete:
+      tags: [Clientes]
+      summary: Exclui cliente
+      operationId: deleteCustomer
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  description: Senha administrativa para confirmação
+      responses:
+        '200':
+          $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customers/{id}/orders:
+    get:
+      tags: [Clientes]
+      summary: Lista pedidos do cliente
+      operationId: getCustomerOrders
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Histórico de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /catalog:
+    get:
+      tags: [Catálogo]
+      summary: Lista produtos do catálogo
+      description: Retorna produtos agrupados por categoria, com filtros opcionais
+      operationId: getCatalog
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Busca por nome do produto
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filtra por categoria
+      responses:
+        '200':
+          description: Catálogo de produtos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogResponse'
+
+  /catalog/orders:
+    post:
+      tags: [Catálogo]
+      summary: Cria novo pedido
+      description: |
+        Cria um pedido para cliente autenticado ou convidado.
+
+        - Se autenticado como `customer`, o `customer_phone` deve bater com o usuário
+        - Se `delivery_type = 'entrega'`, o campo `address` é obrigatório
+        - Estoque é reservado no momento da criação
+      operationId: createOrder
+      security: [{ SessionAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Pedido criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    $ref: '#/components/schemas/Order'
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /orders:
+    get:
+      tags: [Pedidos]
+      summary: Lista pedidos
+      description: |
+        - Admin: vê todos os pedidos
+        - Customer: vê apenas seus pedidos
+      operationId: listOrders
+      security: [{ SessionAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /orders/{id}/status:
+    patch:
+      tags: [Pedidos]
+      summary: Atualiza status do pedido
+      operationId: updateOrderStatus
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Pedido atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{id}:
+    delete:
+      tags: [Pedidos]
+      summary: Exclui pedido
+      operationId: deleteOrder
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/schemas/SuccessResponse'
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Obtém métricas do dashboard
+      operationId: getDashboard
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      responses:
+        '200':
+          description: Métricas completas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+
+  /analytics/forecast:
+    get:
+      tags: [IA]
+      summary: Previsão de demanda
+      description: Gera previsões de demanda usando regressão linear e média móvel
+      operationId: getForecast
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      responses:
+        '200':
+          description: Previsões por produto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  forecasts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Forecast'
+
+  /analytics/bi/sentiment:
+    get:
+      tags: [IA]
+      summary: Análise de sentimento
+      description: Analisa sentimento de reviews de clientes
+      operationId: getSentimentAnalysis
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      responses:
+        '200':
+          description: Análise de sentimento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sentimentAnalysis:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SentimentAnalysis'
+
+  /ai/chat:
+    post:
+      tags: [IA]
+      summary: Chat com Guardião da Lojinha
+      description: IA assistente para administrador (Gemini 2.0 Flash)
+      operationId: chatWithAI
+      security: [{ SessionAuth: [], AdminOnly: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  example: "Quais são as dicas para aumentar vendas?"
+      responses:
+        '200':
+          description: Resposta da IA
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:
+                    type: string
+        '500':
+          description: Erro na IA
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Cookie de sessão após login
+    AdminOnly:
+      type: apiKey
+      in: header
+      name: X-Admin-Check
+      description: Requer papel de administrador (verificado via sessão)
+
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Não autenticado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Acesso proibido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimit:
+      description: Rate limit excedido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # Responses genéricos
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operação realizada com sucesso"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    # Auth
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        csrfToken:
+          type: string
+        easterEgg:
+          type: boolean
+          description: Se true, usuário é o easter egg
+
+    MeResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        csrfToken:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+        phone:
+          type: string
+        cpf:
+          type: string
+        address:
+          type: string
+        avatar:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Role:
+      type: string
+      enum: [admin, customer, shura]
+
+    # Clientes
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+        cpf:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          nullable: true
+        role:
+          $ref: '#/components/schemas/Role'
+          nullable: true
+        customer_type:
+          type: string
+          enum: [registered, guest]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CustomerCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          maxLength: 30
+        cpf:
+          type: string
+          maxLength: 20
+        address:
+          type: string
+          maxLength: 320
+        notes:
+          type: string
+          maxLength: 800
+
+    CustomerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        cpf:
+          type: string
+        address:
+          type: string
+        notes:
+          type: string
+
+    # Catálogo
+    CatalogResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              products:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        availableCategories:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        photo:
+          type: string
+        category:
+          type: string
+        sale_price:
+          type: string
+        quantity:
+          type: integer
+        is_active:
+          type: boolean
+
+    # Pedidos
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer_id:
+          type: string
+          nullable: true
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        items:
+          type: string
+          description: JSON stringified de OrderItem[]
+        subtotal:
+          type: number
+        delivery_fee:
+          type: number
+        total:
+          type: number
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        delivery_type:
+          type: string
+          enum: [retirada, entrega]
+        address:
+          type: string
+        payment_method:
+          type: string
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderCreate:
+      type: object
+      required: [customer_name, customer_phone, items, delivery_type, payment_method]
+      properties:
+        customer_name:
+          type: string
+          minLength: 2
+        customer_phone:
+          type: string
+          minLength: 8
+        notes:
+          type: string
+        delivery_type:
+          type: string
+          enum: [retirada, entrega]
+        address:
+          type: string
+        payment_method:
+          type: string
+          enum: [pix, dinheiro, cartao]
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId:
+                type: integer
+              quantity:
+                type: integer
+                minimum: 1
+
+    OrderStatus:
+      type: string
+      enum: [novo, recebido, em_preparo, saiu_entrega, entregue, concluido, cancelado]
+
+    # Dashboard
+    DashboardResponse:
+      type: object
+      properties:
+        monthRevenue:
+          type: number
+        monthExpenses:
+          type: number
+        profit:
+          type: number
+        activeOrders:
+          type: integer
+        totalSales:
+          type: integer
+        lowStock:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              quantity:
+                type: integer
+              min_stock:
+                type: integer
+        recentOrders:
+          type: array
+          items:
+            type: object
+        chartData:
+          type: array
+          items:
+            type: object
+            properties:
+              day:
+                type: string
+              receita:
+                type: number
+              despesa:
+                type: number
+        categoryChart:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: number
+
+    # IA
+    Forecast:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        currentStock:
+          type: number
+        movingAverage:
+          type: number
+        regression:
+          type: object
+          properties:
+            slope:
+              type: number
+            intercept:
+              type: number
+        seasonality:
+          type: array
+          items:
+            type: number
+
+    SentimentAnalysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        sentiment:
+          type: string
+          enum: [positivo, negativo, neutro]
+        score:
+          type: number
+          minimum: 0
+          maximum: 1

@@ -75,6 +75,7 @@ export const viewport: Viewport = {
   userScalable: false,
   themeColor: '#667eea',
 };
+import { CHART_COLORS } from '@/styles/theme';
 
 function A11yAnnouncer() {
   return (
@@ -114,6 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
         {/* Meta tags para acessibilidade */}
         <meta name="theme-color" content="#667eea" />
+<meta name="theme-color" content="#29443a" media="(prefers-color-scheme: dark)" />
         <meta name="color-scheme" content="light dark" />
       </head>
       <body>

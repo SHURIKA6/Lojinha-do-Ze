@@ -4,7 +4,7 @@
  */
 
 import { Context, Next } from 'hono';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 // Tipos de conteúdo que devem ser comprimidos
 const COMPRESSIBLE_TYPES = [
@@ -45,7 +45,7 @@ function shouldCompress(contentType: string | null, contentLength: string | null
 /**
  * Comprime dados usando GZIP
  */
-async function compressData(data: string, _level: number = COMPRESSION_LEVEL): Promise<Uint8Array | null> {
+async function compressData(data: string, _level: number = COMPRESSION_LEVEL): Promise<ArrayBuffer | null> {
   try {
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(data);
@@ -59,7 +59,7 @@ async function compressData(data: string, _level: number = COMPRESSION_LEVEL): P
     }
     
     const compressedResponse = await new Response(compressedStream).arrayBuffer();
-    return new Uint8Array(compressedResponse);
+    return compressedResponse;
   } catch (error) {
     logger.error('Erro na compressão GZIP', error as Error);
     return null;
@@ -110,7 +110,7 @@ export function compressionMiddleware(_c: Context, _next: Next) {
         headers: {
           ...Object.fromEntries(c.res.headers.entries()),
           'content-encoding': 'gzip',
-          'content-length': compressedData.length.toString(),
+          'content-length': compressedData.byteLength.toString(),
           'vary': 'Accept-Encoding',
         },
       });
@@ -119,7 +119,7 @@ export function compressionMiddleware(_c: Context, _next: Next) {
       
       // Log de compressão
       const originalSize = responseBody.length;
-      const compressedSize = compressedData.length;
+      const compressedSize = compressedData.byteLength;
       const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
       
       logger.debug('Resposta comprimida', {
@@ -186,7 +186,7 @@ export function jsonCompression() {
         headers: {
           ...Object.fromEntries(c.res.headers.entries()),
           'content-encoding': 'gzip',
-          'content-length': compressedData.length.toString(),
+          'content-length': compressedData.byteLength.toString(),
           'vary': 'Accept-Encoding',
         },
       });

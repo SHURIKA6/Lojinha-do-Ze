@@ -19,18 +19,34 @@ import {
 import { jsonError, setNoStore, validationError } from '../utils/http';
 import { logger } from '../utils/logger';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants';
-import { Bindings, Variables, Database } from '../types';
+import { canManageRole, isShuraRole, isUserRole, ROLE_VALUES, type UserRole } from '../domain/roles';
+import { Bindings, Variables, Database, type CustomerRecord } from '../types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-const CUSTOMER_SAFE_COLUMNS = 'id, name, email, phone, cpf, address, notes, avatar, role, created_at';
+const CUSTOMER_SAFE_COLUMNS = 'id::text as id, name, email, phone, cpf, address, notes, avatar, role, created_at, updated_at';
+const REGISTERED_CUSTOMER_SELECT = `${CUSTOMER_SAFE_COLUMNS}, 'registered'::text as customer_type`;
+const GUEST_CUSTOMER_SELECT = `
+  MIN(id)::text as id,
+  customer_name as name,
+  NULL::text as email,
+  customer_phone as phone,
+  NULL::text as cpf,
+  address,
+  'Cliente convidado'::text as notes,
+  NULL::text as avatar,
+  NULL::text as role,
+  MIN(created_at) as created_at,
+  NULL::timestamp as updated_at,
+  'guest'::text as customer_type
+`;
 
 function isValidId(id: string): boolean {
   return isValidUuid(id) || /^\d+$/.test(id);
 }
 
 const roleSchema = z.object({
-  role: z.enum(['admin', 'customer']),
+  role: z.enum(ROLE_VALUES),
   password: z
     .string()
     .min(1, 'Senha administrativa é obrigatória')
@@ -70,6 +86,30 @@ async function validatePrivilegedAction(c: any, db: Database, password: string, 
   return { ok: true };
 }
 
+function parseStoredRole(role: unknown, context: string): UserRole {
+  if (!isUserRole(role)) {
+    throw new Error(`${context} com cargo inválido no banco: ${String(role)}`);
+  }
+
+  return role;
+}
+
+function mapRegisteredCustomer(row: any): CustomerRecord {
+  return {
+    ...row,
+    role: parseStoredRole(row.role, 'Usuário'),
+    customer_type: 'registered',
+  };
+}
+
+function mapGuestCustomer(row: any): CustomerRecord {
+  return {
+    ...row,
+    role: null,
+    customer_type: 'guest',
+  };
+}
+
 async function handleInvite(c: any) {
   const db = c.get('db');
   const client = await db.connect();
@@ -96,78 +136,89 @@ async function handleInvite(c: any) {
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
-  const db = c.get('db');
-  const limitQuery = c.req.query('limit');
-  const offsetQuery = c.req.query('offset');
-  const limit = Math.min(parseInt(limitQuery || '') || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  const offset = Math.max(parseInt(offsetQuery || '') || 0, 0);
+  try {
+    const db = c.get('db');
+    const limitQuery = c.req.query('limit');
+    const offsetQuery = c.req.query('offset');
+    const limit = Math.min(parseInt(limitQuery || '') || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+    const offset = Math.max(parseInt(offsetQuery || '') || 0, 0);
 
-  const { rows } = await db.query(
-    `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
-     FROM (
-       SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at FROM users
-       UNION ALL
-       SELECT 
-         MIN(id) as id, customer_name as name, NULL as email, customer_phone as phone, 
-         NULL as cpf, address, 'Cliente convidado' as notes, NULL as avatar, 'guest' as role, 
-         MIN(created_at) as created_at
-       FROM orders
-       WHERE customer_id IS NULL
-       GROUP BY customer_name, customer_phone, address
-     ) as combined_customers
-     ORDER BY name
-     LIMIT $1 OFFSET $2`,
-    [limit, offset]
-  );
-  setNoStore(c as any);
-  return c.json(rows);
+    const { rows } = await db.query(
+      `SELECT *
+       FROM (
+         SELECT ${REGISTERED_CUSTOMER_SELECT} FROM users
+         UNION ALL
+         SELECT ${GUEST_CUSTOMER_SELECT}
+         FROM orders
+         WHERE customer_id IS NULL
+         GROUP BY customer_name, customer_phone, address
+       ) as combined_customers
+       ORDER BY name
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    const customers = rows.map((row: any) =>
+      row.customer_type === 'guest' ? mapGuestCustomer(row) : mapRegisteredCustomer(row)
+    );
+    setNoStore(c as any);
+    return c.json(customers);
+  } catch (error) {
+    logger.error('Erro ao listar clientes (GET /customers)', error as Error);
+    return jsonError(c, 500, 'Erro ao carregar a base de clientes.');
+  }
 });
 
 router.get('/:id', async (c) => {
-  const db = c.get('db');
-  const id = c.req.param('id');
+  try {
+    const db = c.get('db');
+    const id = c.req.param('id');
 
-  if (!isValidId(id)) {
-    return jsonError(c, 400, 'ID inválido');
-  }
+    if (!isValidId(id)) {
+      return jsonError(c, 400, 'ID inválido');
+    }
 
-  const { rows: userRows } = await db.query(
-    `SELECT ${CUSTOMER_SAFE_COLUMNS} FROM users WHERE id = $1`,
-    [id]
-  );
-
-  let customer: any;
-  if (userRows.length) {
-    customer = userRows[0];
-  } else {
-    const { rows: guestRows } = await db.query(
-      `SELECT MIN(id) as id, customer_name as name, null as email, customer_phone as phone, 
-         null as cpf, address, 'Cliente convidado' as notes, null as avatar, 'guest' as role, 
-         MIN(created_at) as created_at
-       FROM orders
-       WHERE customer_id IS NULL AND id::text = $1
-       GROUP BY customer_name, customer_phone, address`,
+    const { rows: userRows } = await db.query(
+      `SELECT ${REGISTERED_CUSTOMER_SELECT} FROM users WHERE id = $1`,
       [id]
     );
-    if (!guestRows.length) return jsonError(c, 404, 'Cliente não encontrado');
-    customer = guestRows[0];
+
+    let customer: CustomerRecord;
+    if (userRows.length) {
+      customer = mapRegisteredCustomer(userRows[0]);
+    } else {
+      const { rows: guestRows } = await db.query(
+        `SELECT ${GUEST_CUSTOMER_SELECT}
+         FROM orders
+         WHERE customer_id IS NULL AND id::text = $1
+         GROUP BY customer_name, customer_phone, address`,
+        [id]
+      );
+      if (!guestRows.length) return jsonError(c, 404, 'Cliente não encontrado');
+      customer = mapGuestCustomer(guestRows[0]);
+    }
+
+    const normalizedPhone = normalizePhoneDigits(customer.phone || '');
+    const { rows: stats } = await db.query(
+      `SELECT COALESCE(SUM(total), 0) as total_spent, COUNT(*) as order_count
+       FROM orders
+       WHERE (customer_id = $1 OR (customer_id IS NULL AND REGEXP_REPLACE(customer_phone, '\\D', '', 'g') = $2))
+         AND status = 'concluido'`,
+      [customer.id, normalizedPhone]
+    );
+
+    setNoStore(c as any);
+    return c.json({
+      ...customer,
+      total_spent: parseFloat(stats[0].total_spent),
+      order_count: parseInt(stats[0].order_count, 10),
+    });
+  } catch (error) {
+    logger.error('Erro ao buscar cliente (GET /customers/:id)', error as Error, {
+      id: c.req.param('id'),
+    });
+    return jsonError(c, 500, 'Erro ao carregar os dados do cliente.');
   }
-
-  const normalizedPhone = normalizePhoneDigits(customer.phone || '');
-  const { rows: stats } = await db.query(
-    `SELECT COALESCE(SUM(total), 0) as total_spent, COUNT(*) as order_count
-     FROM orders
-     WHERE (customer_id = $1 OR (customer_id IS NULL AND REGEXP_REPLACE(customer_phone, '\\D', '', 'g') = $2))
-       AND status = 'concluido'`,
-    [customer.id, normalizedPhone]
-  );
-
-  setNoStore(c as any);
-  return c.json({
-    ...customer,
-    total_spent: parseFloat(stats[0].total_spent),
-    order_count: parseInt(stats[0].order_count, 10),
-  });
 });
 
 router.get('/:id/orders', async (c) => {
@@ -243,7 +294,7 @@ router.post(
       const createdCustomer = rows[0];
       const invite = await generatePasswordSetupInvite(c, client, createdCustomer as any);
       await client.query('COMMIT');
-      return c.json({ ...createdCustomer, invite }, 201);
+      return c.json({ ...mapRegisteredCustomer(createdCustomer), invite }, 201);
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       if (isUniqueViolation(error))
@@ -295,7 +346,7 @@ router.put(
       );
 
       if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
-      return c.json(rows[0]);
+      return c.json(mapRegisteredCustomer(rows[0]));
     } catch (error) {
       if (isUniqueViolation(error))
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
@@ -319,12 +370,48 @@ router.patch(
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
       if (!currentUser) return jsonError(c, 401, 'Usuário não autenticado');
+      if (!isUserRole(currentUser.role)) {
+        logger.error('Tentativa de alteração de cargo com sessão inválida', new Error('Invalid actor role'), {
+          actorUserId: currentUser.id,
+          role: currentUser.role,
+        });
+        return jsonError(c, 403, 'Sessão com cargo inválido');
+      }
 
       if (String(currentUser.id) === String(id)) {
         return jsonError(c, 400, 'Não é permitido alterar o próprio cargo por este endpoint');
       }
 
-      const { role, password } = c.req.valid('json');
+      const { role, password } = c.req.valid('json') as { role: UserRole; password: string };
+
+      const { rows: targetRows } = await db.query('SELECT id, name, role FROM users WHERE id = $1', [id]);
+      if (!targetRows.length) return jsonError(c, 404, 'Usuário não encontrado');
+
+      const targetUser = targetRows[0];
+      if (!isUserRole(targetUser.role)) {
+        logger.error('Usuário alvo com cargo inválido em alteração de cargo', new Error('Invalid target role'), {
+          targetUserId: id,
+          role: targetUser.role,
+        });
+        return jsonError(
+          c,
+          409,
+          'O usuário alvo possui um cargo inválido e precisa ser corrigido manualmente'
+        );
+      }
+
+      if (role === 'shura' && !isShuraRole(currentUser.role)) {
+        return jsonError(c, 403, 'Apenas um SHURA pode promover outros usuários a este cargo');
+      }
+
+      if (targetUser.role === 'shura' && !isShuraRole(currentUser.role)) {
+        return jsonError(c, 403, 'Apenas um SHURA pode alterar o cargo de outro SHURA');
+      }
+
+      if (!canManageRole(currentUser.role, targetUser.role, role)) {
+        return jsonError(c, 403, 'Você não tem permissão para aplicar este cargo');
+      }
+
       const passwordCheck = await validatePrivilegedAction(
         c,
         db,
@@ -339,7 +426,10 @@ router.patch(
         [role, id]
       );
       if (!rows.length) return jsonError(c, 404, 'Usuário não encontrado');
-      return c.json(rows[0]);
+      return c.json({
+        ...rows[0],
+        role: parseStoredRole(rows[0].role, 'Usuário'),
+      });
     } catch (error) {
       logger.error('Erro ao atualizar cargo do cliente (PATCH role)', error as Error, {
         id: c.req.param('id'),

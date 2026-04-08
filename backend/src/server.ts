@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono, Next } from 'hono';
 import { createDb } from './db';
 import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security';
 import { isSafeMethod, jsonError } from './utils/http';
@@ -17,11 +17,20 @@ import uploadRoutes from './routes/upload';
 import paymentRoutes from './routes/payments';
 import aiRoutes from './routes/ai';
 import analyticsRoutes from './routes/analytics';
+import { loadLocalEnv } from './load-local-env';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { auditMiddleware } from './middleware/audit';
 import { csrfMiddleware, optionalAuthMiddleware } from './middleware/auth';
+import { inputSanitizationMiddleware } from './middleware/inputSanitization';
+import { validationMiddleware } from './middleware/validation';
 import { Bindings, Variables, Database } from './types';
+
+// Carrega variáveis locais SOMENTE em ambiente Node.js (desenvolvimento/testes)
+// NÃO executa no Cloudflare Workers runtime, pois não existe process.cwd() e não precisa de .env
+if (typeof process !== 'undefined' && typeof process.cwd === 'function') {
+  loadLocalEnv();
+}
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 const DBLESS_PATH_PREFIXES = ['/api/health'];
@@ -32,8 +41,10 @@ app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
 app.use('/api/*', originGuardMiddleware);
 app.use('/api/*', auditMiddleware);
+app.use('/api/*', inputSanitizationMiddleware);
+app.use('/api/*', validationMiddleware);
 
-app.get('/api/health', async (c) => {
+app.get('/api/health', async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const isProduction = c.env?.ENVIRONMENT === 'production';
 
   const health: any = {
@@ -74,7 +85,7 @@ app.get('/api/health', async (c) => {
   return c.json(health, statusCode as any);
 });
 
-app.use('/api/*', async (c, next) => {
+app.use('/api/*', async (c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) => {
   const path = c.req.path;
   if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     await next();
@@ -95,27 +106,38 @@ app.use('/api/*', async (c, next) => {
   const db = createDb(connectionString);
   c.set('db', db);
 
-  try {
-    await optionalAuthMiddleware(c, async () => {
-      await csrfMiddleware(c, next);
-    });
-  } catch (error) {
-    logger.error('Erro na Requisição API', error as Error);
-    return jsonError(c, 500, 'Erro interno no servidor');
-  } finally {
-    const closePromise = db.close().catch((error) => {
-      logger.warn('DB close error', { error: error?.message });
-    });
+  await next();
+});
 
-    if ((c as any).executionCtx?.waitUntil) {
-      (c as any).executionCtx.waitUntil(closePromise);
-    } else {
-      await closePromise;
-    }
+app.use('/api/*', async (c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) => {
+  const path = c.req.path;
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    await next();
+    return;
+  }
+  try {
+    await optionalAuthMiddleware(c, next);
+  } catch (error) {
+    logger.error('Erro de Autenticação/Sessão', error as Error);
+    return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-app.onError((error, c) => {
+app.use('/api/*', async (c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) => {
+  const path = c.req.path;
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    await next();
+    return;
+  }
+  try {
+    await csrfMiddleware(c as any, next);
+  } catch (error) {
+    logger.error('Erro de CSRF/Origem', error as Error);
+    return jsonError(c, 500, 'Erro interno no servidor');
+  }
+});
+
+app.onError((error, c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   logger.error('Unhandled Global Error', error, {
     path: c.req.path,
     method: c.req.method,
