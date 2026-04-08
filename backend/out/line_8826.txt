@@ -1,0 +1,30 @@
+8812:           c.res = await this.#notFoundHandler(c);
+8813:         });
+8814:       } catch (err) {
+8815:         return this.#handleError(err, c);
+8816:       }
+8817:       return res instanceof Promise ? res.then(
+8818:         (resolved) => resolved || (c.finalized ? c.res : this.#notFoundHandler(c))
+8819:       ).catch((err) => this.#handleError(err, c)) : res ?? this.#notFoundHandler(c);
+8820:     }
+8821:     const composed = compose(matchResult[0], this.errorHandler, this.#notFoundHandler);
+8822:     return (async () => {
+8823:       try {
+8824:         const context2 = await composed(c);
+8825:         if (!context2.finalized) {
+8826:           throw new Error(
+8827:             "Context is not finalized. Did you forget to return a Response object or `await next()`?"
+8828:           );
+8829:         }
+8830:         return context2.res;
+8831:       } catch (err) {
+8832:         return this.#handleError(err, c);
+8833:       }
+8834:     })();
+8835:   }
+8836:   /**
+8837:    * `.fetch()` will be entry point of your app.
+8838:    *
+8839:    * @see {@link https://hono.dev/docs/api/hono#fetch}
+8840:    *
+8841:    * @param {Request} request - request Object of request

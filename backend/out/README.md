@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "lojinha-do-ze-backend" generated at 2026-04-08T05:30:26.471Z.
