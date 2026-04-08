@@ -68,11 +68,11 @@ router.post('/', authMiddleware, adminOnly, async (c) => {
 });
 
 router.get('/products/:filename', async (c) => {
-  try {
-    const paramFilename = c.req.param('filename');
-    const sanitized = paramFilename.replace(/[^a-zA-Z0-9._-]/g, '');
-    
-    if (sanitized !== paramFilename || paramFilename.includes('..')) {
+    try {
+      const paramFilename = c.req.param('filename');
+      const sanitized = paramFilename.replace(/[^a-fA-F0-9._-]/g, '');
+      
+      if (sanitized !== paramFilename || paramFilename.includes('..')) {
       logger.warn('Bloqueada tentativa potencial de path traversal', { filename: paramFilename });
       return c.text('Bad Request', 400);
     }

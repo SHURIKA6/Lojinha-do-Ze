@@ -1,11 +1,15 @@
 # Lojinha do Zé
 
+![CI Status](https://github.com/SHURIKA6/Lojinha-do-Ze/actions/workflows/ci.yml/badge.svg)
+![Security Scan](https://github.com/SHURIKA6/Lojinha-do-Ze/actions/workflows/security-scan.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Aplicação full-stack de e-commerce com painel administrativo, painel de cliente, integração com Mercado Pago para pagamentos e funcionalidades de IA.
 
 ## Arquitetura
 
 | Camada | Tecnologia | Deploy |
-|--------|-----------|--------|
+| :--- | :--- | :--- |
 | **Frontend** | Next.js 16 + React 19 + TypeScript | Vercel |
 | **Backend** | Cloudflare Workers + Hono + Zod | Cloudflare Workers |
 | **Banco de Dados** | NeonDB (PostgreSQL serverless) | Neon |
@@ -53,6 +57,7 @@ cp backend/env.example backend/.dev.vars
 ```
 
 Edite com suas credenciais:
+
 - `DATABASE_URL` — string de conexão do NeonDB
 - `FRONTEND_URL` — URL do frontend local (`http://localhost:3000`)
 - `MERCADO_PAGO_ACCESS_TOKEN` — token do Mercado Pago
@@ -126,7 +131,7 @@ npm run test         # Executa testes com Jest
 
 ## Estrutura do Projeto
 
-```
+```text
 ├── backend/                 # API Cloudflare Workers (Hono)
 │   ├── src/
 │   │   ├── domain/          # Schemas Zod, constantes, roles
@@ -165,10 +170,11 @@ A API possui documentação completa no formato OpenAPI 3.0 (Swagger).
 ### Visualizar Documentação
 
 1. **Online (Swagger UI):**
-   - Acesse https://editor.swagger.io
+   - Acesse <https://editor.swagger.io>
    - Faça upload do arquivo `backend/openapi.yml`
 
 2. **Local (Swagger UI):**
+
    ```bash
    # Instale o swagger-ui-express ou use ferramentas como Insomnia/Postman
    # que importam automaticamente arquivos OpenAPI
@@ -177,7 +183,7 @@ A API possui documentação completa no formato OpenAPI 3.0 (Swagger).
 ### Resumo das Rotas
 
 | Tag | Endpoints | Descrição |
-|-----|-----------|-----------|
+| :--- | :--- | :--- |
 | **Auth** | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` | Autenticação e sessão |
 | **Clientes** | `GET/POST/PUT/DELETE /customers/*` | Gestão de clientes (admin) |
 | **Catálogo** | `GET /catalog`, `POST /catalog/orders` | Produtos e criação de pedidos |
@@ -245,7 +251,7 @@ npm run e2e
 ## Status do Projeto
 
 | Categoria | Score | Status |
-|-----------|-------|--------|
+| :--- | :--- | :--- |
 | Segurança | 8.5/10 | ✅ Validação zod, bcrypt, CORS, rate limiting |
 | Código | 8.5/10 | ✅ TypeScript strict, organização clara |
 | Documentação | 9/10 | ✅ README, OpenAPI/Swagger |

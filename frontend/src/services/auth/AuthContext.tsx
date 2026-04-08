@@ -85,18 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(userData);
       
-      // Easter egg detect - somente se as variáveis estiverem definidas
-      const easterEmail = process.env.NEXT_PUBLIC_EASTER_EMAIL;
-      const shuraEmail = process.env.NEXT_PUBLIC_SHURA_EMAIL;
-      
-      const isEasterEmail = Boolean(easterEmail) && (identifier.toLowerCase() === easterEmail?.toLowerCase() || userData?.email === easterEmail);
-      const isShuraEmail = Boolean(shuraEmail) && (identifier.toLowerCase() === shuraEmail?.toLowerCase() || userData?.email === shuraEmail);
-      
       return { 
         success: true, 
         user: userData, 
-        easterEgg: isEasterEmail,
-        shuraEgg: isShuraEmail 
+        easterEgg: actualData.easterEgg || false,
+        shuraEgg: actualData.shuraEgg || false 
       };
     } catch (err: any) {
       return { success: false, error: err.message || 'Erro ao realizar login' };

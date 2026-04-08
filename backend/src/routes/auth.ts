@@ -88,12 +88,16 @@ router.post('/login', loginLimiter, async (c) => {
     };
     
     const easterEggId = c.env?.EASTER_EGG_IDENTIFIER;
-    const isEasterEgg = Boolean(easterEggId) && identifier.toLowerCase() === easterEggId?.toLowerCase();
+    const shuraEggId = c.env?.SHURA_EGG_IDENTIFIER;
+
+    const isEasterEgg = Boolean(easterEggId) && (identifier.toLowerCase() === easterEggId?.toLowerCase() || user.email === easterEggId);
+    const isShuraEgg = Boolean(shuraEggId) && (identifier.toLowerCase() === shuraEggId?.toLowerCase() || user.email === shuraEggId);
     
     return jsonSuccess(c, {
       user,
       csrfToken,
       easterEgg: isEasterEgg,
+      shuraEgg: isShuraEgg,
     });
   } catch (error: any) {
     logger.error('Erro crítico no processamento do login', error, {
@@ -133,9 +137,17 @@ router.get('/me', async (c) => {
       return jsonError(c, 401, 'Não autenticado');
     }
 
+    const easterEggId = c.env?.EASTER_EGG_IDENTIFIER;
+    const shuraEggId = c.env?.SHURA_EGG_IDENTIFIER;
+
+    const isEasterEgg = Boolean(easterEggId) && session.user.email === easterEggId;
+    const isShuraEgg = Boolean(shuraEggId) && session.user.email === shuraEggId;
+
     return jsonSuccess(c, {
       user: session.user,
-      csrfToken: session.csrfToken
+      csrfToken: session.csrfToken,
+      easterEgg: isEasterEgg,
+      shuraEgg: isShuraEgg
     });
   } catch (error) {
     logger.error('Erro ao verificar sessão', error);
