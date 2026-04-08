@@ -66,7 +66,7 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
     const offset = (page - 1) * itemsPerPage;
     const timer = setTimeout(() => {
       getCatalog({ search, category: activeCategory, limit: itemsPerPage, offset })
-        .then((data: any) => {
+        .then((data: CatalogData) => {
           if (!active) return;
           
           if (page === 1) {
