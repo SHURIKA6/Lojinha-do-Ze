@@ -4,7 +4,7 @@ import {
   ORDER_STATUS_VALUES,
   PAYMENT_METHOD_VALUES,
   PRODUCT_CATEGORY_VALUES,
-} from './constants';
+} from '../constants';
 
 function emptyToUndefined(value: unknown) {
   if (typeof value !== 'string') return value;
@@ -31,6 +31,22 @@ const nonNegativeMoney = (label: string) =>
     .number()
     .min(0, `${label} não pode ser negativo`)
     .max(999999.99, `${label} excede o limite permitido`);
+
+// Auth Schemas (Consolidated from auth.ts)
+export const SetupPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const LoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
 
 export const loginSchema = z
   .object({
