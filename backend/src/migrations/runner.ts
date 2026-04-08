@@ -52,6 +52,6 @@ export async function runMigrations(db: Database) {
       }
     }
   } finally {
-    client.release();
+    if (client.release) client.release();
   }
 }

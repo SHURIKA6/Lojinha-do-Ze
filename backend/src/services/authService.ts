@@ -147,9 +147,11 @@ export async function resolveSession(c: Context<any>, client: any) {
   // @ts-ignore
   c.set('session', session);
 
-  void touchSession(client, session.id).catch((error) => {
+  try {
+    await touchSession(client, session.id);
+  } catch (error) {
     logger.error('Erro ao atualizar sessão (touch)', error);
-  });
+  }
 
   return session;
 }
