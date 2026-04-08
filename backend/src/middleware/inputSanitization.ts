@@ -133,13 +133,13 @@ async function sanitizeRequest(c: Context): Promise<void> {
 /**
  * Middleware de sanitização de inputs
  */
-export function inputSanitizationMiddleware(c: Context, next: Next) {
+export async function inputSanitizationMiddleware(c: Context, next: Next) {
   // Apenas chamamos se houver um corpo passível de JSON
   const contentType = c.req.header('content-type');
   if (['POST', 'PUT', 'PATCH'].includes(c.req.method) && contentType?.includes('application/json')) {
-    sanitizeRequest(c);
+    await sanitizeRequest(c);
   }
-  next();
+  await next();
 }
 
 /**

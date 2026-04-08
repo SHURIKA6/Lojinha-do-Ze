@@ -31,6 +31,14 @@ yarn-error.log*
 .output
 tail.json
 *.jsonl
+logs.json
+logs2.json
+msg.txt
+msg.utf8.txt
+msg2.utf8.txt
+test_compose.js
+out/
+dist/
 
 # local env files
 .env*.local
