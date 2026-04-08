@@ -7,7 +7,7 @@ import { authMiddleware, csrfMiddleware } from '../middleware/auth';
 import { loginLimiter } from '../middleware/rateLimit';
 import { isUserRole } from '../domain/roles';
 import { Bindings, Variables } from '../types';
-import { SetupPasswordSchema, ChangePasswordSchema } from '@shared/schemas/auth';
+import { SetupPasswordSchema, ChangePasswordSchema } from '../domain/schemas/auth';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
