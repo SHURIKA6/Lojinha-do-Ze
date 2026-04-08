@@ -101,12 +101,33 @@ app.use('/api/*', async (c, next) => {
   const db = createDb(connectionString);
   c.set('db', db);
 
+  await next();
+});
+
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    await next();
+    return;
+  }
   try {
-    await optionalAuthMiddleware(c, async () => {
-      await csrfMiddleware(c, next);
-    });
+    await optionalAuthMiddleware(c, next);
   } catch (error) {
-    logger.error('Erro na Requisição API', error as Error);
+    logger.error('Erro de Autenticação/Sessão', error as Error);
+    return jsonError(c, 500, 'Erro interno no servidor');
+  }
+});
+
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    await next();
+    return;
+  }
+  try {
+    await csrfMiddleware(c, next);
+  } catch (error) {
+    logger.error('Erro de CSRF/Origem', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });

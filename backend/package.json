@@ -30,11 +30,12 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/supertest": "^7.2.0",
-    "console-ninja": "^1.0.0",
     "cross-env": "^10.1.0",
     "eslint": "^10.0.3",
     "globals": "^17.4.0",
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.9",
@@ -44,5 +45,11 @@
   },
   "overrides": {
     "undici": "7.24.2"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }
