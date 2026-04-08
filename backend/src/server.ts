@@ -26,7 +26,12 @@ import { inputSanitizationMiddleware } from './middleware/inputSanitization';
 import { validationMiddleware } from './middleware/validation';
 import { Bindings, Variables, Database } from './types';
 
-loadLocalEnv();
+// Carrega variáveis locais SOMENTE em ambiente Node.js (desenvolvimento/testes)
+// NÃO executa no Cloudflare Workers runtime, pois não existe process.cwd() e não precisa de .env
+if (typeof process !== 'undefined' && typeof process.cwd === 'function') {
+  loadLocalEnv();
+}
+
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 const DBLESS_PATH_PREFIXES = ['/api/health'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
