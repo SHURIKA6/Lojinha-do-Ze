@@ -135,9 +135,10 @@ router.get('/', async (c) => {
 
 router.post(
   '/orders',
+  zValidator('json', orderCreateSchema),
   orderLimiter,
-  zValidator('json', orderCreateSchema, validationError),
   async (c) => {
+    console.log('Entering /orders handler');
     const db = c.get('db');
     if (!db.connect) {
       return jsonError(c, 500, 'Erro de configuração do banco de dados');
@@ -172,7 +173,7 @@ router.post(
       const productMap = new Map(productsFromDb.map((p: ProductRow) => [p.id.toString(), p]));
 
       for (const item of mergedItems) {
-        const product = productMap.get(item.productId);
+        const product = productMap.get(item.productId.toString());
 
         if (!product) {
           await client.query('ROLLBACK');

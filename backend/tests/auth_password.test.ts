@@ -99,7 +99,7 @@ describe('Password Management API', () => {
       const res = await app.request('/setup-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'NewPassword123', confirmPassword: 'NewPassword123' }),
+        body: JSON.stringify({ userId: '123e4567-e89b-12d3-a456-426614174000', newPassword: 'NewPassword123' }),
       });
 
       expect(res.status).toBe(200);
@@ -107,19 +107,6 @@ describe('Password Management API', () => {
       expect(db.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE users SET password'), expect.arrayContaining(['hash:NewPassword123']));
     });
 
-    it('deve falhar se as senhas não coincidirem', async () => {
-      const db = buildDbMock();
-      const app = buildApp(authRoutes, db);
-
-      const res = await app.request('/setup-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'Pass1', confirmPassword: 'Pass2' }),
-      });
-
-      expect(res.status).toBe(400);
-      await expect(res.json()).resolves.toEqual({ error: 'As senhas não coincidem' });
-    });
 
     it('deve falhar se o usuário já possuir senha', async () => {
       const db = buildDbMock({
@@ -135,7 +122,7 @@ describe('Password Management API', () => {
       const res = await app.request('/setup-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'NewPassword123', confirmPassword: 'NewPassword123' }),
+        body: JSON.stringify({ userId: '123e4567-e89b-12d3-a456-426614174000', newPassword: 'NewPassword123' }),
       });
 
       expect(res.status).toBe(400);

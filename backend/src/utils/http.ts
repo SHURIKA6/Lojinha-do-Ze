@@ -60,7 +60,7 @@ interface ValidationResult {
 
 export function validationError(result: ValidationResult, c: Context) {
   if (!result.success) {
-    return jsonError(c, 400, result.error?.issues[0]?.message || 'Validation error');
+    return jsonError(c, 400, result.error?.issues[0]?.message || 'Validation error', result.error?.issues);
   }
 
   return undefined;

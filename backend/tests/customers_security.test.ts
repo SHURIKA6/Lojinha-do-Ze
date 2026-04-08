@@ -95,9 +95,11 @@ describe('Customers and Profile Security', () => {
     );
 
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({
-      error: 'Informe ao menos um campo para atualização',
-    });
+    await expect(res.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: 'Informe ao menos um campo para atualização',
+      })
+    );
   });
 
   it('exige confirmação de senha para alterar cargo', async () => {

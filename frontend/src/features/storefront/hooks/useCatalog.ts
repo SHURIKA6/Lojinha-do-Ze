@@ -74,16 +74,28 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
             setCategoryTabs(mapCategoryTabs(data || null));
           } else {
             setCatalogData(prev => {
-              const newCategories = [...(prev?.categories || [])];
-              (data?.categories || []).forEach((cat: CatalogCategory) => {
-                const existing = newCategories.find(c => c.name === cat.name);
+              const currentCategories = prev?.categories || [];
+              const incomingCategories = data?.categories || [];
+
+              const categoryMap = new Map(currentCategories.map(c => [c.name, c]));
+
+              incomingCategories.forEach(cat => {
+                const existing = categoryMap.get(cat.name);
                 if (existing) {
-                  existing.products = [...existing.products, ...cat.products];
+                  categoryMap.set(cat.name, {
+                    ...existing,
+                    products: [...existing.products, ...cat.products]
+                  });
                 } else {
-                  newCategories.push(cat);
+                  categoryMap.set(cat.name, cat);
                 }
               });
-              return { ...prev, categories: newCategories, total: data.total };
+
+              return {
+                ...prev,
+                categories: Array.from(categoryMap.values()),
+                total: data.total
+              };
             });
           }
         })

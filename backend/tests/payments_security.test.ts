@@ -133,7 +133,7 @@ describe('Payments Security', () => {
           identificationNumber: '12345678901',
         }),
       },
-      { MERCADO_PAGO_ACCESS_TOKEN: 'token' }
+      { MERCADO_PAGO_ACCESS_TOKEN: 'token', PAYMENT_LOOKUP_SECRET: 'test-secret' }
     );
 
     expect(forbiddenCreate.status).toBe(403);
@@ -152,7 +152,7 @@ describe('Payments Security', () => {
           identificationNumber: '12345678901',
         }),
       },
-      { MERCADO_PAGO_ACCESS_TOKEN: 'token' }
+      { MERCADO_PAGO_ACCESS_TOKEN: 'token', PAYMENT_LOOKUP_SECRET: 'test-secret' }
     );
 
     expect(created.status).toBe(201);
@@ -175,7 +175,7 @@ describe('Payments Security', () => {
           lookupToken: 'f'.repeat(64),
         }),
       },
-      { MERCADO_PAGO_ACCESS_TOKEN: 'token' }
+      { MERCADO_PAGO_ACCESS_TOKEN: 'token', PAYMENT_LOOKUP_SECRET: 'test-secret' }
     );
     expect(forbiddenStatus.status).toBe(403);
 
@@ -189,7 +189,7 @@ describe('Payments Security', () => {
           lookupToken: createdJson.lookup_token,
         }),
       },
-      { MERCADO_PAGO_ACCESS_TOKEN: 'token' }
+      { MERCADO_PAGO_ACCESS_TOKEN: 'token', PAYMENT_LOOKUP_SECRET: 'test-secret' }
     );
 
     expect(status.status).toBe(200);
