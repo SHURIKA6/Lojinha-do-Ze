@@ -173,14 +173,17 @@ export default function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) 
                 const isActive = pathname === item.href;
 
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`${styles.link} ${isActive ? styles.active : ''}`}
-                    onClick={() => setMobileOpen(false)}
-                    title={collapsed ? item.label : undefined}
-                    aria-label={collapsed ? item.label : undefined}
-                  >
+                   <Link
+                     key={item.href}
+                     href={item.href}
+                     className={`${styles.link} ${isActive ? styles.active : ''}`}
+                     onClick={(e) => {
+                       // Corrige bug de navegação: aguarda a navegação acontecer antes de alterar estado
+                       setTimeout(() => setMobileOpen(false), 0);
+                     }}
+                     title={collapsed ? item.label : undefined}
+                     aria-label={collapsed ? item.label : undefined}
+                   >
                     <span className={styles.linkIcon}>
                       <Icon />
                     </span>
@@ -199,7 +202,9 @@ export default function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) 
             <Link
               href="/admin/perfil"
               className={styles.avatar}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                setTimeout(() => setMobileOpen(false), 0);
+              }}
               title={collapsed ? 'Abrir perfil' : undefined}
               aria-label={collapsed ? 'Abrir perfil' : undefined}
             >
@@ -208,7 +213,9 @@ export default function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) 
             <Link
               href="/admin/perfil"
               className={styles.userInfo}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                setTimeout(() => setMobileOpen(false), 0);
+              }}
               aria-hidden={collapsed}
               tabIndex={collapsed ? -1 : undefined}
             >
