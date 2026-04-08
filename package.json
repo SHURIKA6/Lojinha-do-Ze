@@ -1,0 +1,12 @@
+{
+  "name": "lojinha-do-ze-monorepo",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}
