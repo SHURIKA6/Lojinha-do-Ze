@@ -21,7 +21,7 @@ export async function createSessionRecord(client: Database, session: Partial<Ses
       session.csrfToken,
       session.ipAddress || null,
       session.userAgent || null,
-      session.expiresAt,
+      session.expiresAt instanceof Date ? session.expiresAt.toISOString() : session.expiresAt,
     ]
   );
 

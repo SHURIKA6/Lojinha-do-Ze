@@ -15,11 +15,25 @@ export function createDb(connectionString: string): Database {
 
   return {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
-      return pool.query<T>(text, params);
+      // SEC-FIX: Neon serverless driver over HTTP can fail to serialize native JS Date objects
+      const processedParams = params?.map(p => (p instanceof Date ? p.toISOString() : p));
+      return pool.query<T>(text, processedParams);
     },
 
-    connect() {
-      return pool.connect();
+    async connect() {
+      const client = await pool.connect();
+      const originalQuery = client.query.bind(client);
+      
+      // Override query to handle Date serialization
+      // @ts-ignore - complex overloads on pg client
+      client.query = (text: any, params?: any[]) => {
+        const processedParams = Array.isArray(params) 
+          ? params.map(p => (p instanceof Date ? p.toISOString() : p)) 
+          : params;
+        return originalQuery(text, processedParams);
+      };
+      
+      return client;
     },
 
     async close() {

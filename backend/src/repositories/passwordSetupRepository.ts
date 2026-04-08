@@ -23,7 +23,12 @@ export async function createPasswordSetupToken(client: Database, tokenData: Part
     `INSERT INTO password_setup_tokens (user_id, token_hash, setup_code, expires_at)
      VALUES ($1, $2, $3, $4)
      RETURNING id, user_id, setup_code, expires_at`,
-    [tokenData.userId, tokenData.tokenHash, tokenData.setupCode, tokenData.expiresAt]
+    [
+      tokenData.userId,
+      tokenData.tokenHash,
+      tokenData.setupCode,
+      tokenData.expiresAt instanceof Date ? tokenData.expiresAt.toISOString() : tokenData.expiresAt
+    ]
   );
 
   return rows[0];
