@@ -11,9 +11,14 @@ router.use('*', authMiddleware, adminOnly);
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
+    if (!db) {
+      logger.error('Dashboard: db não disponível no contexto');
+      return jsonError(c, 500, 'Erro interno: banco de dados indisponível.');
+    }
+
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
     const [revRes, expRes, activeRes, salesRes, lowStockRes, recentRes, dailyTxRes, catRes] =
       await Promise.all([
@@ -50,17 +55,21 @@ router.get('/', async (c) => {
       ]);
 
     const chartData: Record<string, { day: string; receita: number; despesa: number }> = {};
-    dailyTxRes.rows.forEach((row: any) => {
-      const day = new Date(row.day_date).toISOString().split('T')[0];
-      if (!chartData[day]) {
-        chartData[day] = { day, receita: 0, despesa: 0 };
+    for (const row of (dailyTxRes?.rows ?? [])) {
+      try {
+        const day = new Date(row.day_date).toISOString().split('T')[0];
+        if (!chartData[day]) {
+          chartData[day] = { day, receita: 0, despesa: 0 };
+        }
+        if (row.type === 'receita') {
+          chartData[day].receita = parseFloat(row.total ?? '0');
+        } else {
+          chartData[day].despesa = parseFloat(row.total ?? '0');
+        }
+      } catch {
+        // skip malformed row
       }
-      if (row.type === 'receita') {
-        chartData[day].receita = parseFloat(row.total ?? '0');
-      } else {
-        chartData[day].despesa = parseFloat(row.total ?? '0');
-      }
-    });
+    }
 
     setNoStore(c as any);
     return c.json({
@@ -69,10 +78,10 @@ router.get('/', async (c) => {
       profit: parseFloat(revRes.rows[0]?.total ?? '0') - parseFloat(expRes.rows[0]?.total ?? '0'),
       activeOrders: parseInt(activeRes.rows[0]?.count ?? '0', 10),
       totalSales: parseInt(salesRes.rows[0]?.count ?? '0', 10),
-      lowStock: lowStockRes.rows,
-      recentOrders: recentRes.rows,
+      lowStock: lowStockRes?.rows ?? [],
+      recentOrders: recentRes?.rows ?? [],
       chartData: Object.values(chartData),
-      categoryChart: catRes.rows.map((item: any) => ({ 
+      categoryChart: (catRes?.rows ?? []).map((item: any) => ({ 
         name: item.name, 
         value: parseInt(item.value ?? '0', 10) 
       })),
