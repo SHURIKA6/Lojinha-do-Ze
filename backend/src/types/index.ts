@@ -209,6 +209,7 @@ export type Bindings = {
   TRUST_PROXY?: string;
   JWT_SECRET?: string;
   NEXT_PUBLIC_VAPID_KEY?: string;
+  BUCKET?: any;
   [key: string]: any;
 };
 

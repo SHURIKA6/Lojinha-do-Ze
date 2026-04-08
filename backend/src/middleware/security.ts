@@ -192,6 +192,6 @@ export const originGuardMiddleware: MiddlewareHandler<{ Bindings: Bindings }> = 
 };
 
 export const securityHeadersMiddleware: MiddlewareHandler = async (c, next) => {
-  await next();
   applySecurityHeaders(c);
+  await next();
 };
