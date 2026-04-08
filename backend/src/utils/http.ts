@@ -15,40 +15,35 @@ export function jsonSuccess(c: Context, data: any, status: number = 200) {
 }
 
 export function applySecurityHeaders(c: Context): void {
-  const headers = c.res.headers;
+  // SEC-15: script-src 'none' explícito — API não serve HTML/scripts
+  c.header(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+    { append: false }
+  );
 
-  if (!headers.has('Content-Security-Policy')) {
-    headers.set(
-      'Content-Security-Policy',
-      // SEC-15: script-src 'none' explícito — API não serve HTML/scripts
-      "default-src 'self'; script-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
-    );
-  }
-
-  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   // SEC-14: geolocation=() — e-commerce não precisa de geolocalização
-  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  headers.set('X-Frame-Options', 'DENY');
-  headers.set('X-Content-Type-Options', 'nosniff');
-  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  c.header('X-Frame-Options', 'DENY');
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('Cross-Origin-Opener-Policy', 'same-origin');
 
   let isHttps = false;
   try {
-    const requestUrl = new URL(c.req.url, 'http://localhost');
+    const requestUrl = new URL(c.req.url);
     isHttps = requestUrl.protocol === 'https:';
   } catch {
-    // Fallback caso a análise da URL falhe
+    // Fallback
   }
 
-  // SEC-13: Em Cloudflare Workers, c.req.url reflete o protocolo real do cliente.
-  // O HSTS é setado apenas em HTTPS, o que é correto para este ambiente.
   if (isHttps) {
-    headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
 }
 
 export function setNoStore(c: Context): void {
-  c.res.headers.set('Cache-Control', 'no-store');
+  c.header('Cache-Control', 'no-store');
 }
 
 interface ValidationResult {

@@ -6,6 +6,7 @@ import { resolveSession } from '../services/authService';
 import { isSafeMethod, jsonError } from '../utils/http';
 import { isAllowedOrigin } from './security';
 import { Bindings, Variables } from '../types';
+import { logger } from '../utils/logger';
 
 async function loadSession(c: Context<{ Bindings: Bindings; Variables: Variables }>) {
   const db = c.get('db');

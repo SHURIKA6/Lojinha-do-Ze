@@ -9,9 +9,6 @@ FRONTEND_URL = "https://lojinha-do-ze.vercel.app"
 ALLOWED_ORIGINS = "https://lojinha-do-ze.vercel.app,http://localhost:3000"
 TRUST_PROXY = "true"
 
-# Nota: DATABASE_URL e JWT_SECRET devem ser configurados como Secrets no dashboard da Cloudflare.
-# Para desenvolvimento local, o Wrangler usa o arquivo .dev.vars automaticamente.
-# DATABASE_URL = ""
-# JWT_SECRET = ""
-# MERCADO_PAGO_ACCESS_TOKEN = ""
-# GEMINI_API_KEY = ""
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "lojinha-do-ze-bucket"
