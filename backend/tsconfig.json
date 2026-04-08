@@ -6,13 +6,16 @@
     "lib": ["ESNext"],
     "strict": true,
     "skipLibCheck": true,
-    "rootDir": ".",
     "types": ["@cloudflare/workers-types"],
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,
     "isolatedModules": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["src/**/*", "tests/**/*", "scripts/**/*"]
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "../shared/**/*"]
 }

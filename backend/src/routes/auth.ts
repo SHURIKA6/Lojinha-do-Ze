@@ -7,6 +7,7 @@ import { authMiddleware, csrfMiddleware } from '../middleware/auth';
 import { loginLimiter } from '../middleware/rateLimit';
 import { isUserRole } from '../domain/roles';
 import { Bindings, Variables } from '../types';
+import { SetupPasswordSchema, ChangePasswordSchema } from '@shared/schemas/auth';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -156,32 +157,23 @@ router.post('/refresh-csrf', authMiddleware, async (c) => {
 
 /**
  * POST /api/auth/setup-password
- * Define a senha para a primeira vez (apenas se não houver senha)
+ * Define a senha para a primeira vez (Apenas Administradores)
  */
 router.post('/setup-password', authMiddleware, async (c) => {
   const session = c.get('session');
   const db = c.get('db');
-  let body: any;
-  try {
-    body = await c.req.json();
-  } catch (e) {
-    return jsonError(c, 400, 'Corpo da requisição inválido');
-  }
 
-  const { password, confirmPassword } = body;
-
-  if (!password || !confirmPassword) {
-    return jsonError(c, 400, 'Senha e confirmação são obrigatórias');
-  }
-
-  if (password !== confirmPassword) {
-    return jsonError(c, 400, 'As senhas não coincidem');
+  if (session.user.role !== 'admin') {
+    return jsonError(c, 403, 'Apenas administradores podem configurar senhas de usuários');
   }
 
   try {
+    const body = await c.req.json();
+    const validated = SetupPasswordSchema.parse(body);
+
     const { rows } = await db.query(
       'SELECT password FROM users WHERE id = $1',
-      [session.user.id]
+      [validated.userId]
     );
     const user = rows[0];
 
@@ -193,14 +185,17 @@ router.post('/setup-password', authMiddleware, async (c) => {
       return jsonError(c, 400, 'A senha já foi definida. Use /change-password para alterá-la');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(validated.newPassword, 10);
     await db.query(
       'UPDATE users SET password = $1 WHERE id = $2',
-      [hashedPassword, session.user.id]
+      [hashedPassword, validated.userId]
     );
 
     return jsonSuccess(c, { message: 'Senha definida com sucesso' });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return jsonError(c, 400, 'Dados de entrada inválidos', error.errors);
+    }
     logger.error('Erro ao definir senha', error);
     return jsonError(c, 500, 'Erro interno ao definir senha');
   }

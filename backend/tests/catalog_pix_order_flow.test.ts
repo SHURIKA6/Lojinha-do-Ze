@@ -106,7 +106,7 @@ describe('Catalog Pix Order Flow', () => {
         body: JSON.stringify({
           customer_name: 'Ana',
           customer_phone: '(65) 99999-0000',
-          items: [{ productId: '1', quantity: 1 }],
+          items: [{ productId: 1, quantity: 1 }],
           delivery_type: 'entrega',
           address: 'Rua A, 123',
           payment_method: 'pix',

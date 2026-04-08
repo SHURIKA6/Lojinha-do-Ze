@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r -i -n \"\\(sql|query|execute|$1|$2|$3|$4|$5|insert into|update |delete from|select.*from\\)\" backend/src/ --include=\"*.ts\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(dir /b)",
+      "Bash(npm audit:*)",
+      "Bash(grep -rE \"\\([''''\"\"]\\).{16,}\\([''''\"\"]\\)\" backend/src)",
+      "Bash(grep -rn \"db.query\\(\\\\`\" backend/src)",
+      "Bash(grep -rn \"\\\\.query\\(\\\\`\" backend/src)",
+      "Bash(find backend/src frontend/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(git check-ignore:*)",
+      "Bash(git worktree:*)",
+      "Bash(sed -i '/\\\\.worktrees\\\\//d' .gitignore)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(npx jest:*)",
+      "Bash(cross-env:*)",
+      "Bash(tee output.txt)",
+      "Bash(./node_modules/.bin/jest tests/catalog_pix_order_flow.test.ts)",
+      "Bash(NODE_OPTIONS=--experimental-vm-modules npx jest tests/payments_security.test.ts)",
+      "Bash(ls:*)"
+    ]
+  },
+  "outputStyle": "Explanatory"
+}

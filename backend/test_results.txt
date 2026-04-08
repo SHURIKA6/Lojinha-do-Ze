@@ -1,0 +1,192 @@
+
+> lojinha-do-ze-backend@1.0.0 test
+> cross-env NODE_OPTIONS=--experimental-vm-modules jest
+
+(node:22860) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24644) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24900) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9608) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  console.warn
+    {"timestamp":"2026-04-08T00:32:14.817Z","level":"warn","message":"Bloqueada tentativa potencial de path traversal","context":{"filename":"..-secret.txt"}}
+
+    [0m [90m 80 |[39m   warn[33m:[39m (message[33m:[39m string[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {
+     [90m 81 |[39m     [36mif[39m (currentLevel [33m<=[39m [33mLOG_LEVELS[39m[33m.[39mwarn) {
+    [31m[1m>[22m[39m[90m 82 |[39m       console[33m.[39mwarn(formatLog([32m'warn'[39m[33m,[39m message[33m,[39m context))[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 83 |[39m     }
+     [90m 84 |[39m   }[33m,[39m
+     [90m 85 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m error[33m?[39m[33m:[39m [33mError[39m [33m|[39m unknown[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {[0m
+
+      at Object.warn (src/utils/logger.ts:82:15)
+      at Array.warn (src/routes/upload.ts:76:14)
+      at Hono.#dispatch (node_modules/hono/dist/hono-base.js:288:38)
+      at Hono.fetch (node_modules/hono/dist/hono-base.js:325:26)
+      at Hono.request (node_modules/hono/dist/hono-base.js:344:17)
+      at Object.request (tests/upload_security.test.ts:30:27)
+
+(node:14264) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  console.warn
+    {"timestamp":"2026-04-08T00:32:15.040Z","level":"warn","message":"Tentativa de upload bloqueada com assinatura de arquivo inválida","context":{"filename":"falso.png","type":"image/png","extension":"png"}}
+
+    [0m [90m 80 |[39m   warn[33m:[39m (message[33m:[39m string[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {
+     [90m 81 |[39m     [36mif[39m (currentLevel [33m<=[39m [33mLOG_LEVELS[39m[33m.[39mwarn) {
+    [31m[1m>[22m[39m[90m 82 |[39m       console[33m.[39mwarn(formatLog([32m'warn'[39m[33m,[39m message[33m,[39m context))[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 83 |[39m     }
+     [90m 84 |[39m   }[33m,[39m
+     [90m 85 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m error[33m?[39m[33m:[39m [33mError[39m [33m|[39m unknown[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {[0m
+
+      at Object.warn (src/utils/logger.ts:82:15)
+      at warn (src/routes/upload.ts:46:14)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at adminOnly (tests/upload_security.test.ts:10:5)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at authMiddleware (tests/upload_security.test.ts:7:5)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/hono-base.js:301:25
+      at Object.<anonymous> (tests/upload_security.test.ts:47:17)
+
+(node:20468) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  console.warn
+    {"timestamp":"2026-04-08T00:32:15.240Z","level":"warn","message":"Falha na confirmação de ação privilegiada","context":{"action":"customers.updateRole","actorUserId":"1","targetId":"2"}}
+
+    [0m [90m 80 |[39m   warn[33m:[39m (message[33m:[39m string[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {
+     [90m 81 |[39m     [36mif[39m (currentLevel [33m<=[39m [33mLOG_LEVELS[39m[33m.[39mwarn) {
+    [31m[1m>[22m[39m[90m 82 |[39m       console[33m.[39mwarn(formatLog([32m'warn'[39m[33m,[39m message[33m,[39m context))[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 83 |[39m     }
+     [90m 84 |[39m   }[33m,[39m
+     [90m 85 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m error[33m?[39m[33m:[39m [33mError[39m [33m|[39m unknown[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {[0m
+
+      at Object.warn (src/utils/logger.ts:82:15)
+      at warn (src/routes/customers.ts:78:12)
+      at src/routes/customers.ts:415:29
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/validator/validator.js:81:12
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at adminOnly (tests/customers_security.test.ts:26:5)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at authMiddleware (tests/customers_security.test.ts:19:5)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at tests/customers_security.test.ts:74:5
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/hono-base.js:301:25
+      at Object.<anonymous> (tests/customers_security.test.ts:123:23)
+
+  console.warn
+    {"timestamp":"2026-04-08T00:32:15.576Z","level":"warn","message":"Falha na confirmação de ação privilegiada","context":{"action":"customers.delete","actorUserId":"1","targetId":"3"}}
+
+    [0m [90m 80 |[39m   warn[33m:[39m (message[33m:[39m string[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {
+     [90m 81 |[39m     [36mif[39m (currentLevel [33m<=[39m [33mLOG_LEVELS[39m[33m.[39mwarn) {
+    [31m[1m>[22m[39m[90m 82 |[39m       console[33m.[39mwarn(formatLog([32m'warn'[39m[33m,[39m message[33m,[39m context))[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 83 |[39m     }
+     [90m 84 |[39m   }[33m,[39m
+     [90m 85 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m error[33m?[39m[33m:[39m [33mError[39m [33m|[39m unknown[33m,[39m context[33m?[39m[33m:[39m unknown) [33m=>[39m {[0m
+
+      at Object.warn (src/utils/logger.ts:82:15)
+      at warn (src/routes/customers.ts:78:12)
+      at src/routes/customers.ts:459:29
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/validator/validator.js:81:12
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at adminOnly (tests/customers_security.test.ts:26:5)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at authMiddleware (tests/customers_security.test.ts:19:5)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at tests/customers_security.test.ts:74:5
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/hono-base.js:301:25
+      at Object.<anonymous> (tests/customers_security.test.ts:360:23)
+
+FAIL tests/customers_security.test.ts
+  ● Customers and Profile Security › bloqueia tentativa de enviar campo de privilégio no perfil
+
+    expect(received).resolves.toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 7
+
+      Object {
+    +   "details": Array [
+    +     Object {
+    +       "code": "custom",
+    +       "message": "Informe ao menos um campo para atualização",
+    +       "path": Array [],
+    +     },
+    +   ],
+        "error": "Informe ao menos um campo para atualização",
+      }
+
+    [0m [90m  96 |[39m
+     [90m  97 |[39m     expect(res[33m.[39mstatus)[33m.[39mtoBe([35m400[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m  98 |[39m     [36mawait[39m expect(res[33m.[39mjson())[33m.[39mresolves[33m.[39mtoEqual({
+     [90m     |[39m                                       [31m[1m^[22m[39m
+     [90m  99 |[39m       error[33m:[39m [32m'Informe ao menos um campo para atualização'[39m[33m,[39m
+     [90m 100 |[39m     })[33m;[39m
+     [90m 101 |[39m   })[33m;[39m[0m
+
+      at Object.toEqual (node_modules/expect/build/index.js:2140:20)
+      at Object.toEqual (tests/customers_security.test.ts:98:39)
+
+(node:26260) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26260) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:24628) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24628) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+  console.log
+    {"timestamp":"2026-04-08T00:32:17.063Z","level":"info","message":"Audit Request: POST /api/health","context":{"requestId":"4e6de57b-a033-47a9-95f7-4a4841404522","method":"POST","path":"/api/health","user":"anonymous","body":{"test":"data"},"ip":"hidden"}}
+
+      at Object.log [as info] (src/utils/logger.ts:77:35)
+
+  console.log
+    {"timestamp":"2026-04-08T00:32:17.205Z","level":"info","message":"Audit Response: POST /api/health - 200","context":{"requestId":"4e6de57b-a033-47a9-95f7-4a4841404522","status":200,"duration":"149ms"}}
+
+      at Object.log [as info] (src/utils/logger.ts:77:35)
+
+  console.log
+    Entering /orders handler
+
+      at log (src/routes/catalog.ts:141:33)
+
+(node:10832) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  console.log
+    DEBUG Test Query: BEGIN []
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: SELECT id, total, status, customer_name, items, payment_method FROM orders WHERE id = $1 FOR UPDATE [ '12' ]
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1 [ '12', 'recebido' ]
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: INSERT INTO transactions (type, category, description, value, date, order_id)
+                     VALUES ($1, $2, $3, $4, NOW(), $5) [ 'receita', 'Venda de produtos (PIX)', 'Pedido #12 - Ana', 15, '12' ]
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: COMMIT []
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 1 failed, 8 passed, 9 total
+Tests:       1 failed, 43 passed, 44 total
+Snapshots:   0 total
+Time:        6.413 s
+Ran all test suites.

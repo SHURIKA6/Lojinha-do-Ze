@@ -1,0 +1,103 @@
+
+> lojinha-do-ze-backend@1.0.0 test
+> cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/payments_security.test.ts
+
+(node:24756) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  console.error
+    {"timestamp":"2026-04-08T00:15:55.623Z","level":"error","message":"Nenhum segredo de lookup configurado (PAYMENT_LOOKUP_SECRET ou MERCADO_PAGO_WEBHOOK_SECRET)","context":{"error":{"message":"undefined","name":"UnknownError"}}}
+
+    [0m [90m 91 |[39m       } [33m:[39m { message[33m:[39m [33mString[39m(error)[33m,[39m name[33m:[39m [32m'UnknownError'[39m }[33m;[39m
+     [90m 92 |[39m
+    [31m[1m>[22m[39m[90m 93 |[39m       [90m/* eslint-disable */[39mconsole[33m.[39merror([33m...[39moo_tx([32m`4184704335_93_6_96_9_11`[39m[33m,[39mformatLog([32m'error'[39m[33m,[39m message[33m,[39m {
+     [90m    |[39m                                   [31m[1m^[22m[39m
+     [90m 94 |[39m         error[33m:[39m sanitizeObject(errorDetails)[33m,[39m
+     [90m 95 |[39m         [33m...[39msanitizeObject(context) [36mas[39m [33mRecord[39m[33m<[39m[33mstring[39m[33m,[39m unknown[33m>[39m[33m,[39m
+     [90m 96 |[39m       })))[33m;[39m[0m
+
+      at Object.error (src/utils/logger.ts:93:35)
+      at error (src/routes/payments.ts:24:12)
+      at getPaymentLookupSecret (src/routes/payments.ts:45:26)
+      at createPaymentLookupToken (src/routes/payments.ts:190:29)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/validator/validator.js:81:12
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at src/middleware/rateLimit.ts:97:5
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at tests/payments_security.test.ts:56:5
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/hono-base.js:301:25
+      at Object.<anonymous> (tests/payments_security.test.ts:141:21)
+
+  console.error
+    {"timestamp":"2026-04-08T00:15:55.670Z","level":"error","message":"Erro ao processar pagamento Pix","context":{"error":{"message":"Configuração de segurança de pagamentos ausente","stack":"Error: Configuração de segurança de pagamentos ausente\n    at getPaymentLookupSecret (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\src\\routes\\payments.ts:25:11)\n    at getPaymentLookupSecret (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\src\\routes\\payments.ts:45:26)\n    at createPaymentLookupToken (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\src\\routes\\payments.ts:190:29)\n    at dispatch (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\node_modules\\hono\\dist\\compose.js:22:17)\n    at C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\node_modules\\hono\\dist\\validator\\validator.js:81:12\n    at dispatch (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\node_modules\\hono\\dist\\compose.js:22:17)\n    at C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\src\\middleware\\rateLimit.ts:97:5\n    at dispatch (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\node_modules\\hono\\dist\\compose.js:22:17)\n    at C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\tests\\payments_security.test.ts:56:5\n    at dispatch (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\node_modules\\hono\\dist\\compose.js:22:17)\n    at C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\node_modules\\hono\\dist\\hono-base.js:301:25\n    at Object.<anonymous> (C:\\Users\\ferna\\OneDrive\\Área de Trabalho\\Lojinha do Zé\\backend\\tests\\payments_security.test.ts:141:21)","name":"Error"}}}
+
+    [0m [90m 91 |[39m       } [33m:[39m { message[33m:[39m [33mString[39m(error)[33m,[39m name[33m:[39m [32m'UnknownError'[39m }[33m;[39m
+     [90m 92 |[39m
+    [31m[1m>[22m[39m[90m 93 |[39m       [90m/* eslint-disable */[39mconsole[33m.[39merror([33m...[39moo_tx([32m`4184704335_93_6_96_9_11`[39m[33m,[39mformatLog([32m'error'[39m[33m,[39m message[33m,[39m {
+     [90m    |[39m                                   [31m[1m^[22m[39m
+     [90m 94 |[39m         error[33m:[39m sanitizeObject(errorDetails)[33m,[39m
+     [90m 95 |[39m         [33m...[39msanitizeObject(context) [36mas[39m [33mRecord[39m[33m<[39m[33mstring[39m[33m,[39m unknown[33m>[39m[33m,[39m
+     [90m 96 |[39m       })))[33m;[39m[0m
+
+      at Object.error (src/utils/logger.ts:93:35)
+      at error (src/routes/payments.ts:195:12)
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/validator/validator.js:81:12
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at src/middleware/rateLimit.ts:97:5
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at tests/payments_security.test.ts:56:5
+      at dispatch (node_modules/hono/dist/compose.js:22:17)
+      at node_modules/hono/dist/hono-base.js:301:25
+      at Object.<anonymous> (tests/payments_security.test.ts:141:21)
+
+  console.log
+    DEBUG Test Query: BEGIN []
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: SELECT id, total, status, customer_name, items, payment_method FROM orders WHERE id = $1 FOR UPDATE [ '12' ]
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1 [ '12', 'recebido' ]
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: INSERT INTO transactions (type, category, description, value, date, order_id)
+                     VALUES ($1, $2, $3, $4, NOW(), $5) [ 'receita', 'Venda de produtos (PIX)', 'Pedido #12 - Ana', 15, '12' ]
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+  console.log
+    DEBUG Test Query: COMMIT []
+
+      at Object.log (tests/payments_security.test.ts:211:35)
+
+FAIL tests/payments_security.test.ts
+  ● Payments Security › valida telefone e pedido ao criar e consultar pagamentos Pix
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+    [0m [90m 156 |[39m     )[33m;[39m
+     [90m 157 |[39m
+    [31m[1m>[22m[39m[90m 158 |[39m     expect(created[33m.[39mstatus)[33m.[39mtoBe([35m201[39m)[33m;[39m
+     [90m     |[39m                            [31m[1m^[22m[39m
+     [90m 159 |[39m     [36mconst[39m createdJson [33m=[39m [36mawait[39m created[33m.[39mjson() [36mas[39m any[33m;[39m
+     [90m 160 |[39m     expect(createdJson)[33m.[39mtoEqual(
+     [90m 161 |[39m       expect[33m.[39mobjectContaining({[0m
+
+      at Object.toBe (tests/payments_security.test.ts:158:28)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 passed, 2 total
+Snapshots:   0 total
+Time:        0.549 s, estimated 1 s
+Ran all test suites matching tests/payments_security.test.ts.
