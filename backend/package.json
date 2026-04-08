@@ -4,6 +4,9 @@
   "description": "Backend API for Lojinha do Zé management system",
   "main": "src/server.ts",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "scripts": {
     "dev": "wrangler dev",
     "build": "tsc --noEmit",

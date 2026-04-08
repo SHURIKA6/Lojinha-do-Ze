@@ -73,11 +73,11 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
             setCatalogData(data || { categories: [], total: 0 });
             setCategoryTabs(mapCategoryTabs(data || null));
           } else {
-            setCatalogData(prev => {
+            setCatalogData((prev: CatalogData) => {
               const currentCategories = prev?.categories || [];
               const incomingCategories = data?.categories || [];
 
-              const categoryMap = new Map(currentCategories.map(c => [c.name, c]));
+              const categoryMap = new Map<string, CatalogCategory>(currentCategories.map((c: CatalogCategory) => [c.name, c]));
 
               incomingCategories.forEach(cat => {
                 const existing = categoryMap.get(cat.name);
@@ -124,15 +124,15 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
 
   const loadMore = () => {
     if (hasMore && !loading) {
-      setPage(prev => prev + 1);
+      setPage((prev: number) => prev + 1);
     }
   };
 
   const allProducts = useMemo(() => {
     const categories = Array.isArray(catalogData?.categories) ? catalogData.categories : [];
     return categories
-      .flatMap((c) => Array.isArray(c?.products) ? c.products : [])
-      .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' }));
+      .flatMap((c: CatalogCategory) => (Array.isArray(c?.products) ? c.products : []))
+      .sort((left: Product, right: Product) => left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' }));
   }, [catalogData]);
 
   const filteredProducts = useMemo(() => {
@@ -141,7 +141,7 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
 
   const totalProductsCount = useMemo(() => {
     if (categoryTabs.length > 0) {
-      return categoryTabs.reduce((sum, category) => sum + category.count, 0);
+      return categoryTabs.reduce((sum: number, category: CategoryTab) => sum + category.count, 0);
     }
 
     return catalogData.total || 0;
