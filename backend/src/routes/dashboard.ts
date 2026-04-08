@@ -56,26 +56,32 @@ router.get('/', async (c) => {
         chartData[day] = { day, receita: 0, despesa: 0 };
       }
       if (row.type === 'receita') {
-        chartData[day].receita = parseFloat(row.total);
+        chartData[day].receita = parseFloat(row.total ?? '0');
       } else {
-        chartData[day].despesa = parseFloat(row.total);
+        chartData[day].despesa = parseFloat(row.total ?? '0');
       }
     });
 
     setNoStore(c as any);
     return c.json({
-      monthRevenue: parseFloat(revRes.rows[0]?.total ?? 0),
-      monthExpenses: parseFloat(expRes.rows[0]?.total ?? 0),
-      profit: parseFloat(revRes.rows[0]?.total ?? 0) - parseFloat(expRes.rows[0]?.total ?? 0),
-      activeOrders: parseInt(activeRes.rows[0]?.count ?? 0, 10),
-      totalSales: parseInt(salesRes.rows[0]?.count ?? 0, 10),
+      monthRevenue: parseFloat(revRes.rows[0]?.total ?? '0'),
+      monthExpenses: parseFloat(expRes.rows[0]?.total ?? '0'),
+      profit: parseFloat(revRes.rows[0]?.total ?? '0') - parseFloat(expRes.rows[0]?.total ?? '0'),
+      activeOrders: parseInt(activeRes.rows[0]?.count ?? '0', 10),
+      totalSales: parseInt(salesRes.rows[0]?.count ?? '0', 10),
       lowStock: lowStockRes.rows,
       recentOrders: recentRes.rows,
       chartData: Object.values(chartData),
-      categoryChart: catRes.rows.map((item: any) => ({ name: item.name, value: parseFloat(item.value ?? 0) })),
+      categoryChart: catRes.rows.map((item: any) => ({ 
+        name: item.name, 
+        value: parseInt(item.value ?? '0', 10) 
+      })),
     });
   } catch (error) {
-    logger.error('Erro no Dashboard', error as Error);
+    logger.error('Erro no Dashboard', error as Error, {
+      message: (error as Error).message,
+      stack: (error as Error).stack
+    });
     return jsonError(c, 500, 'Erro ao carregar o dashboard das métricas.');
   }
 });
