@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { clearSessionCookies, destroySession, issueSession, resolveSession } from '../services/authService';
 import { jsonError, jsonSuccess } from '../utils/http';
 import bcrypt from 'bcryptjs';
@@ -15,7 +15,7 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
  * POST /api/auth/login
  * Autentica o usuário e cria uma sessão
  */
-router.post('/login', loginLimiter, async (c) => {
+router.post('/login', loginLimiter, async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   let body: any;
   try {
     body = await c.req.json();
@@ -112,7 +112,7 @@ router.post('/login', loginLimiter, async (c) => {
  * POST /api/auth/logout
  * Destrói a sessão atual
  */
-router.post('/logout', async (c) => {
+router.post('/logout', async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const db = c.get('db');
   const client = await db.connect();
   try {
@@ -127,7 +127,7 @@ router.post('/logout', async (c) => {
  * GET /api/auth/me
  * Retorna o perfil do usuário logado baseado na sessão do cookie
  */
-router.get('/me', async (c) => {
+router.get('/me', async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const db = c.get('db');
   const client = await db.connect();
   try {
@@ -161,7 +161,7 @@ router.get('/me', async (c) => {
  * POST /api/auth/refresh-csrf
  * Atualiza o token CSRF da sessão
  */
-router.post('/refresh-csrf', authMiddleware, async (c) => {
+router.post('/refresh-csrf', authMiddleware, async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const session = c.get('session');
   return jsonSuccess(c, { csrfToken: session.csrfToken });
 });
@@ -171,7 +171,7 @@ router.post('/refresh-csrf', authMiddleware, async (c) => {
  * POST /api/auth/setup-password
  * Define a senha para a primeira vez (Apenas Administradores)
  */
-router.post('/setup-password', authMiddleware, async (c) => {
+router.post('/setup-password', authMiddleware, async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const session = c.get('session');
   const db = c.get('db');
 
@@ -217,7 +217,7 @@ router.post('/setup-password', authMiddleware, async (c) => {
  * POST /api/auth/change-password
  * Altera a senha do usuário autenticado
  */
-router.post('/change-password', authMiddleware, async (c) => {
+router.post('/change-password', authMiddleware, async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const session = c.get('session');
   const db = c.get('db');
   let body: any;

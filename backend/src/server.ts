@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono, Next } from 'hono';
 import { createDb } from './db';
 import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security';
 import { isSafeMethod, jsonError } from './utils/http';
@@ -44,7 +44,7 @@ app.use('/api/*', auditMiddleware);
 app.use('/api/*', inputSanitizationMiddleware);
 app.use('/api/*', validationMiddleware);
 
-app.get('/api/health', async (c) => {
+app.get('/api/health', async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   const isProduction = c.env?.ENVIRONMENT === 'production';
 
   const health: any = {
@@ -85,7 +85,7 @@ app.get('/api/health', async (c) => {
   return c.json(health, statusCode as any);
 });
 
-app.use('/api/*', async (c, next) => {
+app.use('/api/*', async (c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) => {
   const path = c.req.path;
   if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     await next();
@@ -109,7 +109,7 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-app.use('/api/*', async (c, next) => {
+app.use('/api/*', async (c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) => {
   const path = c.req.path;
   if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     await next();
@@ -123,21 +123,21 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
-app.use('/api/*', async (c, next) => {
+app.use('/api/*', async (c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) => {
   const path = c.req.path;
   if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     await next();
     return;
   }
   try {
-    await csrfMiddleware(c, next);
+    await csrfMiddleware(c as any, next);
   } catch (error) {
     logger.error('Erro de CSRF/Origem', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');
   }
 });
 
-app.onError((error, c) => {
+app.onError((error, c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
   logger.error('Unhandled Global Error', error, {
     path: c.req.path,
     method: c.req.method,
