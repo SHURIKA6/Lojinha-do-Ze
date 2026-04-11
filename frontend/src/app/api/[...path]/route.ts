@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? 'https://lojinha-do-ze-backend.riad777.workers.dev' 
-    : 'http://127.0.0.1:8787'); // Port 8787 is the wrangler default
+const BACKEND_URL = process.env.BACKEND_URL || 'https://lojinha-do-ze-api.fernandoriaddasilvaribeiro.workers.dev';
 
 /**
  * Headers que NÃO devem ser repassados ao backend.
@@ -89,6 +86,9 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
   const fetchOptions: RequestInit = {
     method,
     headers,
+    credentials: 'include',
+    // Timeout para evitar requisições pendentes infinitas
+    signal: AbortSignal.timeout(10000),
   };
 
   // Ler o body para métodos que o exigem
