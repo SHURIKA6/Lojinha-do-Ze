@@ -5,23 +5,28 @@ if (typeof globalThis.WebSocket !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 
+const poolCache = new Map<string, Pool>();
+
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const pool = new Pool({ connectionString });
-  let closed = false;
+  let pool = poolCache.get(connectionString);
+  if (!pool) {
+    pool = new Pool({ connectionString });
+    poolCache.set(connectionString, pool);
+  }
 
   return {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
       // SEC-FIX: Neon serverless driver over HTTP can fail to serialize native JS Date objects
       const processedParams = params?.map(p => (p instanceof Date ? p.toISOString() : p));
-      return pool.query<T>(text, processedParams);
+      return (pool as Pool).query<T>(text, processedParams);
     },
 
     async connect() {
-      const client = await pool.connect();
+      const client = await (pool as Pool).connect();
       const originalQuery = client.query.bind(client);
       
       // Override query to handle Date serialization
@@ -37,9 +42,9 @@ export function createDb(connectionString: string): Database {
     },
 
     async close() {
-      if (closed) return;
-      closed = true;
-      await pool.end();
+      // No longer automatically close the pool to allow reuse.
+      // Pool end should be handled by a global lifecycle if needed,
+      // but in serverless we usually just let it handle it.
     },
   };
 }

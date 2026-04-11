@@ -1,0 +1,325 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
+import { useToast } from '@/components/ui/ToastProvider';
+import {
+  deleteOrder,
+  formatCurrency,
+  formatDateTime,
+  getOrders,
+  updateOrderStatus,
+  formatAddress
+} from '@/lib/api';
+import {
+  FiClock,
+  FiCreditCard,
+  FiMapPin,
+  FiPackage,
+  FiPhone,
+  FiSearch,
+  FiTrash2,
+  FiTruck,
+  FiUser,
+} from 'react-icons/fi';
+import { Order } from '@/types';
+
+const orderStatuses = ['novo', 'recebido', 'em_preparo', 'saiu_entrega', 'concluido', 'cancelado'];
+
+const statusLabels: Record<string, string> = {
+  novo: 'Novo',
+  recebido: 'Recebido',
+  em_preparo: 'Em preparo',
+  saiu_entrega: 'Saiu para entrega',
+  concluido: 'Concluído',
+  cancelado: 'Cancelado',
+};
+
+const statusColors: Record<string, string> = {
+  novo: 'info',
+  recebido: 'neutral',
+  em_preparo: 'warning',
+  saiu_entrega: 'primary',
+  concluido: 'success',
+  cancelado: 'danger',
+};
+
+export default function PedidosPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
+  const toast = useToast();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setOrders(await getOrders());
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Não foi possível carregar os pedidos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (id: number | string, status: string) => {
+    try {
+      await updateOrderStatus(String(id), status as any);
+      toast.success('Status do pedido atualizado.');
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Não foi possível atualizar o pedido.');
+    }
+  };
+
+  const handleDelete = async (id: number | string) => {
+    const confirmed = await confirm({
+      title: 'Excluir pedido',
+      description: 'Esta ação não pode ser desfeita.',
+      body: 'Deseja realmente excluir este pedido?',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteOrder(String(id));
+      toast.success('Pedido excluído com sucesso.');
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Não foi possível excluir o pedido.');
+    }
+  };
+
+  const filtered = useMemo(() => {
+    return orders.filter((order) => {
+      const matchStatus = !statusFilter || order.status === statusFilter;
+      const matchSearch =
+        !search ||
+        order.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+        order.customer_phone?.includes(search);
+
+      return matchStatus && matchSearch;
+    });
+  }, [orders, search, statusFilter]);
+
+  const activeOrdersCount = orders.filter((order) =>
+    ['novo', 'recebido', 'em_preparo', 'saiu_entrega'].includes(order.status || '')
+  ).length;
+
+  const advanceStatus = (id: number | string, currentStatus: string, deliveryType: string) => {
+    let next = 'concluido';
+
+    if (currentStatus === 'novo' || currentStatus === 'recebido') {
+      next = 'em_preparo';
+    } else if (currentStatus === 'em_preparo') {
+      next = deliveryType === 'retirada' ? 'concluido' : 'saiu_entrega';
+    } else if (currentStatus === 'saiu_entrega') {
+      next = 'concluido';
+    }
+
+    handleStatusChange(id, next);
+  };
+
+  const getActionLabel = (status: string, deliveryType: string) => {
+    if (status === 'novo' || status === 'recebido') {
+      return 'Marcar em preparo';
+    }
+
+    if (status === 'em_preparo') {
+      return deliveryType === 'retirada' ? 'Finalizar retirada' : 'Saiu para entrega';
+    }
+
+    if (status === 'saiu_entrega') {
+      return 'Concluir pedido';
+    }
+
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <div className="app-loader" style={{ minHeight: '60vh' }}>
+        <div className="app-loader__spinner" />
+        <p>Carregando pedidos...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fadeIn surface-stack">
+      <div className="page-header">
+        <div>
+          <span className="page-eyebrow">
+            <FiPackage />
+            Logística
+          </span>
+          <h1>Pedidos</h1>
+          <p className="page-header__subtitle">
+            {orders.length} pedidos no total, {activeOrdersCount} em andamento agora.
+          </p>
+        </div>
+      </div>
+
+      <div className="tabs">
+        <button className={`tab ${statusFilter === '' ? 'active' : ''}`} onClick={() => setStatusFilter('')}>
+          Todos ({orders.length})
+        </button>
+        {orderStatuses.map((status) => {
+          const count = orders.filter((order) => order.status === status).length;
+
+          return (
+            <button
+              key={status}
+              className={`tab ${statusFilter === status ? 'active' : ''}`}
+              onClick={() => setStatusFilter(status)}
+            >
+              {statusLabels[status]} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="filter-bar">
+        <div className="table-search">
+          <FiSearch className="table-search__icon" />
+          <input
+            placeholder="Buscar por cliente ou telefone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="ops-order-grid">
+        {filtered.map((order) => {
+          let items: any[] = [];
+
+          try {
+            items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || [];
+          } catch (error) {
+            console.error(error);
+          }
+
+          const actionLabel = getActionLabel(order.status || '', order.delivery_type || '');
+
+          return (
+            <article key={order.id} className="ops-order-card">
+              <div className="ops-order-card__head">
+                <div>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                    <h3>#{order.id}</h3>
+                    <span className={`badge badge--${statusColors[order.status || ''] || 'neutral'}`}>
+                      {statusLabels[order.status || ''] || order.status}
+                    </span>
+                  </div>
+                  <div className="ops-order-card__line">
+                    <FiClock />
+                    {formatDateTime(order.created_at || '')}
+                  </div>
+                </div>
+
+                <div className="ops-order-card__amount">{formatCurrency(Number(order.total))}</div>
+              </div>
+
+              <div className="ops-order-card__body">
+                <div>
+                  <div className="ops-order-card__label">Cliente</div>
+                  <div className="ops-order-card__line">
+                    <FiUser />
+                    {order.customer_name || 'Cliente avulso'}
+                  </div>
+                  <div className="ops-order-card__line">
+                    <FiPhone />
+                    {order.customer_phone || 'Sem telefone'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="ops-order-card__label">Entrega e pagamento</div>
+                  <div className="ops-order-card__line">
+                    {order.delivery_type === 'retirada' ? <FiPackage /> : <FiTruck />}
+                    {order.delivery_type === 'retirada' ? 'Retirada no local' : 'Entrega local'}
+                  </div>
+                  {order.delivery_type === 'entrega' && order.address && (
+                    <div className="ops-order-card__line">
+                      <FiMapPin />
+                      {formatAddress(order.address)}
+                    </div>
+                  )}
+                  <div className="ops-order-card__line">
+                    <FiCreditCard />
+                    Pagamento: {order.payment_method?.toUpperCase() || 'Não informado'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="ops-order-card__label">Itens</div>
+                  <div className="ops-order-card__list">
+                    {items.map((item, index) => (
+                      <div key={`${order.id}-${index}`} className="ops-order-card__item">
+                        <span>
+                          <strong>{item.quantity}x</strong> {item.name}
+                        </span>
+                        <span>{formatCurrency((item.price || 0) * (item.quantity || 0))}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {order.notes && <div className="ops-order-card__note">{order.notes}</div>}
+              </div>
+
+              <div className="ops-order-card__footer">
+                <select
+                  className="form-select"
+                  value={order.status}
+                  onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                >
+                  {orderStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {statusLabels[status]}
+                    </option>
+                  ))}
+                </select>
+
+                {actionLabel ? (
+                  <button
+                    className="btn btn--primary"
+                    onClick={() => advanceStatus(order.id, order.status || '', order.delivery_type || '')}
+                  >
+                    {actionLabel}
+                  </button>
+                ) : (
+                  <button className="btn btn--danger" onClick={() => handleDelete(order.id)}>
+                    <FiTrash2 />
+                    Excluir
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+
+        {filtered.length === 0 && (
+          <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+            <div className="empty-state__icon">
+              <FiPackage />
+            </div>
+            <p>Nenhum pedido atende ao filtro atual.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

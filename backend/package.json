@@ -2,7 +2,7 @@
   "name": "lojinha-do-ze-backend",
   "version": "1.0.0",
   "description": "Backend API for Lojinha do Zé management system",
-  "main": "src/server.js",
+  "main": "src/server.ts",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
