@@ -13,11 +13,21 @@ export interface User {
   role: 'admin' | 'customer' | 'editor';
   phone?: string;
   cpf?: string;
-  address?: Address;
+  address?: string | Address;
   avatar?: string;
+  notes?: string;
+  total_spent?: number | string;
+  order_count?: number;
+  invite?: CustomerInvite;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CustomerInvite {
+  setupUrl: string;
+  setupCode: string;
+  expiresAt: string;
 }
 
 export interface AuthContextType {
@@ -227,6 +237,15 @@ export interface ChartData {
     borderColor?: string | string[];
     borderWidth?: number;
   }>;
+}
+
+export interface Transaction {
+  id: string;
+  type: 'entrada' | 'saida' | 'ajuste' | 'receita' | 'despesa';
+  value: number;
+  description: string;
+  date: string;
+  category?: string;
 }
 
 // ============================================

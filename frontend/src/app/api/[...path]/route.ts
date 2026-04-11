@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 
   (process.env.NODE_ENV === 'production' 
@@ -22,8 +22,8 @@ const STRIP_REQUEST_HEADERS = new Set([
  * Constrói os headers a serem enviados ao backend.
  * Repassa o cookie e demais cabeçalhos relevantes, removendo os problemáticos.
  */
-function buildProxyHeaders(request) {
-  const headers = {};
+function buildProxyHeaders(request: NextRequest): Record<string, string> {
+  const headers: Record<string, string> = {};
   for (const [key, value] of request.headers.entries()) {
     if (!STRIP_REQUEST_HEADERS.has(key.toLowerCase())) {
       headers[key] = value;
@@ -35,7 +35,7 @@ function buildProxyHeaders(request) {
 /**
  * Cria uma resposta Next.js que repassa os Set-Cookie e demais headers do backend.
  */
-function buildProxyResponse(backendResponse, body) {
+function buildProxyResponse(backendResponse: Response, body: any): NextResponse {
   const response = new NextResponse(JSON.stringify(body), {
     status: backendResponse.status,
     headers: {
@@ -44,7 +44,7 @@ function buildProxyResponse(backendResponse, body) {
   });
 
   // Repassar todos os Set-Cookie do backend para o browser
-  const setCookies = backendResponse.headers.getSetCookie?.() 
+  const setCookies = (backendResponse.headers as any).getSetCookie?.() 
     ?? backendResponse.headers.get('set-cookie')?.split(/,(?=\s*\w+=)/) 
     ?? [];
 
@@ -57,7 +57,7 @@ function buildProxyResponse(backendResponse, body) {
   return response;
 }
 
-async function parseBackendResponse(response) {
+async function parseBackendResponse(response: Response): Promise<any> {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     try {
@@ -75,7 +75,7 @@ async function parseBackendResponse(response) {
   }
 }
 
-async function proxyRequest(request, params, method) {
+async function proxyRequest(request: NextRequest, params: any, method: string): Promise<NextResponse> {
   // Next.js 15+: params é uma Promise
   const resolvedParams = await params;
   const path = resolvedParams.path.join('/');
@@ -86,7 +86,7 @@ async function proxyRequest(request, params, method) {
 
   const headers = buildProxyHeaders(request);
 
-  const fetchOptions = {
+  const fetchOptions: RequestInit = {
     method,
     headers,
   };
@@ -110,7 +110,7 @@ async function proxyRequest(request, params, method) {
     const response = await fetch(backendUrl, fetchOptions);
     const data = await parseBackendResponse(response);
     return buildProxyResponse(response, data);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Proxy error (${method} /api/${path}):`, error?.message || error);
     
     // Tentar porta alternativa em desenvolvimento se a primeira falhar
@@ -122,7 +122,7 @@ async function proxyRequest(request, params, method) {
         const response = await fetch(fallbackUrl, fetchOptions);
         const data = await parseBackendResponse(response);
         return buildProxyResponse(response, data);
-      } catch (fallbackError) {
+      } catch (fallbackError: any) {
         console.error(`Fallback error:`, fallbackError?.message || fallbackError);
       }
     }
@@ -134,22 +134,22 @@ async function proxyRequest(request, params, method) {
   }
 }
 
-export async function GET(request, { params }) {
+export async function GET(request: NextRequest, { params }: { params: any }) {
   return proxyRequest(request, params, 'GET');
 }
 
-export async function POST(request, { params }) {
+export async function POST(request: NextRequest, { params }: { params: any }) {
   return proxyRequest(request, params, 'POST');
 }
 
-export async function PUT(request, { params }) {
+export async function PUT(request: NextRequest, { params }: { params: any }) {
   return proxyRequest(request, params, 'PUT');
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request: NextRequest, { params }: { params: any }) {
   return proxyRequest(request, params, 'PATCH');
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request: NextRequest, { params }: { params: any }) {
   return proxyRequest(request, params, 'DELETE');
 }

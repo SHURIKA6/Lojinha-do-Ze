@@ -1,36 +1,42 @@
 import { request } from './client';
-import { User } from '@/types';
+import { User, ApiResponse } from '@/types';
 
 export interface LoginResponse {
   user: User;
   token?: string;
 }
 
-export function login(identifier: string, password: string): Promise<LoginResponse> {
-  return request<LoginResponse>('/auth/login', {
+export async function login(identifier: string, password: string): Promise<LoginResponse> {
+  const res = await request<ApiResponse<LoginResponse>>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ identifier, password }),
   });
+  if (!res.data) throw new Error(res.message || 'Erro ao fazer login');
+  return res.data;
 }
 
-export function logout(): Promise<void> {
-  return request<void>('/auth/logout', { method: 'POST' });
+export async function logout(): Promise<void> {
+  await request<ApiResponse<void>>('/auth/logout', { method: 'POST' });
 }
 
-export function getMe(): Promise<User> {
-  return request<User>('/auth/me');
+export async function getMe(): Promise<User> {
+  const res = await request<ApiResponse<User>>('/auth/me');
+  if (!res.data) throw new Error(res.message || 'Sessão inválida');
+  return res.data;
 }
 
-export function setupPassword(payload: any): Promise<any> {
-  return request('/auth/setup-password', {
+export async function setupPassword(payload: any): Promise<any> {
+  const res = await request<ApiResponse<any>>('/auth/setup-password', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  return res.data;
 }
 
-export function changePassword(payload: any): Promise<any> {
-  return request('/auth/change-password', {
+export async function changePassword(payload: any): Promise<any> {
+  const res = await request<ApiResponse<any>>('/auth/change-password', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  return res.data;
 }
