@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
-import { logger, sanitizeObject } from '../src/utils/logger.ts';
+import { logger, sanitizeObject } from '../src/utils/logger';
 
 describe('Logger', () => {
   let consoleOutput: any[] = [];

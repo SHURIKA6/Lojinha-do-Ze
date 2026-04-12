@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Hono } from 'hono';
+import { Bindings, Variables } from '../src/types';
 
 const bcryptCompareMock = jest.fn(async (value: any, hash: string) => hash === `hash:${value}`);
 
@@ -9,7 +10,7 @@ jest.unstable_mockModule('bcryptjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../src/middleware/auth.ts', () => ({
+jest.unstable_mockModule('../src/middleware/auth', () => ({
   authMiddleware: async (c: any, next: any) => {
     c.set('user', {
       id: c.req.header('x-test-user-id') || '1',
@@ -29,8 +30,8 @@ jest.unstable_mockModule('../src/middleware/auth.ts', () => ({
   },
 }));
 
-const { default: customersRoutes } = await import('../src/routes/customers.ts') as any;
-const { default: profileRoutes } = await import('../src/routes/profile.ts') as any;
+const { default: customersRoutes } = await import('../src/routes/customers') as any;
+const { default: profileRoutes } = await import('../src/routes/profile') as any;
 
 function buildDbMock(handlers: any = {}) {
   const query = jest.fn(async (text: string, params: any[]) => {
@@ -52,7 +53,7 @@ function buildDbMock(handlers: any = {}) {
 }
 
 function buildApp(route: any, db: any) {
-  const app = new Hono();
+  const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
   app.use('*', async (c, next) => {
     c.set('db', db);
     await next();

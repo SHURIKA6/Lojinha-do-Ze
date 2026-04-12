@@ -10,7 +10,7 @@ describe('Cache Service', () => {
   describe('Basic Operations', () => {
     it('should store and retrieve values', () => {
       cacheService.set('test-key', { data: 'value' }, 60);
-      const result = cacheService.get<{ data: string }>('test-key');
+      const result = cacheService.get('test-key');
       expect(result).toEqual({ data: 'value' });
     });
 

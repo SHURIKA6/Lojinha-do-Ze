@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Hono } from 'hono';
+import { Bindings, Variables } from '../src/types';
 
-const mockCreatePixPayment = jest.fn();
-const mockGetPayment = jest.fn();
+const mockCreatePixPayment = jest.fn() as any;
+const mockGetPayment = jest.fn() as any;
 
-jest.unstable_mockModule('../src/services/mercadoPagoService.ts', () => ({
+jest.unstable_mockModule('../src/services/mercadoPagoService', () => ({
   MercadoPagoService: class {
     async createPixPayment(payload: any) {
       return mockCreatePixPayment(payload);
@@ -16,7 +17,7 @@ jest.unstable_mockModule('../src/services/mercadoPagoService.ts', () => ({
   },
 }));
 
-const { default: paymentsRoutes } = await import('../src/routes/payments.ts') as any;
+const { default: paymentsRoutes } = await import('../src/routes/payments') as any;
 
 function buildDbMock(handlers: any = {}) {
   const query = jest.fn(async (text: string, params: any[]) => {
@@ -38,15 +39,15 @@ function buildDbMock(handlers: any = {}) {
 }
 
 function buildApp(db: any) {
-  const app = new Hono();
+  const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
   app.use('*', async (c, next) => {
     c.set('db', db);
     const userId = c.req.header('x-test-user-id');
     if (userId) {
       c.set('user', {
         id: userId,
-        role: c.req.header('x-test-user-role') || 'customer',
-      });
+        role: (c.req.header('x-test-user-role') as any) || 'customer',
+      } as any);
     }
     await next();
   });

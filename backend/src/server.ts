@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Next } from 'hono';
 import { createDb } from './db';
 import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security';
 import { isSafeMethod, jsonError } from './utils/http';
@@ -94,9 +94,9 @@ app.use('/api/*', async (c, next) => {
   c.set('db', db);
 
   try {
-    return await optionalAuthMiddleware(c, async () => {
+    return await optionalAuthMiddleware(c, (async () => {
       return await csrfMiddleware(c, next);
-    });
+    }) as Next);
   } catch (error) {
     logger.error('Erro na Requisição API', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');

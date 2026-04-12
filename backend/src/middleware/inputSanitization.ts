@@ -52,6 +52,13 @@ const XSS_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Sanitiza uma string contra XSS
+ */
+export function sanitizeString(value: string): string {
+  return sanitizeValue(value) as string;
+}
+
+/**
  * Sanitiza um valor individual
  */
 function sanitizeValue(value: unknown): unknown {
