@@ -1,5 +1,6 @@
 import { Pool, neonConfig, QueryResult, QueryResultRow } from '@neondatabase/serverless';
 import { Database } from './types';
+import { logger } from './utils/logger';
 
 if (typeof process !== 'undefined') {
   // Force disable WebSocket in Node.js to prevent ErrorEvent crashes
@@ -24,9 +25,18 @@ export function createDb(connectionString: string): Database {
 
   return {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
-      // SEC-FIX: Neon serverless driver over HTTP can fail to serialize native JS Date objects
-      const processedParams = params?.map(p => (p instanceof Date ? p.toISOString() : p));
-      return (pool as Pool).query<T>(text, processedParams);
+      const executeQuery = async () => {
+        const processedParams = params?.map(p => (p instanceof Date ? p.toISOString() : p));
+        return (pool as Pool).query<T>(text, processedParams);
+      };
+
+      return executeQuery().catch(async (err) => {
+        if (err.message?.includes('Connection terminated unexpectedly') || err.code === '57P01') {
+          logger.warn('Conexão do banco terminada inesperadamente. Tentando novamente...');
+          return executeQuery();
+        }
+        throw err;
+      });
     },
 
     async connect() {
