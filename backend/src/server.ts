@@ -77,13 +77,11 @@ app.get('/api/health', async (c) => {
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
   if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
-    await next();
-    return;
+    return await next();
   }
 
   if (isSafeMethod(c.req.method) && DBLESS_SAFE_PREFIXES.some((prefix) => path.startsWith(prefix))) {
-    await next();
-    return;
+    return await next();
   }
 
   const connectionString = c.env?.DATABASE_URL;
@@ -96,8 +94,8 @@ app.use('/api/*', async (c, next) => {
   c.set('db', db);
 
   try {
-    await optionalAuthMiddleware(c, async () => {
-      await csrfMiddleware(c, next);
+    return await optionalAuthMiddleware(c, async () => {
+      return await csrfMiddleware(c, next);
     });
   } catch (error) {
     logger.error('Erro na Requisição API', error as Error);
