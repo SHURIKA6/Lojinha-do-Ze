@@ -17,7 +17,6 @@
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",
     "@neondatabase/serverless": "^1.0.2",
-    "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "hono": "^4.12.7",
     "mercadopago": "^2.12.0",
@@ -28,7 +27,6 @@
     "@eslint/js": "^10.0.1",
     "@swc/core": "^1.15.21",
     "@swc/jest": "^0.2.39",
-    "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/supertest": "^7.2.0",
