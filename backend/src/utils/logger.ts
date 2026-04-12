@@ -14,7 +14,9 @@ const SENSITIVE_FIELDS = [
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
 type LogLevel = keyof typeof LOG_LEVELS;
 
-const currentLevel = LOG_LEVELS[(process.env.LOG_LEVEL as LogLevel) || 'info'] ?? LOG_LEVELS.info;
+const currentLevel = (typeof process !== 'undefined' && process.env?.LOG_LEVEL)
+  ? (LOG_LEVELS[process.env.LOG_LEVEL as LogLevel] ?? LOG_LEVELS.info)
+  : LOG_LEVELS.info;
 
 function maskValue(value: unknown): string {
   if (typeof value !== 'string') return String(value);
