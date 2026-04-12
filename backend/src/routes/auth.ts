@@ -28,12 +28,9 @@ router.post(
       try {
         const { csrfToken } = await authService.issueSession(c, client, user.id);
 
-        const isEasterEgg = loginId.trim().toLowerCase() === 'teste@gmail.com';
-
         return jsonSuccess(c, {
           user: { id: user.id, role: user.role },
           csrfToken,
-          easterEgg: isEasterEgg,
         });
       } finally {
         client.release();

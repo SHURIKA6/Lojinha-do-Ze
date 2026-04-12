@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './easter-egg.module.css';
 
 interface Particle {
   id: number;
