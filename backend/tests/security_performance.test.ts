@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import app from '../src/server.ts';
-import { cacheService } from '../src/services/cacheService.ts';
+import app from '../src/server';
+import { cacheService } from '../src/services/cacheService';
 
 describe('Security and Performance Integration', () => {
   describe('Audit Logging', () => {
@@ -39,13 +39,13 @@ describe('Security and Performance Integration', () => {
 
   describe('File Signature Validation', () => {
     it('should validate correct PNG signature', async () => {
-      const { validateFileSignature } = await import('../src/utils/file.ts');
+      const { validateFileSignature } = await import('../src/utils/file');
       const pngBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer;
       expect(validateFileSignature(pngBuffer, 'png')).toBe(true);
     });
 
     it('should reject incorrect signature', async () => {
-      const { validateFileSignature } = await import('../src/utils/file.ts');
+      const { validateFileSignature } = await import('../src/utils/file');
       const fakeBuffer = new Uint8Array([0x00, 0x00, 0x00, 0x00]).buffer;
       expect(validateFileSignature(fakeBuffer, 'png')).toBe(false);
     });

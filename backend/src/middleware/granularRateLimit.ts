@@ -53,7 +53,7 @@ type OperationType =
   | 'webhook_payment'
   | 'webhook_notification';
 
-type RateLimiter = (c: Context, next: Next) => Promise<void>;
+type RateLimiter = (c: Context, next: Next) => Promise<Response | void>;
 
 /**
  * Middleware para aplicar rate limiting baseado no tipo de operação
@@ -61,15 +61,14 @@ type RateLimiter = (c: Context, next: Next) => Promise<void>;
 export function applyGranularRateLimit(operationType: OperationType) {
   return async (c: Context, next: Next) => {
     const limiter = getRateLimiterForOperation(operationType);
-    
+
     if (!limiter) {
       // Se não houver limiter específico, usar o padrão
-      await next();
-      return;
+      return await next();
     }
 
     // Aplica o rate limiter específico
-    await limiter(c, next);
+    return await limiter(c, next);
   };
 }
 
@@ -129,7 +128,7 @@ export function abuseDetectionMiddleware(operationType: OperationType) {
       method: c.req.method
     });
 
-    await next();
+    return await next();
 
     // Se a resposta for 429 (rate limit), log como possível abuso
     if (c.res.status === 429) {

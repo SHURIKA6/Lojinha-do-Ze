@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import app from '../src/server.ts';
+import app from '../src/server';
 
 describe('Health Check API', () => {
   it('should return a 200 OK status', async () => {
