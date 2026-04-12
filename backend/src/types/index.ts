@@ -16,6 +16,55 @@ export interface User {
   updatedAt: Date;
 }
 
+export interface UserDB {
+  id: string;
+  email: string;
+  password: string | null;
+  name: string;
+  cpf: string;
+  phone: string | null;
+  address: string | null;
+  avatar: string | null;
+  role: string;
+  created_at: Date;
+  updated_at: Date | null;
+}
+
+
+export interface CustomerDB {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  cpf: string | null;
+  address: string | null;
+  notes: string | null;
+  avatar: string | null;
+  role: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CustomerCreateData {
+  name: string;
+  email: string;
+  phone: string;
+  cpf: string;
+  address: string;
+  notes: string;
+  avatar: string;
+}
+
+export interface CustomerUpdateData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  cpf?: string;
+  address?: string;
+  notes?: string;
+  avatar?: string;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -161,6 +210,39 @@ export interface RateLimitConfig {
   maxRequests: number;
 }
 
+export interface PaymentFraudData {
+  id: string;
+  amount: number;
+  attempts: number;
+  location?: {
+    country: string;
+  };
+}
+
+export interface StockPrediction {
+  demand: number;
+  confidence: number;
+  seasonality: {
+    factor: number;
+    pattern: string;
+  };
+}
+
+export interface ReviewAnalysis {
+  reviewId: number;
+  text: string;
+  sentiment: number;
+  keywords: string[];
+  timestamp: string;
+}
+
+export interface HistoricalSalesData {
+  productId: number;
+  sales: Array<{ date: string; quantity: number }>;
+  averageDailySales: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+}
+
 // Request Types
 export interface RequestWithUser {
   user?: User;
@@ -197,3 +279,10 @@ export type Variables = {
   resolvedSession?: any;
   [key: string]: any;
 };
+
+export interface HonoCloudflareContext {
+  executionCtx: {
+    waitUntil: (promise: Promise<any>) => void;
+  };
+}
+

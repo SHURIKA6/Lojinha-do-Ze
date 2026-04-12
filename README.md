@@ -1,136 +1,171 @@
-# Lojinha do Zé
+# 🛍️ Lojinha do Zé
 
-Lojinha do Zé is a comprehensive management system designed for a small retail shop, providing tools for inventory control, order management, customer tracking, and financial reporting.
+Lojinha do Zé é um sistema de e-commerce simplificado, projetado para ser leve, escalável e seguro. O sistema gerencia catálogos de produtos, processamento de pedidos, controle de estoque e integração de pagamentos.
 
-## 🚀 Tech Stack
+## 🚀 Tecnologias Utilizadas
 
 ### Backend
-- **Framework:** [Hono](https://hono.dev/)
+
+- **Framework:** [Hono](https://hono.dev/) (Ultra-fast web framework for Edge)
 - **Runtime:** [Cloudflare Workers](https://workers.cloudflare.com/)
-- **Database:** [Neon](https://neon.tech/) (Serverless PostgreSQL)
-- **Payment Gateway:** [Mercado Pago](https://www.mercadopago.com/)
-- **Language:** TypeScript
+- **Banco de Dados:** [Neon](https://neon.tech/) (Serverless PostgreSQL) / Cloudflare D1
+- **Pagamentos:** [Mercado Pago](https://www.mercadopago.com/)
+- **Inteligência Artificial:** Google Gemini API
+- **Linguagem:** TypeScript
 
 ### Frontend
+
 - **Framework:** [Next.js](https://nextjs.org/) (App Router)
-- **Language:** TypeScript
-- **Styling:** CSS Modules / Tailwind CSS
+- **Linguagem:** TypeScript
+- **Estilização:** CSS Modules / Tailwind CSS
 
 ---
 
-## 🛠️ Local Setup
+## 🏗️ Arquitetura
 
-### Prerequisites
-- Node.js (Latest LTS)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (for backend development)
-- A Neon PostgreSQL database instance
+O projeto segue o padrão **Route $\rightarrow$ Service $\rightarrow$ Repository**, garantindo a separação de responsabilidades e facilitando a manutenção:
 
-### Backend Setup
-1. Navigate to the backend directory:
+- **Routes (`backend/src/routes`)**: Camada de entrada. Responsável por validar requisições (usando Zod), lidar com HTTP e delegar a lógica para os serviços.
+- **Services (`backend/src/services`)**: Camada de lógica de negócio. Onde as regras de negócio são aplicadas, transações são coordenadas e integrações externas são gerenciadas.
+- **Repositories (`backend/src/repositories`)**: Camada de persistência. Única camada que executa queries SQL no banco de dados.
+
+## 🛠️ Configuração e Instalação
+
+### Pré-requisitos
+
+- Node.js (v18+)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (para desenvolvimento backend)
+- Uma instância do Neon PostgreSQL
+
+### Configuração do Backend
+
+1. Navegue até o diretório do backend:
+
    ```bash
    cd backend
    ```
-2. Install dependencies:
+
+2. Instale as dependências:
+
    ```bash
    npm install
    ```
-3. Create a `.dev.vars` file (used by Wrangler for local secrets) from the template:
+
+3. Crie um arquivo `.dev.vars` a partir do template:
+
    ```bash
    cp env.example .dev.vars
    ```
-4. Edit `.dev.vars` and provide your actual credentials:
-   - `DATABASE_URL`: Your Neon connection string.
-   - `FRONTEND_URL`: The URL where your frontend is running (e.g., `http://localhost:3000`).
-   - `MERCADO_PAGO_ACCESS_TOKEN`: Your Mercado Pago access token.
-   - `MERCADO_PAGO_WEBHOOK_SECRET`: Your webhook secret.
 
-5. Initialize the database (run migrations and create default admin):
+4. Edite o `.dev.vars` com suas credenciais:
+   - `DATABASE_URL`: String de conexão do Neon.
+   - `FRONTEND_URL`: URL do frontend (ex: `http://localhost:3000`).
+   - `MERCADO_PAGO_ACCESS_TOKEN`: Token do Mercado Pago.
+   - `GEMINI_API_KEY`: Chave da API do Google Gemini.
+
+5. Inicialize o banco de dados (migrações e admin padrão):
+
    ```bash
    npm run seed
    ```
 
-6. Start the development server:
+6. Inicie o servidor de desenvolvimento:
+
    ```bash
    npm run dev
    ```
 
-### Frontend Setup
-1. Navigate to the frontend directory:
+### Configuração do Frontend
+
+1. Navegue até o diretório do frontend:
+
    ```bash
    cd frontend
    ```
-2. Install dependencies:
+
+2. Instale as dependências:
+
    ```bash
    npm install
    ```
-3. Create a `.env.local` file from the root template:
+
+3. Crie um arquivo `.env.local`:
+
    ```bash
    cp ../env.example .env.local
    ```
-4. Edit `.env.local` and set the API proxy:
-   - `NEXT_PUBLIC_API_PROXY_BASE`: Point to your local Worker (e.g., `http://localhost:8787/api`).
 
-5. Start the development server:
+4. Configure o proxy da API:
+   - `NEXT_PUBLIC_API_PROXY_BASE`: Aponte para o Worker local (ex: `http://localhost:8787/api`).
+
+5. Inicie o servidor de desenvolvimento:
+
    ```bash
    npm run dev
    ```
 
 ---
 
-## ☁️ Deployment
+## ☁️ Implantação (Deployment)
 
 ### Backend (Cloudflare Workers)
-1. Ensure you are logged into Cloudflare:
+
+1. Login no Cloudflare:
+
    ```bash
    npx wrangler login
    ```
-2. Deploy the worker:
+
+2. Deploy do worker:
+
    ```bash
    cd backend
    npm run deploy
    ```
-3. Configure secrets in the Cloudflare Dashboard or via Wrangler:
+
+3. Configure os secrets no Dashboard do Cloudflare ou via Wrangler:
+
    ```bash
    npx wrangler secret put DATABASE_URL
    npx wrangler secret put MERCADO_PAGO_ACCESS_TOKEN
-   # ... etc
    ```
 
 ### Frontend (Vercel)
-1. Push your code to a GitHub repository.
-2. Connect the repository to Vercel.
-3. Configure the environment variable `NEXT_PUBLIC_API_PROXY_BASE` with your deployed Worker's URL.
+
+1. Conecte o repositório do GitHub ao Vercel.
+2. Configure a variável de ambiente `NEXT_PUBLIC_API_PROXY_BASE` com a URL do seu Worker implantado.
 
 ---
 
-## 📁 Project Structure
+## 📁 Estrutura do Projeto
 
 ```text
 .
-├── backend/                # Hono API
+├── backend/                # API Hono
 │   ├── src/
-│   │   ├── domain/         # Business schemas and constants
+│   │   ├── domain/         # Schemas de negócio e constantes
 │   │   ├── dto/            # Data Transfer Objects
-│   │   ├── middleware/     # Auth, security, and logging middleware
-│   │   ├── migrations/     # Database schema versions
-│   │   ├── repositories/   # Data access layer
-│   │   ├── routes/         # API endpoint definitions
-│   │   ├── services/       # Business logic implementation
-│   │   └── utils/          # Helper functions
-│   ├── scripts/            # Maintenance scripts (DB nuke, admin creation)
-│   └── wrangler.toml       # Cloudflare Workers configuration
-├── frontend/               # Next.js Application
+│   │   ├── middleware/     # Middleware de auth, segurança e log
+│   │   ├── migrations/     # Versões do schema do banco
+│   │   ├── repositories/   # Camada de acesso a dados (SQL)
+│   │   ├── routes/         # Definições de endpoints da API
+│   │   ├── services/       # Implementação da lógica de negócio
+│   │   └── utils/          # Funções utilitárias
+│   └── wrangler.toml       # Configuração do Cloudflare Workers
+├── frontend/               # Aplicação Next.js
 │   ├── src/
-│   │   ├── app/            # App Router (Pages and Layouts)
-│   │   ├── components/     # Reusable UI components
-│   │   ├── features/       # Feature-based modules (Admin, Storefront, etc.)
-│   │   ├── services/       # API client and service wrappers
-│   │   └── lib/            # Core utilities and API configuration
-│   └── public/             # Static assets
-└── Fotos Produtos/         # Product image assets
+│   │   ├── app/            # App Router (Páginas e Layouts)
+│   │   ├── components/     # Componentes de UI reutilizáveis
+│   │   ├── features/       # Módulos por funcionalidade (Admin, Loja, etc.)
+│   │   ├── services/       # Wrappers de API e serviços
+│   │   └── lib/            # Utilidades centrais e config da API
+│   └── public/             # Ativos estáticos
+└── Fotos Produtos/         # Imagens dos produtos
 ```
 
-## 🔑 Default Admin Credentials
-If you used `npm run seed`, the default administrator is:
-- **Email:** `jose@lojinha.com`
-- **Password:** `admin123`
+## 🔑 Credenciais Admin Padrão
+
+Se você utilizou `npm run seed`, o administrador padrão é:
+
+- **E-mail:** `jose@lojinha.com`
+- **Senha:** `admin123`

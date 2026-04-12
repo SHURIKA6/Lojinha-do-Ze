@@ -1,56 +1,48 @@
-# System Architecture
+# 🏗️ Arquitetura do Sistema - Lojinha do Zé
 
-This document describes the architecture of the "Lojinha do Zé" application.
+Este documento descreve a estrutura arquitetural do sistema Lojinha do Zé, focando na separação de responsabilidades para garantir manutenibilidade e escalabilidade.
 
-## Overview
+## 📐 Padrão de Camadas
 
-The application is a full-stack e-commerce platform consisting of a Next.js frontend and a TypeScript-based backend.
+O sistema utiliza o padrão **Route $\rightarrow$ Service $\rightarrow$ Repository**. Cada camada possui uma responsabilidade única e estrita:
 
-## Frontend Architecture
+### 1. Camada de Rotas (`/src/routes`)
+A camada de rotas é a porta de entrada da API.
+- **Responsabilidades**:
+  - Definição de endpoints e métodos HTTP.
+  - Validação de entrada (Payloads) utilizando **Zod**.
+  - Gerenciamento de autenticação e autorização (Middlewares).
+  - Tratamento de respostas HTTP e erros.
+- **Regra de Ouro**: Não deve conter lógica de negócio nem executar queries SQL. Deve apenas chamar métodos de serviços.
 
-The frontend is built with **Next.js** using the App Router.
+### 2. Camada de Serviços (`/src/services`)
+A camada de serviços contém a "inteligência" do sistema.
+- **Responsabilidades**:
+  - Implementação de regras de negócio.
+  - Coordenação de transações de banco de dados.
+  - Integração com serviços externos (Mercado Pago, Google Gemini).
+  - Orquestração de múltiplos repositórios para completar uma tarefa.
+  - Gerenciamento de cache.
+- **Regra de Ouro**: Não deve lidar com requisições HTTP (objetos `Context` do Hono devem ser evitados, exceto para utilitários de sessão). Deve ser agnóstica ao transporte.
 
-### Structure
-- `src/app`: Contains the page routing and layouts.
-- `src/features`: Organized by domain (e.g., `auth`, `storefront`, `admin`), containing logic and components specific to those features.
-- `src/components`: Shared UI components.
-- `src/services`: API client wrappers for communicating with the backend.
-- `src/hooks`: Custom React hooks for shared logic.
-- `src/contexts`: Global state management using React Context.
+### 3. Camada de Repositórios (`/src/repositories`)
+A camada de repositórios é a única interface com o banco de dados.
+- **Responsabilidades**:
+  - Execução de queries SQL.
+  - Mapeamento de resultados do banco para objetos de domínio.
+  - Operações de CRUD básicas.
+- **Regra de Ouro**: Não deve conter lógica de negócio. Deve apenas realizar operações de persistência e recuperação de dados.
 
-### Key Technologies
-- Next.js (App Router)
-- TypeScript
-- React
+---
 
-## Backend Architecture
+## 🔄 Fluxo de Dados (Exemplo: Criação de Pedido)
 
-The backend is a TypeScript API, designed to run on **Cloudflare Workers** (as indicated by `wrangler.toml`).
+1. **Rota**: `POST /api/catalog/orders` recebe o payload $\rightarrow$ Valida com `orderCreateSchema` $\rightarrow$ Chama `orderService.createOrder()`.
+2. **Serviço**: `orderService.createOrder()` $\rightarrow$ Inicia transação $\rightarrow$ Chama `productRepo.findProductsByIds()` para validar estoque $\rightarrow$ Calcula totais $\rightarrow$ Chama `orderRepo.createOrder()` $\rightarrow$ Chama `productRepo.updateStock()` $\rightarrow$ Finaliza transação.
+3. **Repositório**: `productRepo.updateStock()` executa `UPDATE products SET quantity = quantity - $1 WHERE id = $2`.
 
-### Layered Architecture
-The backend follows a layered pattern to separate concerns:
-1. **Routes**: Handle HTTP requests and map them to service calls.
-2. **Services**: Contain the business logic and coordinate between repositories and other services.
-3. **Repositories**: Handle direct data access and database queries.
-4. **Domain**: Contains shared schemas, constants, and types.
+## 🔒 Segurança Arquitetural
 
-### Key Components
-- **Database**: Uses **Neon (PostgreSQL)** for persistent storage.
-- **Authentication**: Implements session management and refresh tokens.
-- **Payments**: Integrated with **Mercado Pago**.
-- **Notifications**: A centralized notification service supporting multiple channels.
-
-## Data Flow
-
-1. The **Frontend** makes an HTTP request via the `services` layer.
-2. The **Backend Route** receives the request and validates it using middleware (auth, rate limiting).
-3. The **Route** calls the appropriate **Service**.
-4. The **Service** executes business logic and may interact with one or more **Repositories**.
-5. The **Repository** queries the **Neon Database**.
-6. The result flows back up through the layers and is returned to the frontend as a standardized response.
-
-## Infrastructure
-
-- **Frontend Deployment**: Next.js (likely Vercel or similar).
-- **Backend Deployment**: Cloudflare Workers.
-- **Database**: Neon PostgreSQL.
+- **Validação no Limite**: Toda entrada é validada via Zod antes de chegar ao serviço.
+- **Transações Atômicas**: Operações que envolvem múltiplas tabelas são encapsuladas em transações no nível de serviço para evitar estados inconsistentes.
+- **Isolamento de Dados**: As rotas nunca acessam o banco diretamente, impedindo que alterações no schema do banco exijam mudanças em todos os handlers de rota.

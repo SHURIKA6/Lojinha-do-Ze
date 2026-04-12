@@ -5,13 +5,23 @@ const BACKEND_URL = process.env.BACKEND_URL || 'https://lojinha-do-ze-api.fernan
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const targetPath = url.searchParams.get('path') || 'health';
+
+  // SSRF Protection: White-list of allowed debug paths
+  const ALLOWED_DEBUG_PATHS = ['health', 'metrics', 'status', 'version'];
+  if (!ALLOWED_DEBUG_PATHS.includes(targetPath)) {
+    return NextResponse.json(
+      { error: 'Forbidden: Invalid debug path' },
+      { status: 403 }
+    );
+  }
+
   const backendUrl = `${BACKEND_URL}/api/${targetPath}`;
 
   const diagnostics = {
     env: {
       NODE_ENV: process.env.NODE_ENV,
       BACKEND_URL_CONFIGURED: !!process.env.BACKEND_URL,
-      BACKEND_URL_VALUE: BACKEND_URL, // Cuidado aqui, mas o usuário precisa ver
+      BACKEND_URL_VALUE: process.env.NODE_ENV === 'development' ? BACKEND_URL : 'HIDDEN',
     },
     request: {
       url: request.url,
@@ -40,7 +50,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     diagnostics.test = {
       error: error.message || String(error),
-      stack: error.stack,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : 'Hidden in production',
       backendUrlTested: backendUrl
     };
   }

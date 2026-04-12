@@ -56,6 +56,42 @@ export async function listProducts(client: Database, limit: number, offset: numb
   return rows;
 }
 
+export async function searchProducts(
+  client: Database,
+  options: { search?: string; category?: string; limit: number; offset: number }
+) {
+  const whereClauses = ['is_active = TRUE', 'quantity > 0'];
+  const queryParams: any[] = [];
+
+  if (options.search) {
+    queryParams.push(`%${options.search}%`);
+    whereClauses.push(`name ILIKE $${queryParams.length}`);
+  }
+
+  if (options.category) {
+    queryParams.push(options.category);
+    whereClauses.push(`category = $${queryParams.length}`);
+  }
+
+  const whereSql = whereClauses.join(' AND ');
+
+  const countRes = await client.query(`SELECT COUNT(*) FROM products WHERE ${whereSql}`, queryParams);
+  const totalCount = parseInt(countRes.rows[0].count);
+
+  const limitOffsetParams = [...queryParams, options.limit, options.offset];
+  const { rows } = await client.query(
+    `SELECT id, code, name, description, photo, category, sale_price, quantity
+     FROM products
+     WHERE ${whereSql}
+     ORDER BY category, name
+     LIMIT $${limitOffsetParams.length - 1} OFFSET $${limitOffsetParams.length}`,
+    limitOffsetParams
+  );
+
+  return { rows, totalCount };
+}
+
+
 export async function getProductById(client: Database, id: string) {
   const { rows } = await client.query(
     `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
@@ -78,7 +114,7 @@ export async function createProduct(client: Database, p: ProductCreatePayload) {
 
 export async function updateProduct(client: Database, id: string, data: ProductUpdatePayload) {
   const fields: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean | null)[] = [];
 
   if (data.code !== undefined) { values.push(data.code); fields.push(`code = $${values.length}`); }
   if (data.name !== undefined) { values.push(data.name); fields.push(`name = $${values.length}`); }

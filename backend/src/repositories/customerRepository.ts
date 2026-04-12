@@ -1,4 +1,4 @@
-import { Database } from '../types';
+import { Database, CustomerCreateData, CustomerUpdateData } from '../types';
 
 export async function findAllCustomers(db: Database, limit: number, offset: number) {
   const { rows } = await db.query(
@@ -66,7 +66,7 @@ export async function getCustomerStats(db: Database, id: string, normalizedPhone
   return rows[0];
 }
 
-export async function createCustomer(db: Database, data: any) {
+export async function createCustomer(db: Database, data: CustomerCreateData) {
   const { rows } = await db.query(
     `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
      VALUES ($1, $2, NULL, false, 'customer', $3, $4, $5, $6, $7)
@@ -76,7 +76,7 @@ export async function createCustomer(db: Database, data: any) {
   return rows[0];
 }
 
-export async function updateCustomer(db: Database, id: string, data: any) {
+export async function updateCustomer(db: Database, id: string, data: CustomerUpdateData) {
   const { rows } = await db.query(
     `UPDATE users SET
        name = COALESCE($1, name),
