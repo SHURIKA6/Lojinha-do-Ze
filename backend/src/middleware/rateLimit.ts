@@ -4,6 +4,7 @@
 
 import { Context, Next } from 'hono';
 import { logger } from '../utils/logger';
+import { Bindings } from '../types';
 
 interface RateLimitState {
   count: number;
@@ -53,8 +54,9 @@ function createKvStore(kvNamespace: KVNamespace): RateLimitStore {
         if (!raw) return null;
         if (Date.now() > raw.resetAt) return null;
         return raw;
-      } catch (err: any) {
-        logger.warn('KV rate-limit get falhou, permitindo request', { key, error: err?.message });
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+        logger.warn('KV rate-limit get falhou, permitindo request', { key, error: errorMessage });
         return null;
       }
     },
@@ -63,8 +65,9 @@ function createKvStore(kvNamespace: KVNamespace): RateLimitStore {
         // expirationTtl é em segundos e mínimo 60s no KV
         const ttlSeconds = Math.max(Math.ceil(ttlMs / 1000), 60);
         await kvNamespace.put(key, JSON.stringify(value), { expirationTtl: ttlSeconds });
-      } catch (err: any) {
-        logger.warn('KV rate-limit put falhou', { key, error: err?.message });
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+        logger.warn('KV rate-limit put falhou', { key, error: errorMessage });
       }
     },
   };
@@ -75,8 +78,8 @@ function createKvStore(kvNamespace: KVNamespace): RateLimitStore {
 const fallbackStore = createInMemoryStore();
 
 export function createRateLimiter(namespace: string, limit: number, windowMs: number) {
-  return async (c: Context, next: Next) => {
-    const kvBinding = (c.env as any)?.RATE_LIMIT_KV as KVNamespace | undefined;
+  return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
+    const kvBinding = c.env.RATE_LIMIT_KV as KVNamespace | undefined;
     const store = kvBinding ? createKvStore(kvBinding) : fallbackStore;
 
     // Confia apenas no IP do cliente fornecido pela plataforma.

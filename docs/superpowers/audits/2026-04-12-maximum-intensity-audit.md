@@ -54,7 +54,7 @@ The most urgent risks are the total breakdown of layer separation (Critical), wh
 ### 🧪 Testing (TEST)
 | ID | Severity | Finding | Location | Recommendation |
 | :--- | :---: | :--- | :--- | :--- |
-| **TEST-01** | High | SSRF in debug route (see SEC-01). | `frontend/src/app/api/debug/route.ts` | Implement strict path validation. |
+	| **TEST-01** | Fixed | SSRF in debug route (Resolved). | `frontend/src/app/api/debug/route.ts` | Implemented strict path allow-list and removed info leaks. |
 | **TEST-02** | Low | ID Enumeration (see SEC-02). | `backend/src/routes/orders.ts` | Transition to UUIDs. |
 | **TEST-03** | Info | Honeypot routes lack integrated alerting. | `frontend/src/app/` | Integrate honeypot hits into an alerting system. |
 
@@ -81,7 +81,7 @@ The most urgent risks are the total breakdown of layer separation (Critical), wh
 - [ ] **ARCH-01**: Implement Route $\rightarrow$ Service $\rightarrow$ Repository pattern.
 - [ ] **DOC-01**: Create a comprehensive `README.md` (Setup/Deploy).
 - [ ] **DOC-02**: Establish basic system documentation (Architecture/API).
-- [ ] **TEST-01**: Patch the SSRF vulnerability in `/api/debug`.
+- [x] **TEST-01**: Patch the SSRF vulnerability in `/api/debug`.
 
 ### 🟡 Phase 2: High Priority (Next Sprint)
 - [ ] **ARCH-02**: Migrate business logic from routes to services.

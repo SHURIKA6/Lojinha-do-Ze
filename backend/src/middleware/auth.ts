@@ -33,7 +33,7 @@ export const optionalAuthMiddleware: MiddlewareHandler<{ Bindings: Bindings; Var
 export const authMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const session = await loadSession(c);
   if (!session?.user) {
-    return jsonError(c as any, 401, 'Sessão inválida ou expirada');
+    return jsonError(c, 401, 'Sessão inválida ou expirada');
   }
 
   return await next();
@@ -54,19 +54,19 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
       // SEC-02: Defesa em profundidade — verificar Origin para mutações sem sessão
       const origin = c.req.header('origin');
       if (origin && !isAllowedOrigin(origin, c)) {
-        return jsonError(c as any, 403, 'Origem não permitida');
+        return jsonError(c, 403, 'Origem não permitida');
       }
       return await next();
     }
 
-    return jsonError(c as any, 401, 'Sessão inválida ou expirada');
+    return jsonError(c, 401, 'Sessão inválida ou expirada');
   }
 
   const headerToken = c.req.header('x-csrf-token');
   const cookieToken = getCookie(c, CSRF_COOKIE_NAME);
 
   if (!headerToken || !cookieToken || headerToken !== cookieToken || headerToken !== session.csrfToken) {
-    return jsonError(c as any, 403, 'Falha na verificação de segurança da sessão');
+    return jsonError(c, 403, 'Falha na verificação de segurança da sessão');
   }
 
   return await next();
@@ -75,7 +75,7 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
 export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const user = c.get('user');
   if (!user || user.role !== 'admin') {
-    return jsonError(c as any, 403, 'Acesso restrito ao administrador');
+    return jsonError(c, 403, 'Acesso restrito ao administrador');
   }
 
   return await next();
@@ -88,7 +88,7 @@ export function hasRole(role: string): MiddlewareHandler<{ Bindings: Bindings; V
   return async (c, next) => {
     const user = c.get('user');
     if (!user || user.role !== role) {
-      return jsonError(c as any, 403, `Acesso restrito a usuários com perfil ${role}`);
+      return jsonError(c, 403, `Acesso restrito a usuários com perfil ${role}`);
     }
     return await next();
   };
@@ -101,7 +101,7 @@ export function hasAnyRole(roles: string[]): MiddlewareHandler<{ Bindings: Bindi
   return async (c, next) => {
     const user = c.get('user');
     if (!user || !roles.includes(user.role)) {
-      return jsonError(c as any, 403, 'Você não tem permissão para realizar esta ação');
+      return jsonError(c, 403, 'Você não tem permissão para realizar esta ação');
     }
     return await next();
   };

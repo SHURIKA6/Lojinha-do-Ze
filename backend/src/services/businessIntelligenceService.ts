@@ -5,6 +5,7 @@
 
 import { logger } from '../utils/logger';
 import { cacheService } from './cacheService';
+import { Product, PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../types';
 
 /**
  * Tipos de recomendação
@@ -62,8 +63,8 @@ export interface ProductRecommendation {
 
 export class BusinessIntelligenceService {
   private userProfiles = new Map<string | number, UserProfile>();
-  private productFeatures = new Map<number, any>();
-  private interactions: any[] = [];
+  private productFeatures = new Map<number, Product>();
+  private interactions: Record<string, unknown>[] = [];
   private recommendations = new Map<string | number, ProductRecommendation[]>();
 
   constructor() {}
@@ -95,9 +96,10 @@ export class BusinessIntelligenceService {
       }
       
       return { success: true, recommendations };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro ao gerar recomendações personalizadas', error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -141,7 +143,7 @@ export class BusinessIntelligenceService {
   /**
    * Aplica algoritmos de recomendação
    */
-  async applyRecommendationAlgorithms(userProfile: UserProfile, products: any[], options: RecommendationOptions): Promise<ProductRecommendation[]> {
+  async applyRecommendationAlgorithms(userProfile: UserProfile, products: Product[], options: RecommendationOptions): Promise<ProductRecommendation[]> {
     const recommendations: ProductRecommendation[] = [];
     
     // Recomendação baseada em conteúdo
@@ -165,7 +167,7 @@ export class BusinessIntelligenceService {
   /**
    * Filtragem baseada em conteúdo
    */
-  contentBasedFiltering(userProfile: UserProfile, products: any[]): ProductRecommendation[] {
+  contentBasedFiltering(userProfile: UserProfile, products: Product[]): ProductRecommendation[] {
     return products
       .filter(product => {
         // Filtra por categorias preferidas
@@ -188,7 +190,7 @@ export class BusinessIntelligenceService {
   /**
    * Filtragem colaborativa (simulada)
    */
-  collaborativeFiltering(userProfile: UserProfile, products: any[]): ProductRecommendation[] {
+  collaborativeFiltering(userProfile: UserProfile, products: Product[]): ProductRecommendation[] {
     // Simula recomendações de usuários similares
     const similarUsersRecommendations = [
       { productId: 2, score: 0.85 },
@@ -213,7 +215,7 @@ export class BusinessIntelligenceService {
   /**
    * Recomendações de produtos em tendência
    */
-  trendingRecommendations(products: any[]): ProductRecommendation[] {
+  trendingRecommendations(products: Product[]): ProductRecommendation[] {
     return products
       .filter(product => product.rating >= 4.5)
       .map(product => ({
@@ -227,7 +229,7 @@ export class BusinessIntelligenceService {
   /**
    * Calcula score baseado em conteúdo
    */
-  calculateContentScore(product: any, userProfile: UserProfile): number {
+  calculateContentScore(product: Product, userProfile: UserProfile): number {
     let score = 0;
     
     // Score por categoria
@@ -267,7 +269,7 @@ export class BusinessIntelligenceService {
   /**
    * Detecta fraudes em pagamentos
    */
-  async detectPaymentFraud(paymentData: any) {
+  async detectPaymentFraud(paymentData: PaymentFraudData) {
     try {
       const fraudScore = await this.calculateFraudScore(paymentData);
       const riskLevel = this.determineRiskLevel(fraudScore);
@@ -290,16 +292,17 @@ export class BusinessIntelligenceService {
       });
       
       return { success: true, analysis };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro na detecção de fraude', error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     }
   }
 
   /**
    * Calcula score de fraude
    */
-  async calculateFraudScore(paymentData: any): Promise<number> {
+  async calculateFraudScore(paymentData: PaymentFraudData): Promise<number> {
     let score = 0;
     
     // Verifica valor atípico
@@ -335,7 +338,7 @@ export class BusinessIntelligenceService {
   /**
    * Detecta bandeiras de fraude
    */
-  detectFraudFlags(paymentData: any) {
+  detectFraudFlags(paymentData: PaymentFraudData) {
     const flags: Array<{ type: string; severity: string; message: string }> = [];
     
     if (paymentData.amount > 1000) {
@@ -401,7 +404,7 @@ export class BusinessIntelligenceService {
     try {
       const historicalData = await this.getHistoricalSalesData(productId);
       const prediction = await this.calculateDemandPrediction(historicalData, daysAhead);
-      
+
       return {
         success: true,
         prediction: {
@@ -413,16 +416,17 @@ export class BusinessIntelligenceService {
           recommendations: this.generateStockRecommendations(prediction)
         }
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro na previsão de estoque', error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     }
   }
 
   /**
    * Obtém dados históricos de vendas
    */
-  async getHistoricalSalesData(productId: number) {
+  async getHistoricalSalesData(productId: number): Promise<HistoricalSalesData> {
     // Simula dados históricos
     return {
       productId,
@@ -441,10 +445,10 @@ export class BusinessIntelligenceService {
   /**
    * Calcula previsão de demanda
    */
-  async calculateDemandPrediction(historicalData: any, daysAhead: number) {
+  async calculateDemandPrediction(historicalData: HistoricalSalesData, daysAhead: number): Promise<StockPrediction> {
     const avgDaily = historicalData.averageDailySales;
     const trendFactor = historicalData.trend === 'increasing' ? 1.1 : 0.9;
-    
+
     return {
       demand: Math.round(avgDaily * daysAhead * trendFactor),
       confidence: 0.75,
@@ -458,9 +462,9 @@ export class BusinessIntelligenceService {
   /**
    * Gera recomendações de estoque
    */
-  generateStockRecommendations(prediction: any) {
+  generateStockRecommendations(prediction: StockPrediction) {
     const recommendations: Array<{ type: string; priority: string; message: string }> = [];
-    
+
     if (prediction.demand > 100) {
       recommendations.push({
         type: 'increase_stock',
@@ -468,7 +472,7 @@ export class BusinessIntelligenceService {
         message: `Aumentar estoque para ${prediction.demand} unidades`
       });
     }
-    
+
     if (prediction.confidence < 0.6) {
       recommendations.push({
         type: 'monitor_closely',
@@ -476,7 +480,7 @@ export class BusinessIntelligenceService {
         message: 'Monitorar vendas de perto devido à baixa confiança na previsão'
       });
     }
-    
+
     return recommendations;
   }
 
@@ -498,9 +502,10 @@ export class BusinessIntelligenceService {
       };
       
       return { success: true, summary, details: analyses };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro na análise de sentimento', error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -552,15 +557,15 @@ export class BusinessIntelligenceService {
   /**
    * Extrai palavras-chave mais frequentes
    */
-  extractTopKeywords(analyses: any[]) {
+  extractTopKeywords(analyses: ReviewAnalysis[]) {
     const keywordCounts: Record<string, number> = {};
-    
+
     for (const analysis of analyses) {
       for (const keyword of analysis.keywords) {
         keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
       }
     }
-    
+
     return Object.entries(keywordCounts)
       .sort(([,a], [,b]) => (b as number) - (a as number))
       .slice(0, 10)
@@ -570,10 +575,10 @@ export class BusinessIntelligenceService {
   /**
    * Gera recomendações baseadas em sentimento
    */
-  generateSentimentRecommendations(analyses: any[]) {
+  generateSentimentRecommendations(analyses: ReviewAnalysis[]) {
     const recommendations: Array<{ type: string; priority: string; message: string }> = [];
     const negativeCount = analyses.filter(a => a.sentiment < 0.4).length;
-    
+
     if (negativeCount > analyses.length * 0.3) {
       recommendations.push({
         type: 'improve_quality',
@@ -581,7 +586,7 @@ export class BusinessIntelligenceService {
         message: 'Mais de 30% das avaliações são negativas - melhorar qualidade dos produtos'
       });
     }
-    
+
     return recommendations;
   }
 
@@ -599,9 +604,10 @@ export class BusinessIntelligenceService {
       };
       
       return { success: true, stats };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro ao obter estatísticas de BI', error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     }
   }
 }

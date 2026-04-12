@@ -7,7 +7,8 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
 } from '../domain/constants';
-import { randomCode, randomToken, sha256Hex } from '../utils/crypto';
+import { randomCode, randomToken, sha256Hex, verifyPassword } from '../utils/crypto';
+
 import { logger } from '../utils/logger';
 import {
   createSessionRecord,
@@ -18,6 +19,7 @@ import {
   touchSession,
   SessionRecord,
 } from '../repositories/sessionRepository';
+import * as userRepository from '../repositories/userRepository';
 import {
   consumeSetupToken,
   createPasswordSetupToken,
@@ -25,7 +27,10 @@ import {
   findOpenSetupToken,
   revokeOpenSetupTokensForUser,
 } from '../repositories/passwordSetupRepository';
-import { Bindings, User } from '../types';
+import { Bindings, User, Variables, Database, UserDB, HonoCloudflareContext } from '../types';
+
+type AppEnv = { Bindings: Bindings; Variables: Variables };
+
 
 function isSecureRequest(c: Context): boolean {
   return new URL(c.req.url).protocol === 'https:';
@@ -36,7 +41,7 @@ function isSecureRequest(c: Context): boolean {
  * SEC-11: O cookie CSRF usa httpOnly: false intencionalmente (double-submit cookie pattern).
  *         A proteção primária contra XSS roubar o CSRF token é o CSP + origin guard.
  */
-function sessionCookieOptions(c: Context<any>, maxAge = SESSION_TTL_SECONDS, httpOnly = true) {
+function sessionCookieOptions(c: Context<AppEnv>, maxAge = SESSION_TTL_SECONDS, httpOnly = true) {
   const isProd = c.env?.ENVIRONMENT === 'production';
   return {
     path: '/',
@@ -47,22 +52,46 @@ function sessionCookieOptions(c: Context<any>, maxAge = SESSION_TTL_SECONDS, htt
   };
 }
 
-function serializeUser(row: any): User {
+function serializeUser(row: UserDB): User {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    role: row.role,
-    phone: row.phone,
+    role: row.role as 'admin' | 'customer',
+    phone: row.phone || undefined,
     cpf: row.cpf,
-    address: row.address,
-    avatar: row.avatar,
+    address: row.address ? JSON.parse(row.address) : undefined,
+    avatar: row.avatar || undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at || row.created_at),
   };
 }
 
-export async function issueSession(c: Context<any>, client: any, userId: string) {
+
+export async function authenticate(db: Database, identifier: string, password: string) {
+  const loginValue = identifier.trim().toLowerCase();
+  
+  // Tenta buscar por e-mail ou CPF (se identifier tiver formato de CPF)
+  let user = await userRepository.findByEmail(db, loginValue);
+  
+  if (!user && loginValue.length >= 11) {
+    user = await userRepository.findByCpf(db, loginValue);
+  }
+
+  if (!user) {
+    throw new Error('Credenciais inválidas');
+  }
+
+  const validPassword = user.password ? await verifyPassword(password, user.password) : false;
+  if (!validPassword) {
+    throw new Error('Credenciais inválidas');
+  }
+
+  return user;
+}
+
+
+export async function issueSession(c: Context<AppEnv>, client: Database, userId: string) {
   const sessionToken = randomToken(32);
   const csrfToken = randomToken(24);
   const tokenHash = await sha256Hex(sessionToken);
@@ -88,7 +117,7 @@ export function clearSessionCookies(c: Context) {
   deleteCookie(c, CSRF_COOKIE_NAME, { path: '/' });
 }
 
-export async function destroySession(c: Context, client: any) {
+export async function destroySession(c: Context<AppEnv>, client: Database) {
   const sessionToken = getCookie(c, SESSION_COOKIE_NAME);
   if (sessionToken) {
     const tokenHash = await sha256Hex(sessionToken);
@@ -98,7 +127,7 @@ export async function destroySession(c: Context, client: any) {
   clearSessionCookies(c);
 }
 
-export async function resolveSession(c: Context<any>, client: any) {
+export async function resolveSession(c: Context<AppEnv>, client: Database) {
   // @ts-ignore - resolveSession behavior with Hono Context
   const cached = c.get('resolvedSession');
   if (cached !== undefined) {
@@ -145,16 +174,18 @@ export async function resolveSession(c: Context<any>, client: any) {
     logger.error('Erro ao atualizar sessão (touch)', error);
   });
 
-  if ((c as any).executionCtx?.waitUntil) {
-    (c as any).executionCtx.waitUntil(touchPromise);
+  const executionCtx = (c as any).executionCtx;
+  if (executionCtx && typeof executionCtx.waitUntil === 'function') {
+    executionCtx.waitUntil(touchPromise);
   } else {
     await touchPromise;
   }
 
+
   return session;
 }
 
-export async function invalidateResolvedSession(c: Context, client: any) {
+export async function invalidateResolvedSession(c: Context<AppEnv>, client: Database) {
   // @ts-ignore
   const session = c.get('session');
   if (session?.id) {
@@ -170,7 +201,7 @@ export async function invalidateResolvedSession(c: Context, client: any) {
   clearSessionCookies(c);
 }
 
-export async function generatePasswordSetupInvite(c: Context<any>, client: any, user: User) {
+export async function generatePasswordSetupInvite(c: Context<AppEnv>, client: Database, user: User) {
   await deleteExpiredSetupTokens(client);
   await revokeOpenSetupTokensForUser(client, user.id);
 
@@ -196,7 +227,7 @@ export async function generatePasswordSetupInvite(c: Context<any>, client: any, 
   };
 }
 
-export async function consumePasswordSetupInvite(client: any, lookup: { token?: string; code?: string }) {
+export async function consumePasswordSetupInvite(client: Database, lookup: { token?: string; code?: string }) {
   await deleteExpiredSetupTokens(client);
 
   const tokenHash = lookup.token ? await sha256Hex(lookup.token) : null;

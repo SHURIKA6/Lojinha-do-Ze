@@ -1,6 +1,7 @@
 import { Database } from '../types';
 import { cacheService } from './cacheService';
 import { CACHE_PREFIXES } from '../domain/cacheKeys';
+import { CATALOG_CACHE_TTL_SECONDS } from '../domain/constants';
 import * as productRepo from '../repositories/productRepository';
 import {
   cleanOptionalString,
@@ -11,6 +12,42 @@ import { logger } from '../utils/logger';
 
 export async function getProducts(db: Database, limit: number, offset: number) {
   return productRepo.listProducts(db, limit, offset);
+}
+
+export async function getCatalog(
+  db: Database,
+  options: { search?: string; category?: string; limit: number; offset: number }
+) {
+  const { search, category, limit, offset } = options;
+  const cacheKey = `${CACHE_PREFIXES.CATALOG}${limit}_${offset}_${search || ''}_${category || ''}`;
+
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const { rows, totalCount } = await productRepo.searchProducts(db, options);
+
+  const categories: Record<string, { name: string; products: any[] }> = {};
+  for (const product of rows) {
+    if (!categories[product.category]) {
+      categories[product.category] = {
+        name: product.category,
+        products: [],
+      };
+    }
+    categories[product.category].products.push(product);
+  }
+
+  const response = {
+    categories: Object.values(categories),
+    total: totalCount,
+    limit,
+    offset,
+  };
+
+  cacheService.set(cacheKey, response, CATALOG_CACHE_TTL_SECONDS);
+  return response;
 }
 
 export async function getProduct(db: Database, id: string) {
