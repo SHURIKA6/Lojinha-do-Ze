@@ -25,15 +25,19 @@ router.post(
       const user = await authService.authenticate(db, loginId, password);
 
       const client = await db.connect();
-      const { csrfToken } = await authService.issueSession(c, client, user.id);
+      try {
+        const { csrfToken } = await authService.issueSession(c, client, user.id);
 
-      const isEasterEgg = loginId.trim().toLowerCase() === 'teste@gmail.com';
+        const isEasterEgg = loginId.trim().toLowerCase() === 'teste@gmail.com';
 
-      return jsonSuccess(c, {
-        user: { id: user.id, role: user.role },
-        csrfToken,
-        easterEgg: isEasterEgg,
-      });
+        return jsonSuccess(c, {
+          user: { id: user.id, role: user.role },
+          csrfToken,
+          easterEgg: isEasterEgg,
+        });
+      } finally {
+        client.release();
+      }
     } catch (error: any) {
       if (error.message === 'Credenciais inválidas') {
         return jsonError(c, 401, error.message);
@@ -51,8 +55,12 @@ router.post(
 router.post('/logout', async (c) => {
   const db = c.get('db');
   const client = await db.connect();
-  await authService.destroySession(c, client);
-  return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
+  try {
+    await authService.destroySession(c, client);
+    return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
+  } finally {
+    client.release();
+  }
 });
 
 /**
@@ -62,11 +70,15 @@ router.post('/logout', async (c) => {
 router.get('/me', async (c) => {
   const db = c.get('db');
   const client = await db.connect();
-  const session = await authService.resolveSession(c, client);
-  if (!session) {
-    return jsonError(c, 401, 'Não autenticado');
+  try {
+    const session = await authService.resolveSession(c, client);
+    if (!session) {
+      return jsonError(c, 401, 'Não autenticado');
+    }
+    return jsonSuccess(c, { user: session.user, csrfToken: session.csrfToken });
+  } finally {
+    client.release();
   }
-  return jsonSuccess(c, { user: session.user, csrfToken: session.csrfToken });
 });
 
 /**
