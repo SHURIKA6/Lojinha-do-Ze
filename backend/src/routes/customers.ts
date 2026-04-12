@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import bcrypt from 'bcryptjs';
+import { verifyPassword } from '../utils/crypto';
 import { adminOnly, authMiddleware } from '../middleware/auth';
 import { customerCreateSchema, customerUpdateSchema } from '../domain/schemas';
 import { generatePasswordSetupInvite } from '../services/authService';
@@ -56,7 +56,7 @@ async function validatePrivilegedAction(c: any, db: Database, password: string, 
   }
 
   const passwordHash = rows[0].password || '';
-  const validPassword = passwordHash ? await bcrypt.compare(password, passwordHash) : false;
+  const validPassword = passwordHash ? await verifyPassword(password, passwordHash) : false;
 
   if (!validPassword) {
     logger.warn('Falha na confirmação de ação privilegiada', {
