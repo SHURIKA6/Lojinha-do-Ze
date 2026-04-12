@@ -27,7 +27,7 @@ async function loadSession(c: Context<{ Bindings: Bindings; Variables: Variables
 
 export const optionalAuthMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   await loadSession(c);
-  await next();
+  return await next();
 };
 
 export const authMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
@@ -36,16 +36,14 @@ export const authMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
     return jsonError(c as any, 401, 'Sessão inválida ou expirada');
   }
 
-  await next();
-};
+  return await next();
 
 /**
  * Middleware CSRF usando double-submit cookie.
  */
 export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   if (isSafeMethod(c.req.method)) {
-    await next();
-    return;
+    return await next();
   }
 
   const session = c.get('session');
@@ -71,8 +69,7 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
     return jsonError(c as any, 403, 'Falha na verificação de segurança da sessão');
   }
 
-  await next();
-};
+  return await next();
 
 export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const user = c.get('user');
@@ -80,8 +77,7 @@ export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Varia
     return jsonError(c as any, 403, 'Acesso restrito ao administrador');
   }
 
-  await next();
-};
+  return await next();
 
 /**
  * Middleware para verificar se o usuário possui um cargo (role) específico.

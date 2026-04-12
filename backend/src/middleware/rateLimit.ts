@@ -96,7 +96,7 @@ export function createRateLimiter(namespace: string, limit: number, windowMs: nu
       await store.put(key, state, state.resetAt - now);
     }
 
-    await next();
+    return await next();
   };
 }
 

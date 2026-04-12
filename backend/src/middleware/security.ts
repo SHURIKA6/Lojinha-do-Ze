@@ -179,25 +179,24 @@ export function createCorsMiddleware(): MiddlewareHandler {
 
 export const originGuardMiddleware: MiddlewareHandler<{ Bindings: Bindings }> = async (c, next) => {
   if (isSafeMethod(c.req.method)) {
-    await next();
-    return;
+    return await next();
   }
 
   const origin = c.req.header('origin');
   if (origin && !isAllowedOrigin(origin, c)) {
     const fetchSite = String(c.req.header('sec-fetch-site') || '').toLowerCase();
     if (fetchSite === 'same-origin' || fetchSite === 'same-site') {
-      await next();
-      return;
+      return await next();
     }
 
     return jsonError(c as any, 403, 'Origem não permitida');
   }
 
-  await next();
+  return await next();
 };
 
 export const securityHeadersMiddleware: MiddlewareHandler = async (c, next) => {
-  await next();
+  const response = await next();
   applySecurityHeaders(c);
+  return response;
 };

@@ -48,7 +48,7 @@ export async function auditMiddleware(c: Context, next: Next) {
     });
 
     try {
-      await next();
+      return await next();
     } catch (error) {
       logger.error('Audit middleware: next() crashed', error as Error, { requestId });
       throw error;
@@ -63,6 +63,6 @@ export async function auditMiddleware(c: Context, next: Next) {
       duration: `${duration}ms`,
     });
   } else {
-    await next();
+    return await next();
   }
 }
