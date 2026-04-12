@@ -37,6 +37,7 @@ export const authMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
   }
 
   return await next();
+};
 
 /**
  * Middleware CSRF usando double-submit cookie.
@@ -55,8 +56,7 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
       if (origin && !isAllowedOrigin(origin, c)) {
         return jsonError(c as any, 403, 'Origem não permitida');
       }
-      await next();
-      return;
+      return await next();
     }
 
     return jsonError(c as any, 401, 'Sessão inválida ou expirada');
@@ -70,6 +70,7 @@ export const csrfMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: 
   }
 
   return await next();
+};
 
 export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const user = c.get('user');
@@ -78,6 +79,7 @@ export const adminOnly: MiddlewareHandler<{ Bindings: Bindings; Variables: Varia
   }
 
   return await next();
+};
 
 /**
  * Middleware para verificar se o usuário possui um cargo (role) específico.
@@ -88,7 +90,7 @@ export function hasRole(role: string): MiddlewareHandler<{ Bindings: Bindings; V
     if (!user || user.role !== role) {
       return jsonError(c as any, 403, `Acesso restrito a usuários com perfil ${role}`);
     }
-    await next();
+    return await next();
   };
 }
 
@@ -101,6 +103,6 @@ export function hasAnyRole(roles: string[]): MiddlewareHandler<{ Bindings: Bindi
     if (!user || !roles.includes(user.role)) {
       return jsonError(c as any, 403, 'Você não tem permissão para realizar esta ação');
     }
-    await next();
+    return await next();
   };
 }
