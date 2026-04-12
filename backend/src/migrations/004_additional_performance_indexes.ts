@@ -1,6 +1,6 @@
 export const id = '004_additional_performance_indexes';
 
-export async function up(client) {
+export async function up(client: any): Promise<void> {
   await client.query(`
     -- Index for active products with name for catalog sorting
     CREATE INDEX IF NOT EXISTS idx_products_active_name ON products(is_active, name) WHERE is_active = TRUE;

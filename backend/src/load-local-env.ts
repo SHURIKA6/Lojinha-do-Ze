@@ -1,22 +1,25 @@
 // ARCH-03: Todas as importações Node.js são condicionais para compatibilidade com Workers
-let devVarsPath = null;
-let fsModule = null;
+let devVarsPath: string | null = null;
+let fsModule: any = null;
 
 try {
-  fsModule = await import('fs');
-  const { dirname, join } = await import('path');
-  const { fileURLToPath } = await import('url');
+  // Use a stronger check for Node.js environment or dynamic import behavior
+  if (typeof process !== 'undefined' && process.release && process.release.name === 'node') {
+    fsModule = await import('fs');
+    const { dirname, join } = await import('path');
+    const { fileURLToPath } = await import('url');
 
-  const currentUrl = import.meta.url;
-  if (currentUrl) {
-    const backendRoot = join(dirname(fileURLToPath(currentUrl)), '..');
-    devVarsPath = join(backendRoot, '.dev.vars');
+    const currentUrl = import.meta.url;
+    if (currentUrl) {
+      const backendRoot = join(dirname(fileURLToPath(currentUrl)), '..');
+      devVarsPath = join(backendRoot, '.dev.vars');
+    }
   }
 } catch {
   // Ignora erro em ambientes sem suporte a Node.js (Workers runtime)
 }
 
-export function loadLocalEnv() {
+export function loadLocalEnv(): void {
   try {
     if (!devVarsPath || !fsModule || !fsModule.existsSync(devVarsPath)) return;
 
@@ -41,10 +44,10 @@ export function loadLocalEnv() {
   }
 }
 
-export function getRequiredEnv(c, name) {
-  // Se apenas um argumento for passado, c é o nome
-  const targetName = name || c;
-  const context = name ? c : null;
+export function getRequiredEnv(cOrName: any, name?: string): string {
+  // Se apenas um argumento for passado, cOrName é o nome
+  const targetName = name || cOrName;
+  const context = name ? cOrName : null;
 
   const value = context?.env?.[targetName] || process.env[targetName];
 

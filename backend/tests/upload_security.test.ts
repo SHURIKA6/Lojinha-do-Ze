@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { loadLocalEnv, getRequiredEnv } from '../src/load-local-env';
 import { Hono } from 'hono';
 
-jest.unstable_mockModule('../src/middleware/auth.js', () => ({
-  authMiddleware: async (c, next) => {
+jest.unstable_mockModule('../src/middleware/auth.ts', () => ({
+  authMiddleware: async (c: any, next: any) => {
     c.set('user', { id: 'admin-1', role: 'admin' });
     await next();
   },
-  adminOnly: async (_c, next) => {
+  adminOnly: async (_c: any, next: any) => {
     await next();
   },
 }));
 
-const { default: uploadRoutes } = await import('../src/routes/upload.js');
+const { default: uploadRoutes } = await import('../src/routes/upload') as any;
 
 function buildApp() {
   const app = new Hono();

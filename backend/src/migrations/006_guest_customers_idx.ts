@@ -1,6 +1,6 @@
 export const id = '006_guest_customers_idx';
 
-export async function up(client) {
+export async function up(client: any): Promise<void> {
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_orders_guest_customers 
     ON orders(customer_name, customer_phone, address, id, created_at) 

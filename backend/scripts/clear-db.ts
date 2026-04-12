@@ -3,14 +3,14 @@
  * Script utilitário para limpar TODOS os dados do banco de dados.
  * SEC-09: Movido de src/ para scripts/ para não ser empacotado no deploy.
  *
- * Uso: node scripts/clear-db.js
+ * Uso: tsx scripts/clear-db.ts
  */
-import { createDb } from '../src/db.js';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
+import { createDb } from '../src/db.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
 
 loadLocalEnv();
 
-async function clearAllData() {
+async function clearAllData(): Promise<void> {
   console.log('🗑️  Limpando todos os dados do banco...\n');
   const db = createDb(getRequiredEnv('DATABASE_URL'));
 
@@ -41,7 +41,7 @@ async function clearAllData() {
 
     console.log('✅ Todos os dados foram apagados com sucesso!');
     console.log('✅ Sequências de ID resetadas para 1.');
-  } catch (err) {
+  } catch (err: any) {
     console.error('❌ Erro ao limpar dados:', err.message);
   } finally {
     await db.close();

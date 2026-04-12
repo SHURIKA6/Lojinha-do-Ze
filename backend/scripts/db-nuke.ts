@@ -1,9 +1,10 @@
-import { createDb } from '../src/db.js';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
+/* eslint-disable no-console */
+import { createDb } from '../src/db.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
 
 loadLocalEnv();
 
-async function updateSchema() {
+async function updateSchema(): Promise<void> {
   console.log('🔄 Atualizando schema do banco de dados (Alterando colunas)...');
   const db = createDb(getRequiredEnv('DATABASE_URL'));
 
@@ -20,7 +21,7 @@ async function updateSchema() {
     await client.query('DROP TABLE IF EXISTS users CASCADE');
     await client.query('DROP TABLE IF EXISTS schema_migrations CASCADE');
     
-    console.log('🗑️ Tabelas antigas dropadas. O server.js ou db-bootstrap.js irá recriá-las.');
+    console.log('🗑️ Tabelas antigas dropadas. O server.ts ou db-bootstrap.ts irá recriá-las.');
     client.release();
   } catch(err) {
     console.error('Erro:', err);

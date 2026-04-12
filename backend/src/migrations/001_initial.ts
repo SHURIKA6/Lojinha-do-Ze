@@ -1,6 +1,6 @@
 export const id = '001_initial';
 
-export async function up(client) {
+export async function up(client: any): Promise<void> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -147,4 +147,3 @@ export async function up(client) {
       ON password_setup_tokens(expires_at);
   `);
 }
-

@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
-export const name = '008_add_performance_indexes';
+export const id = '008_add_performance_indexes';
 
 export async function up(sql: ReturnType<typeof neon>) {
   // Ajuste nos nomes das tabelas para o padrão atual do projeto (plural)

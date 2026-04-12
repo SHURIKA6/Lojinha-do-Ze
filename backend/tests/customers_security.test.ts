@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Hono } from 'hono';
 
-const bcryptCompareMock = jest.fn(async (value, hash) => hash === `hash:${value}`);
+const bcryptCompareMock = jest.fn(async (value: any, hash: string) => hash === `hash:${value}`);
 
 jest.unstable_mockModule('bcryptjs', () => ({
   default: {
@@ -9,8 +9,8 @@ jest.unstable_mockModule('bcryptjs', () => ({
   },
 }));
 
-jest.unstable_mockModule('../src/middleware/auth.js', () => ({
-  authMiddleware: async (c, next) => {
+jest.unstable_mockModule('../src/middleware/auth.ts', () => ({
+  authMiddleware: async (c: any, next: any) => {
     c.set('user', {
       id: c.req.header('x-test-user-id') || '1',
       role: c.req.header('x-test-user-role') || 'admin',
@@ -18,22 +18,22 @@ jest.unstable_mockModule('../src/middleware/auth.js', () => ({
     c.set('session', { id: 'session-1' });
     await next();
   },
-  adminOnly: async (c, next) => {
+  adminOnly: async (c: any, next: any) => {
     if (c.get('user')?.role !== 'admin') {
       return c.json({ error: 'Acesso restrito ao administrador' }, 403);
     }
     await next();
   },
-  csrfMiddleware: async (_c, next) => {
+  csrfMiddleware: async (_c: any, next: any) => {
     await next();
   },
 }));
 
-const { default: customersRoutes } = await import('../src/routes/customers.js');
-const { default: profileRoutes } = await import('../src/routes/profile.js');
+const { default: customersRoutes } = await import('../src/routes/customers.ts') as any;
+const { default: profileRoutes } = await import('../src/routes/profile.ts') as any;
 
-function buildDbMock(handlers = {}) {
-  const query = jest.fn(async (text, params) => {
+function buildDbMock(handlers: any = {}) {
+  const query = jest.fn(async (text: string, params: any[]) => {
     if (handlers.query) {
       return handlers.query(text, params);
     }
@@ -51,7 +51,7 @@ function buildDbMock(handlers = {}) {
   };
 }
 
-function buildApp(route, db) {
+function buildApp(route: any, db: any) {
   const app = new Hono();
   app.use('*', async (c, next) => {
     c.set('db', db);
@@ -86,7 +86,7 @@ describe('Customers and Profile Security', () => {
 
   it('exige confirmação de senha para alterar cargo', async () => {
     const db = buildDbMock({
-      query: async (text, params) => {
+      query: async (text: string, params: any[]) => {
         if (text.includes('SELECT password FROM users WHERE id = $1')) {
           return { rows: [{ password: 'hash:SenhaForte#123' }] };
         }
@@ -126,7 +126,7 @@ describe('Customers and Profile Security', () => {
 
   it('impede autoexclusão e exclusão sem senha válida', async () => {
     const db = buildDbMock({
-      query: async (text, _params) => {
+      query: async (text: string, _params: any[]) => {
         if (text.includes('SELECT password FROM users WHERE id = $1')) {
           return { rows: [{ password: 'hash:SenhaForte#123' }] };
         }
