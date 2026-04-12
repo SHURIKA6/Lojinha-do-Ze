@@ -33,12 +33,6 @@ export default function LoginPageClient() {
       setSubmitting(false);
 
       if (result?.success) {
-        // Easter egg: Redirecionar para a página especial se for o usuário de teste
-        if ((result as any).easterEgg) {
-          router.push('/easter-egg');
-          return;
-        }
-        
         router.push(result.user?.role === 'admin' ? '/admin/dashboard' : '/conta');
         return;
       }
