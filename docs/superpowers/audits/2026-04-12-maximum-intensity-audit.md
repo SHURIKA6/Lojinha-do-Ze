@@ -1,25 +1,23 @@
 # Maximum Intensity Audit - 2026-04-12
 
-## Testing & QA Audit Pillar Findings
+## Performance & Scalability Audit
 
-### TEST-01: Server-Side Request Forgery (SSRF)
-- **Location**: `frontend/src/app/api/debug/route.ts`
-- **Severity**: High
-- **Description**: The `/api/debug` endpoint accepts a `path` query parameter which is directly appended to the `BACKEND_URL`. An attacker can use path traversal (e.g., `?path=../../admin/secret`) to access arbitrary endpoints on the backend API, potentially bypassing frontend restrictions or accessing internal-only diagnostics.
-- **Recommendation**: Implement a strict allow-list of permitted paths or use a mapping of keys to paths instead of direct concatenation.
+### Findings
 
-### TEST-02: ID Enumeration
-- **Location**: `backend/src/routes/orders.ts`, `backend/src/routes/payments.ts`
-- **Severity**: Low
-- **Description**: Orders and payments use sequential integer IDs. This allows an attacker to enumerate existing orders and payments. Although access to specific details is guarded by phone number verification or user sessions, the predictability of IDs simplifies targeting and information gathering.
-- **Recommendation**: Transition to UUIDs for public-facing identifiers.
+- **PERF-01: N+1 Queries in Order Creation**
+  - **Location**: `backend/src/routes/catalog.ts` -> `POST /orders`
+  - **Description**: The endpoint performs a separate `SELECT ... FOR UPDATE` query for each item in the order to verify stock and lock the row.
+  - **Impact**: High latency for large orders and increased database load.
+  - **Recommendation**: Fetch all required products in a single query using `WHERE id = ANY($1) FOR UPDATE`.
 
-### TEST-03: Honeypot Distribution
-- **Location**: `frontend/src/app/` (multiple routes)
-- **Severity**: Info
-- **Description**: The application deploys several honeypot routes (e.g., `/backup.sql`, `/phpmyadmin`, `/wp-admin`) to distract and identify scanners/attackers.
-- **Recommendation**: Ensure these routes are logged and integrated into an alerting system to identify active reconnaissance.
+- **PERF-02: N+1 Queries in Order Stock Restoration**
+  - **Location**: `backend/src/routes/orders.ts` -> `restoreOrderStock()`
+  - **Description**: When an order is canceled or deleted, the system loops through all items and performs an `UPDATE` on products and an `INSERT` into `inventory_log` for each.
+  - **Impact**: Performance degradation during order cancellation/deletion of large orders.
+  - **Recommendation**: Use bulk updates via `unnest` for products and a single bulk `INSERT` for the inventory log.
 
----
-**Audit Status**: DONE
-**Implementer**: OpenClaude (Testing & QA Audit Pillar)
+- **PERF-03: Potential Missing Index for Product Sorting**
+  - **Location**: `backend/src/routes/products.ts` -> `GET /`
+  - **Description**: The query `SELECT ... FROM products ORDER BY name` may not utilize the `idx_products_active_name` index because the `WHERE is_active = TRUE` clause is missing.
+  - **Impact**: Potential full table scan and sort as the product catalog grows.
+  - **Recommendation**: Either add a general index on `products(name)` or ensure the query filters by `is_active = TRUE` if applicable.
