@@ -47,7 +47,15 @@ next-env.d.ts
 AUDITORIA_TECNICA.md
 .cocoindex_code/
 
+# Sensitive / Temporary files
+backend/tmp_db.txt
+backend/fix-deploy.cjs
+backend/scripts/deploy-safe.cjs
+.env
+.dev.vars
+
 !package.json
 !tsconfig.json
 !jsconfig.json
 !manifest.json
+.claude
