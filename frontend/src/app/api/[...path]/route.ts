@@ -10,6 +10,7 @@ const STRIP_REQUEST_HEADERS = new Set([
   'host',
   'connection',
   'transfer-encoding',
+  'content-length',
   'keep-alive',
   'upgrade',
   'http2-settings',
@@ -86,9 +87,8 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
   const fetchOptions: RequestInit = {
     method,
     headers,
-    credentials: 'include',
-    // Timeout para evitar requisições pendentes infinitas
-    signal: AbortSignal.timeout(10000),
+    // Retirado timeout fixo para deixar o Next.js gerenciar o limite da function
+    // signal: AbortSignal.timeout(10000),
   };
 
   // Ler o body para métodos que o exigem
@@ -111,7 +111,7 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
     const data = await parseBackendResponse(response);
     return buildProxyResponse(response, data);
   } catch (error: any) {
-    console.error(`Proxy error (${method} /api/${path}):`, error?.message || error);
+    console.error(`Proxy error (${method} ${backendUrl}):`, error);
     
     // Tentar porta alternativa em desenvolvimento se a primeira falhar
     if (process.env.NODE_ENV !== 'production' && !process.env.BACKEND_URL) {
