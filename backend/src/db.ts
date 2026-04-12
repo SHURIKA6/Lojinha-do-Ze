@@ -1,7 +1,11 @@
 import { Pool, neonConfig, QueryResult, QueryResultRow } from '@neondatabase/serverless';
 import { Database } from './types';
 
-if (typeof globalThis.WebSocket !== 'undefined') {
+if (typeof process !== 'undefined') {
+  // Force disable WebSocket in Node.js to prevent ErrorEvent crashes
+  // @ts-ignore
+  neonConfig.webSocketConstructor = undefined;
+} else if (typeof globalThis.WebSocket !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 

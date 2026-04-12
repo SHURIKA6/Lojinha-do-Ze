@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
-import bcrypt from 'bcryptjs';
-import { createDb } from '../src/db.ts';
+import { hashPassword } from '../src/utils/crypto.ts';
+import { neon } from '@neondatabase/serverless';
 import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
 
 function getOptionalEnv(name: string, fallback: string = ''): string {
@@ -10,7 +10,7 @@ function getOptionalEnv(name: string, fallback: string = ''): string {
 
 async function createOrUpdateAdmin(): Promise<void> {
   loadLocalEnv();
-  const db = createDb(getRequiredEnv('DATABASE_URL'));
+  const sql = neon(getRequiredEnv('DATABASE_URL'));
 
   const email = getRequiredEnv('ADMIN_EMAIL').trim().toLowerCase();
   const password = getRequiredEnv('ADMIN_PASSWORD');
@@ -19,16 +19,13 @@ async function createOrUpdateAdmin(): Promise<void> {
 
   try {
     console.log(`Verificando se o usuário ${email} já existe...`);
-    const { rows } = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    const rows = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
 
-    const hash = await bcrypt.hash(password, 12);
+    const hash = await hashPassword(password);
 
     if (rows.length > 0) {
       console.log('Usuário já existe. Atualizando cargo para admin e resetando senha...');
-      await db.query(
-        'UPDATE users SET password = $1, role = $2, name = $3, phone = COALESCE(NULLIF($4, \'\'), phone) WHERE email = $5',
-        [hash, 'admin', name, phone, email]
-      );
+      await sql`UPDATE users SET password = ${hash}, role = 'admin', name = ${name}, phone = COALESCE(NULLIF(${phone}, ''), phone) WHERE email = ${email}`;
       console.log('✅ Usuário atualizado com sucesso!');
       return;
     }
@@ -41,17 +38,12 @@ async function createOrUpdateAdmin(): Promise<void> {
       .map((part) => part[0].toUpperCase())
       .join('');
 
-    await db.query(
-      `INSERT INTO users (name, email, password, role, phone, avatar)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [name, email, hash, 'admin', phone, avatar || 'AD']
-    );
+    await sql`INSERT INTO users (name, email, password, role, phone, avatar)
+       VALUES (${name}, ${email}, ${hash}, 'admin', ${phone}, ${avatar || 'AD'})`;
     console.log('✅ Administrador criado com sucesso!');
   } catch (err: any) {
-    console.error('❌ Erro:', err.message);
+    console.error('❌ Erro:', err);
     process.exitCode = 1;
-  } finally {
-    await db.close();
   }
 }
 

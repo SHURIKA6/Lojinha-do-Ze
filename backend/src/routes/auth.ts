@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { clearSessionCookies, destroySession, issueSession, resolveSession } from '../services/authService';
 import { jsonError, jsonSuccess } from '../utils/http';
-import bcrypt from 'bcryptjs';
+import { verifyPassword } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { authMiddleware, csrfMiddleware } from '../middleware/auth';
 import { Bindings, Variables } from '../types';
@@ -41,7 +41,7 @@ router.post('/login', async (c) => {
       return jsonError(c, 401, 'Credenciais inválidas');
     }
 
-    const validPassword = user.password ? await bcrypt.compare(password, user.password) : false;
+    const validPassword = user.password ? await verifyPassword(password, user.password) : false;
     if (!validPassword) {
       return jsonError(c, 401, 'Credenciais inválidas');
     }
