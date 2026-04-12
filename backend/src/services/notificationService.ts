@@ -258,7 +258,7 @@ export class NotificationService {
    * Envia WhatsApp
    */
   async sendWhatsApp(notification: Notification) {
-    const phone = notification.data.phone || process.env.ZE_PHONE;
+    const phone = notification.data.phone || (typeof process !== 'undefined' ? process.env.ZE_PHONE : undefined);
     if (!phone) {
       throw new Error('Número de telefone não configurado');
     }

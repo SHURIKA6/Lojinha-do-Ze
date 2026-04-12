@@ -35,7 +35,7 @@ export function loadLocalEnv(): void {
       const key = line.slice(0, separatorIndex).trim();
       const value = line.slice(separatorIndex + 1).trim().replace(/^["']|["']$/g, '');
 
-      if (key && !(key in process.env)) {
+      if (typeof process !== 'undefined' && key && !(key in process.env)) {
         process.env[key] = value;
       }
     }
@@ -49,7 +49,7 @@ export function getRequiredEnv(cOrName: any, name?: string): string {
   const targetName = name || cOrName;
   const context = name ? cOrName : null;
 
-  const value = context?.env?.[targetName] || process.env[targetName];
+  const value = context?.env?.[targetName] || (typeof process !== 'undefined' ? process.env[targetName] : undefined);
 
   if (!value) {
     throw new Error(`${targetName} não definido nas variáveis de ambiente`);
