@@ -68,7 +68,6 @@ export async function issueSession(c: Context<any>, client: any, userId: string)
   const tokenHash = await sha256Hex(sessionToken);
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-  await deleteExpiredSessions(client);
   await createSessionRecord(client, {
     userId,
     tokenHash,
