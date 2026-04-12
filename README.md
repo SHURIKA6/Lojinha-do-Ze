@@ -162,10 +162,3 @@ O projeto segue o padrão **Route $\rightarrow$ Service $\rightarrow$ Repository
 │   └── public/             # Ativos estáticos
 └── Fotos Produtos/         # Imagens dos produtos
 ```
-
-## 🔑 Credenciais Admin Padrão
-
-Se você utilizou `npm run seed`, o administrador padrão é:
-
-- **E-mail:** `jose@lojinha.com`
-- **Senha:** `admin123`
