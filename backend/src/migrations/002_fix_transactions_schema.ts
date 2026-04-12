@@ -1,6 +1,6 @@
 export const id = '002_fix_transactions_schema';
 
-export async function up(client) {
+export async function up(client: any): Promise<void> {
   // Ensure the transactions table exists (in case it was dropped and not recut)
   await client.query(`
     CREATE TABLE IF NOT EXISTS transactions (

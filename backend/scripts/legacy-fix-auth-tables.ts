@@ -1,7 +1,8 @@
-import { createDb } from '../src/db.js';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
+/* eslint-disable no-console */
+import { createDb } from '../src/db.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
 
-async function fixDb() {
+async function fixDb(): Promise<void> {
   loadLocalEnv();
   const db = createDb(getRequiredEnv('DATABASE_URL'));
 
@@ -37,7 +38,7 @@ async function fixDb() {
       CREATE INDEX IF NOT EXISTS idx_password_setup_tokens_expires_at ON password_setup_tokens(expires_at);
     `);
     console.log('✅ Tabelas e índices criados com sucesso!');
-  } catch (err) {
+  } catch (err: any) {
     console.error('❌ Erro:', err.message);
   } finally {
     await db.close();

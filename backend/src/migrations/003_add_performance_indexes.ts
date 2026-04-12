@@ -1,6 +1,6 @@
 export const id = '003_add_performance_indexes';
 
-export async function up(client) {
+export async function up(client: any): Promise<void> {
   await client.query(`
     -- Index for product category to improve catalog filtering
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);

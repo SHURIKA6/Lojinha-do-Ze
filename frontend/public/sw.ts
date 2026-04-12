@@ -5,7 +5,10 @@
 
 /// <reference lib="webworker" />
 
-declare const self: ServiceWorkerGlobalScope;
+export {};
+
+// SEC-REF: Explicitly cast self to ServiceWorkerGlobalScope for TS safety
+const sw = (self as unknown) as ServiceWorkerGlobalScope;
 
 const CACHE_NAME = 'lojinha-do-ze-v1';
 const STATIC_CACHE = 'lojinha-static-v1';
@@ -19,24 +22,10 @@ const STATIC_ASSETS = [
   '/favicon.ico',
 ];
 
-// URLs da API que devem ser cacheadas
-// const API_CACHE_PATTERNS = [
-//   /\/api\/catalog/,
-//   /\/api\/products/,
-// ];
-
-// URLs que sempre devem buscar da rede
-// const NETWORK_FIRST_PATTERNS = [
-//   /\/api\/auth/,
-//   /\/api\/orders/,
-//   /\/api\/payments/,
-//   /\/api\/admin/,
-// ];
-
 /**
  * Evento de instalação do Service Worker
  */
-self.addEventListener('install', (event: ExtendableEvent) => {
+sw.addEventListener('install', (event: ExtendableEvent) => {
   console.log('[SW] Installing Service Worker');
   
   event.waitUntil(
@@ -47,7 +36,7 @@ self.addEventListener('install', (event: ExtendableEvent) => {
       })
       .then(() => {
         console.log('[SW] Static assets cached');
-        return self.skipWaiting();
+        return sw.skipWaiting();
       })
       .catch((error) => {
         console.error('[SW] Error caching static assets:', error);
@@ -58,7 +47,7 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 /**
  * Evento de ativação do Service Worker
  */
-self.addEventListener('activate', (event: ExtendableEvent) => {
+sw.addEventListener('activate', (event: ExtendableEvent) => {
   console.log('[SW] Activating Service Worker');
   
   event.waitUntil(
@@ -78,7 +67,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
       })
       .then(() => {
         console.log('[SW] Service Worker activated');
-        return self.clients.claim();
+        return sw.clients.claim();
       })
   );
 });
@@ -86,7 +75,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 /**
  * Evento de fetch - intercepta todas as requisições
  */
-self.addEventListener('fetch', (event: FetchEvent) => {
+sw.addEventListener('fetch', (event: FetchEvent) => {
   const { request } = event;
   const url = new URL(request.url);
   
@@ -96,7 +85,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   }
   
   // Ignora requisições para outros domínios
-  if (url.origin !== location.origin) {
+  if (url.origin !== sw.location.origin) {
     return;
   }
   
@@ -139,7 +128,6 @@ function isApiRequest(request: Request): boolean {
 
 /**
  * Estratégia Cache First
- * Tenta servir do cache primeiro, se não encontrar busca na rede
  */
 async function cacheFirst(request: Request): Promise<Response> {
   try {
@@ -165,7 +153,6 @@ async function cacheFirst(request: Request): Promise<Response> {
 
 /**
  * Estratégia Network First
- * Tenta buscar da rede primeiro, se falhar usa o cache
  */
 async function networkFirst(request: Request): Promise<Response> {
   try {
@@ -185,7 +172,6 @@ async function networkFirst(request: Request): Promise<Response> {
       return cachedResponse;
     }
     
-    // Retorna resposta offline para requisições da API
     if (isApiRequest(request)) {
       return new Response(
         JSON.stringify({
@@ -210,7 +196,6 @@ async function networkFirst(request: Request): Promise<Response> {
 
 /**
  * Estratégia Stale While Revalidate
- * Serve do cache enquanto atualiza em background
  */
 async function staleWhileRevalidate(request: Request): Promise<Response> {
   const cache = await caches.open(DYNAMIC_CACHE);
@@ -224,82 +209,57 @@ async function staleWhileRevalidate(request: Request): Promise<Response> {
       return networkResponse;
     })
     .catch(() => {
-      // Se a rede falhar, retorna o cache se disponível
       return cachedResponse as Response;
     });
   
-  // Retorna imediatamente do cache se disponível, senão espera a rede
   return (cachedResponse || fetchPromise) as Promise<Response>;
-}
-
-/**
- * Evento de sync para background sync
- */
-self.addEventListener('sync', (event: any) => {
-  console.log('[SW] Background sync:', event.tag);
-  
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
-  }
-});
-
-/**
- * Executa sincronização em background
- */
-async function doBackgroundSync() {
-  try {
-    // Implementar lógica de sincronização se necessário
-    console.log('[SW] Background sync completed');
-  } catch (error) {
-    console.error('[SW] Background sync failed:', error);
-  }
 }
 
 /**
  * Evento de push para notificações
  */
-self.addEventListener('push', (event: PushEvent) => {
+sw.addEventListener('push', (event: PushEvent) => {
   console.log('[SW] Push received');
   
   const options: NotificationOptions = {
     body: event.data ? event.data.text() : 'Nova notificação da Lojinha do Zé',
     icon: '/icon-192x192.png',
     badge: '/badge-72x72.png',
-    vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
       primaryKey: 1,
     },
+    // vibrate is not always available in NotificationOptions in all environments
+    // @ts-ignore
+    vibrate: [100, 50, 100],
     actions: [
       {
         action: 'explore',
         title: 'Ver detalhes',
-        icon: '/icon-explore.png',
       },
       {
         action: 'close',
         title: 'Fechar',
-        icon: '/icon-close.png',
       },
     ],
   };
   
   event.waitUntil(
-    self.registration.showNotification('Lojinha do Zé', options)
+    sw.registration.showNotification('Lojinha do Zé', options)
   );
 });
 
 /**
  * Evento de clique na notificação
  */
-self.addEventListener('notificationclick', (event: NotificationEvent) => {
+sw.addEventListener('notificationclick', (event: NotificationEvent) => {
   console.log('[SW] Notification click:', event.action);
   
   event.notification.close();
   
   if (event.action === 'explore') {
     event.waitUntil(
-      self.clients.openWindow('/')
+      sw.clients.openWindow('/')
     );
   }
 });
@@ -307,11 +267,11 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
 /**
  * Evento de mensagem do cliente
  */
-self.addEventListener('message', (event: ExtendableMessageEvent) => {
+sw.addEventListener('message', (event: ExtendableMessageEvent) => {
   console.log('[SW] Message received:', event.data);
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    sw.skipWaiting();
   }
   
   if (event.data && event.data.type === 'GET_VERSION') {

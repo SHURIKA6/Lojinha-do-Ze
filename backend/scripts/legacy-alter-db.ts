@@ -1,7 +1,8 @@
-import { createDb } from '../src/db.js';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
+/* eslint-disable no-console */
+import { createDb } from '../src/db.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
 
-async function alterTable() {
+async function alterTable(): Promise<void> {
   loadLocalEnv();
   const db = createDb(getRequiredEnv('DATABASE_URL'));
 
@@ -13,7 +14,7 @@ async function alterTable() {
       ADD COLUMN IF NOT EXISTS photo TEXT;
     `);
     console.log('✅ Colunas adicionadas com sucesso!');
-  } catch (err) {
+  } catch (err: any) {
     console.error('❌ Erro:', err.message);
   } finally {
     await db.close();

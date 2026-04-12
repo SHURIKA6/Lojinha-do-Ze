@@ -3,12 +3,12 @@
  * E2E manual para a API da Lojinha do Zé.
  * SEC-09: Movido de src/ para scripts/ para não ser empacotado no deploy.
  *
- * Uso: node scripts/e2e-test.js
+ * Uso: tsx scripts/e2e-test.ts
  */
 
 const API_URL = 'http://localhost:8787/api';
 
-async function runTests() {
+async function runTests(): Promise<void> {
   console.log('Iniciando testes end-to-end...');
 
   console.log('\n--- 1. Login e rate limit ---');
@@ -44,7 +44,7 @@ async function runTests() {
   });
 
   if (badOrder.status === 400) {
-    const data = await badOrder.json();
+    const data: any = await badOrder.json();
     console.log('OK: validacao bloqueou entrada incorreta:', data.error);
   } else {
     console.error('Falha na validacao do pedido:', badOrder.status);

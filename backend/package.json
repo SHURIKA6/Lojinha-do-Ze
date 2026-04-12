@@ -9,8 +9,10 @@
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "seed": "node src/db-bootstrap.js",
-    "create-admin": "node scripts/create-admin.js"
+    "seed": "tsx src/db-bootstrap.ts",
+    "create-admin": "tsx scripts/create-admin.ts",
+    "db:nuke": "tsx scripts/db-nuke.ts",
+    "db:clear": "tsx scripts/clear-db.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",

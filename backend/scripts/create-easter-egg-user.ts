@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 import bcrypt from 'bcryptjs';
-import { createDb } from '../src/db.js';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.js';
+import { createDb } from '../src/db.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
 
-async function createEasterEggUser() {
+async function createEasterEggUser(): Promise<void> {
   loadLocalEnv();
   const db = createDb(getRequiredEnv('DATABASE_URL'));
 
@@ -35,7 +35,7 @@ async function createEasterEggUser() {
       [name, email, hash, 'customer', phone, 'EE']
     );
     console.log('✅ Usuário de teste criado com sucesso!');
-  } catch (err) {
+  } catch (err: any) {
     console.error('❌ Erro:', err.message);
     process.exitCode = 1;
   } finally {

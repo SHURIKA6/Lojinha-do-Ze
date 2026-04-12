@@ -1,6 +1,6 @@
 export const id = '007_add_refresh_tokens';
 
-export async function up(client) {
+export async function up(client: any): Promise<void> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS refresh_tokens (
       id VARCHAR(64) PRIMARY KEY,
