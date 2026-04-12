@@ -11,7 +11,7 @@ export function jsonError(c: Context, status: number, error: string, details?: u
 }
 
 export function jsonSuccess(c: Context, data: any, status: number = 200) {
-  return c.json(data, status as 200 | 201);
+  return c.json({ success: true, data }, status as 200 | 201);
 }
 
 export function applySecurityHeaders(c: Context): void {
