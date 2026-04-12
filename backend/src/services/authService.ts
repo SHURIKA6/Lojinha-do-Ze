@@ -141,9 +141,15 @@ export async function resolveSession(c: Context<any>, client: any) {
   // @ts-ignore
   c.set('session', session);
 
-  void touchSession(client, session.id).catch((error) => {
+  const touchPromise = touchSession(client, session.id).catch((error) => {
     logger.error('Erro ao atualizar sessão (touch)', error);
   });
+
+  if ((c as any).executionCtx?.waitUntil) {
+    (c as any).executionCtx.waitUntil(touchPromise);
+  } else {
+    await touchPromise;
+  }
 
   return session;
 }
