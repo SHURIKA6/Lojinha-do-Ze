@@ -1,23 +1,36 @@
-import { Pool, neonConfig, QueryResult, QueryResultRow } from '@neondatabase/serverless';
+import { Pool, neon, neonConfig, QueryResult, QueryResultRow } from '@neondatabase/serverless';
 import { Database } from './types';
 import { logger } from './utils/logger';
 
 if (typeof process !== 'undefined') {
   // Force disable WebSocket in Node.js to prevent ErrorEvent crashes
-  // @ts-ignore
   neonConfig.webSocketConstructor = undefined;
 } else if (typeof globalThis.WebSocket !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
+
+// Global cache for connection resources to survive between requests in the same isolate
+const poolCache = new Map<string, Pool>();
+const httpCache = new Map<string, any>();
 
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  // Em Cloudflare Workers, o pool precisa viver apenas durante a requisição atual.
-  // Reutilizar pools entre requests vaza I/O assíncrono para outros handlers.
-  const pool = new Pool({ connectionString });
+  // Use cached Pool if available, or create a new one
+  if (!poolCache.has(connectionString)) {
+    logger.debug('Criando novo Pool de conexões para o banco');
+    poolCache.set(connectionString, new Pool({ connectionString }));
+  }
+  
+  // Use cached HTTP client for single-shot queries
+  if (!httpCache.has(connectionString)) {
+    httpCache.set(connectionString, neon(connectionString));
+  }
+
+  const pool = poolCache.get(connectionString)!;
+  const sql = httpCache.get(connectionString)!;
   let closed = false;
 
   function ensureOpen() {
@@ -26,21 +39,42 @@ export function createDb(connectionString: string): Database {
     }
   }
 
-  async function executeQuery<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  async function executeWithHttp<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     ensureOpen();
     const processedParams = params?.map((p) => (p instanceof Date ? p.toISOString() : p));
-    return pool.query<T>(text, processedParams);
+    
+    // The neon() driver returns the rows directly as an array or a specific structure
+    const rows = await sql(text, processedParams || []);
+    return {
+      rows: rows as T[],
+      rowCount: (rows as any).length,
+      command: 'SELECT',
+      oid: 0,
+      fields: []
+    } as QueryResult<T>;
   }
 
   return {
-    query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
-      return executeQuery<T>(text, params).catch(async (err) => {
+    async query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+      try {
+        // Use HTTP driver for simple queries (no 'BEGIN' transaction block detected)
+        const trimmed = text.trim().toUpperCase();
+        const isTransaction = trimmed.startsWith('BEGIN') || trimmed.startsWith('COMMIT') || trimmed.startsWith('ROLLBACK');
+        
+        if (!isTransaction) {
+          return await executeWithHttp<T>(text, params);
+        }
+
+        // Fallback to pool for transactions or explicit requests
+        const processedParams = params?.map((p) => (p instanceof Date ? p.toISOString() : p));
+        return await pool.query<T>(text, processedParams);
+      } catch (err: any) {
         if (err.message?.includes('Connection terminated unexpectedly') || err.code === '57P01') {
-          logger.warn('Conexão do banco terminada inesperadamente. Tentando novamente...');
-          return executeQuery<T>(text, params);
+          logger.warn('Conexão do banco terminada inesperadamente. Tentando via HTTP...');
+          return executeWithHttp<T>(text, params);
         }
         throw err;
-      });
+      }
     },
 
     async connect() {
@@ -63,7 +97,7 @@ export function createDb(connectionString: string): Database {
     async close() {
       if (closed) return;
       closed = true;
-      await pool.end();
+      // We no longer call pool.end() here to keep connections alive in the cache
     },
   };
 }
