@@ -3,8 +3,8 @@
 // Quando KV não está disponível (desenvolvimento local), usa Map() em memória como fallback.
 
 import { Context, Next } from 'hono';
-import { logger } from '../../core/utils/logger';
-import { Bindings } from '../../core/types';
+import { logger } from '../utils/logger';
+import { Bindings } from '../types';
 
 interface RateLimitState {
   count: number;

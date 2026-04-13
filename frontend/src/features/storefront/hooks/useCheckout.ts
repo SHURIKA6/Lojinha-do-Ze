@@ -5,7 +5,7 @@ import {
   getPixPaymentStatus,
 } from '@/core/api';
 import { formatAddress } from '@/core/utils/formatting';
-import { isValidCpf, isValidEmail } from '@/utils/validation';
+import { isValidCpf, isValidEmail } from '@/core/api';
 import { useToast } from '@/components/ui/ToastProvider';
 import { CartItem } from './useCart';
 import { User, Order } from '@/types';
