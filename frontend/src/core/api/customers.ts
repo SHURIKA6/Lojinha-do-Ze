@@ -2,8 +2,11 @@ import { request } from './client';
 import { User, Order, ApiResponse } from '@/types';
 
 export async function getCustomers(): Promise<User[]> {
-  const res = await request<ApiResponse<User[]>>('/customers');
-  return res.data || [];
+  const res = await request<any>('/customers');
+  // O backend retorna o array diretamente (c.json(customers))
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  return [];
 }
 
 export async function getCustomer(id: string): Promise<User> {
