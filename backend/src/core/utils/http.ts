@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { SAFE_HTTP_METHODS } from '../../core/domain/constants.js';
+import { SAFE_HTTP_METHODS } from '../domain/constants';
 
 export function isSafeMethod(method: string | undefined | null): boolean {
   return SAFE_HTTP_METHODS.has(String(method || '').toUpperCase());

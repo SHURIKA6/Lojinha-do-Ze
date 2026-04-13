@@ -22,7 +22,7 @@ import {
   getStatusLabel,
   getStatusVariant,
 } from '@/core/utils/formatting';
-import { isValidCpf } from '@/utils/validation';
+import { isValidCpf } from '@/core/api';
 import {
   FiEdit2,
   FiEye,

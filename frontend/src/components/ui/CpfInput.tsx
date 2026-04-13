@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useCpfValidation } from '@/hooks/useCpfValidation';
+import { useCpfValidation } from '@/core/hooks/useCpfValidation';
 import { FiAlertCircle, FiCheckCircle, FiInfo } from 'react-icons/fi';
 
 interface CpfInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
