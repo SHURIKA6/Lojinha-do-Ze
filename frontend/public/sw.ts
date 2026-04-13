@@ -10,9 +10,9 @@ export {};
 // SEC-REF: Explicitly cast self to ServiceWorkerGlobalScope for TS safety
 const sw = (self as unknown) as ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'lojinha-do-ze-v1';
-const STATIC_CACHE = 'lojinha-static-v1';
-const DYNAMIC_CACHE = 'lojinha-dynamic-v1';
+const CACHE_NAME = 'lojinha-do-ze-v2';
+const STATIC_CACHE = 'lojinha-static-v2';
+const DYNAMIC_CACHE = 'lojinha-dynamic-v2';
 
 // Assets estáticos para cache
 const STATIC_ASSETS = [
@@ -89,10 +89,14 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
   
+  const isHtml = request.headers.get('accept')?.includes('text/html');
+  const isRsc = url.searchParams.has('_rsc');
+
   // Estratégia baseada no tipo de requisição
   if (isStaticAsset(request)) {
     event.respondWith(cacheFirst(request));
-  } else if (isApiRequest(request)) {
+  } else if (isApiRequest(request) || isHtml || isRsc) {
+    // Sempre tentar rede primeiro para HTML e requests da API ou RSC (App Router)
     event.respondWith(networkFirst(request));
   } else {
     event.respondWith(staleWhileRevalidate(request));
