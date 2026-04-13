@@ -3,7 +3,7 @@
  * Rastreia e analisa padrões de comportamento dos clientes
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../../core/utils/logger';
 
 /**
  * Tipos de comportamento

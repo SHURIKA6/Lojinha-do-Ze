@@ -1,14 +1,14 @@
-import { Database } from '../types';
-import { cacheService } from './cacheService';
-import { CACHE_PREFIXES } from '../domain/cacheKeys';
-import { CATALOG_CACHE_TTL_SECONDS } from '../domain/constants';
-import * as productRepo from '../repositories/productRepository';
+import { Database } from '../../core/types';
+import { cacheService } from '../system/cacheService';
+import { CACHE_PREFIXES } from '../../core/domain/cacheKeys';
+import { CATALOG_CACHE_TTL_SECONDS } from '../../core/domain/constants';
+import * as productRepo from './repository';
 import {
   cleanOptionalString,
   isUniqueViolation,
   uniqueFieldLabel,
-} from '../utils/normalize';
-import { logger } from '../utils/logger';
+} from '../../core/utils/normalize';
+import { logger } from '../../core/utils/logger';
 
 export async function getProducts(db: Database, limit: number, offset: number) {
   return productRepo.listProducts(db, limit, offset);

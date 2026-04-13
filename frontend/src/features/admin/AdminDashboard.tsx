@@ -24,10 +24,10 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { useAuth } from '@/services/auth/AuthContext';
-import { useToast } from '@/hooks/useToast';
-import { getDashboard, DashboardData } from '@/lib/api';
-import { formatCurrency, getStatusLabel, getStatusVariant } from '@/utils/formatting';
+import { useAuth } from '@/core/contexts/AuthContext';
+import { useToast } from '@/core/hooks/useToast';
+import { getDashboard, DashboardData } from '@/core/api';
+import { formatCurrency, getStatusLabel, getStatusVariant } from '@/core/utils/formatting';
 import { CHART_COLORS } from '@/styles/theme';
 import AdminAssistant from './AdminAssistant';
 import StorefrontPageClient from '../storefront/StorefrontPageClient';

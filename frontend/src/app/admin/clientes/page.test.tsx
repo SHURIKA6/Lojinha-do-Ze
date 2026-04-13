@@ -12,7 +12,7 @@ const mockSendCustomerInvite = jest.fn();
 const mockUpdateCustomer = jest.fn();
 const mockUpdateUserRole = jest.fn();
 
-jest.mock('@/services/api/client', () => ({
+jest.mock('@/core/api/customers', () => ({
   createCustomer: (...args: any[]) => mockCreateCustomer(...args),
   deleteCustomer: (...args: any[]) => mockDeleteCustomer(...args),
   getCustomer: (...args: any[]) => mockGetCustomer(...args),
@@ -21,11 +21,18 @@ jest.mock('@/services/api/client', () => ({
   sendCustomerInvite: (...args: any[]) => mockSendCustomerInvite(...args),
   updateCustomer: (...args: any[]) => mockUpdateCustomer(...args),
   updateUserRole: (...args: any[]) => mockUpdateUserRole(...args),
+}));
+
+jest.mock('@/core/utils/formatting', () => ({
   formatCpf: (value: string) => value,
   formatCurrency: (value: number) => `R$ ${value}`,
   formatDate: () => '01/01/2026',
   getStatusLabel: (value: string) => value,
   getStatusVariant: () => 'neutral',
+  formatAddress: (value: any) => value,
+}));
+
+jest.mock('@/utils/validation', () => ({
   isValidCpf: () => true,
 }));
 

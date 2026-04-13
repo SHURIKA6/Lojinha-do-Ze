@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { pixPaymentSchema } from '../domain/schemas';
-import { MercadoPagoService } from '../services/mercadoPagoService';
-import { getRequiredEnv } from '../load-local-env';
-import { jsonError, validationError } from '../utils/http';
-import { logger } from '../utils/logger';
-import { orderLimiter } from '../middleware/rateLimit';
-import { normalizePhoneDigits } from '../utils/normalize';
-import { Bindings, Variables } from '../types';
+import { pixPaymentSchema } from '../../core/domain/schemas';
+import { MercadoPagoService } from './service';
+import { getRequiredEnv } from '../../core/load-local-env';
+import { jsonError, validationError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import { orderLimiter } from '../../core/middleware/rateLimit';
+import { normalizePhoneDigits } from '../../core/utils/normalize';
+import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

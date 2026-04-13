@@ -1,6 +1,6 @@
 import { Pool, neonConfig, QueryResult, QueryResultRow } from '@neondatabase/serverless';
-import { Database } from './types';
-import { logger } from './utils/logger';
+import { Database } from '../../core/types';
+import { logger } from '../../core/utils/logger';
 
 if (typeof process !== 'undefined') {
   // Force disable WebSocket in Node.js to prevent ErrorEvent crashes

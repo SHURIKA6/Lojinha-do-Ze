@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
-import { updateProfile } from '@/lib/api';
+import { updateProfile } from '@/core/api';
 import { FiMail, FiPhone, FiSave, FiUser } from 'react-icons/fi';
 
 export default function PerfilPage() {

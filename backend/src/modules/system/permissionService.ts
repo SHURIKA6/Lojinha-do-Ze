@@ -3,7 +3,7 @@
  * Gerencia permissões de acesso por recurso e ação
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
 
 /**

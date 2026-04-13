@@ -3,7 +3,7 @@
  * Gerencia envio de notificações por múltiplos canais
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
 
 /**

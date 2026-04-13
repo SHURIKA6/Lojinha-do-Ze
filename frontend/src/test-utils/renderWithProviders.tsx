@@ -2,7 +2,7 @@ import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
-import { AuthContext } from '@/services/auth/AuthContext';
+import { AuthContext } from '@/core/contexts/AuthContext';
 import { AuthContextType } from '@/types';
 import { jest } from '@jest/globals';
 

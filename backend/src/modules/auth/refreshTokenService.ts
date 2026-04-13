@@ -3,8 +3,8 @@
  * Permite renovação de sessão sem re-login
  */
 
-import { randomToken, sha256Hex } from '../utils/crypto';
-import { logger } from '../utils/logger';
+import { randomToken, sha256Hex } from '../../core/utils/crypto';
+import { logger } from '../../core/utils/logger';
 
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 dias
 const REFRESH_TOKEN_PREFIX = 'refresh_token_';

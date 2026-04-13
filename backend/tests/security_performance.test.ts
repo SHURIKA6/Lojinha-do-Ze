@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import app from '../src/server';
-import { cacheService } from '../src/services/cacheService';
+import { cacheService } from '../src/modules/system/cacheService';
 
 describe('Security and Performance Integration', () => {
   describe('Audit Logging', () => {

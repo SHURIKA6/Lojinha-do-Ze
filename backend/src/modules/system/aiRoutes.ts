@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { logger } from '../utils/logger';
-import { getRequiredEnv } from '../load-local-env';
-import { authMiddleware, adminOnly } from '../middleware/auth';
-import { Bindings, Variables } from '../types';
+import { logger } from '../../core/utils/logger';
+import { getRequiredEnv } from '../../core/load-local-env';
+import { authMiddleware, adminOnly } from '../../core/middleware/auth';
+import { Bindings, Variables } from '../../core/types';
 
 const aiRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

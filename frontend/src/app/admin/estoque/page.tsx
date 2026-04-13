@@ -13,7 +13,7 @@ import {
   getProducts,
   updateProduct,
   uploadImage,
-} from '@/lib/api';
+} from '@/core/api';
 import {
   FiAlertTriangle,
   FiEdit2,

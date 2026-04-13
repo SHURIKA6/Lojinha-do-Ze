@@ -1,4 +1,4 @@
-import { createDb } from './db';
+import { createDb } from './core/db';
 import { runMigrations } from './migrations/runner';
 import * as m001 from './migrations/001_initial';
 import * as m008 from './migrations/008_add_performance_indexes';

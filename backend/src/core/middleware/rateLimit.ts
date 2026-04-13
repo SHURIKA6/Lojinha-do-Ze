@@ -3,8 +3,8 @@
 // Quando KV não está disponível (desenvolvimento local), usa Map() em memória como fallback.
 
 import { Context, Next } from 'hono';
-import { logger } from '../utils/logger';
-import { Bindings } from '../types';
+import { logger } from '../../core/utils/logger';
+import { Bindings } from '../../core/types';
 
 interface RateLimitState {
   count: number;
@@ -79,7 +79,7 @@ const fallbackStore = createInMemoryStore();
 
 export function createRateLimiter(namespace: string, limit: number, windowMs: number) {
   return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
-    const kvBinding = c.env.RATE_LIMIT_KV as KVNamespace | undefined;
+    const kvBinding = c.env?.RATE_LIMIT_KV as KVNamespace | undefined;
     const store = kvBinding ? createKvStore(kvBinding) : fallbackStore;
 
     // Confia apenas no IP do cliente fornecido pela plataforma.

@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { orderCreateSchema } from '../domain/schemas';
-import { orderLimiter } from '../middleware/rateLimit';
-import { cleanOptionalString, normalizePhoneDigits } from '../utils/normalize';
-import { jsonError, validationError } from '../utils/http';
-import { logger } from '../utils/logger';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants';
-import { Bindings, Variables } from '../types';
-import * as orderService from '../services/orderService';
-import * as productService from '../services/productService';
+import { orderCreateSchema } from '../../core/domain/schemas';
+import { orderLimiter } from '../../core/middleware/rateLimit';
+import { cleanOptionalString, normalizePhoneDigits } from '../../core/utils/normalize';
+import { jsonError, validationError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../core/domain/constants';
+import { Bindings, Variables } from '../../core/types';
+import * as orderService from '../orders/service';
+import * as productService from './service';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

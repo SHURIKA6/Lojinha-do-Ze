@@ -1,10 +1,10 @@
 import { Context, Next, MiddlewareHandler } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../domain/constants';
-import { resolveSession } from '../services/authService';
-import { isSafeMethod, jsonError } from '../utils/http';
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../../core/domain/constants';
+import { resolveSession } from '../modules/auth/service';
+import { isSafeMethod, jsonError } from '../../core/utils/http';
 import { isAllowedOrigin } from './security';
-import { Bindings, Variables } from '../types';
+import { Bindings, Variables } from '../../core/types';
 
 async function loadSession(c: Context<{ Bindings: Bindings; Variables: Variables }>) {
   const db = c.get('db');

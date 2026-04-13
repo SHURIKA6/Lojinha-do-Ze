@@ -1,6 +1,6 @@
 import { Context } from 'hono';
-import { Database } from '../types';
-import * as customerRepo from '../repositories/customerRepository';
+import { Database } from '../../core/types';
+import * as customerRepo from './repository';
 import {
   buildAvatar,
   cleanOptionalString,
@@ -8,8 +8,8 @@ import {
   normalizeCpfDigits,
   normalizeEmail,
   normalizePhoneDigits,
-} from '../utils/normalize';
-import { generatePasswordSetupInvite } from './authService';
+} from '../../core/utils/normalize';
+import { generatePasswordSetupInvite } from '../auth/service';
 
 export class CustomerService {
   constructor(private db: Database) {}

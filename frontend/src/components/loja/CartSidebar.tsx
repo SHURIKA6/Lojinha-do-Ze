@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FiMinus, FiPlus, FiShoppingCart, FiTrash2, FiX } from 'react-icons/fi';
-import { formatCurrency } from '@/lib/api';
+import { formatCurrency } from '@/core/api';
 import styles from './CartSidebar.module.css';
 import { CartItem } from '@/features/storefront/hooks/useCart';
 

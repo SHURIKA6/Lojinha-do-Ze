@@ -3,7 +3,7 @@ import './experience.css';
 import './storefront.css';
 
 import React from 'react';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/core/contexts/AuthContext';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { Fraunces, Manrope } from 'next/font/google';

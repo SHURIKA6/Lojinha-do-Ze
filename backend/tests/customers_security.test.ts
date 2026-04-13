@@ -1,37 +1,33 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { Hono } from 'hono';
-import { Bindings, Variables } from '../src/types';
 
-const bcryptCompareMock = jest.fn(async (value: any, hash: string) => hash === `hash:${value}`);
+const verifyPasswordMock = jest.fn(async (password: string, hash: string) => hash === `hash:${password}`);
 
-jest.unstable_mockModule('bcryptjs', () => ({
-  default: {
-    compare: bcryptCompareMock,
-  },
+jest.unstable_mockModule('../src/utils/crypto', () => ({
+  randomCode: (len = 8) => 'TESTCODE' + '0'.repeat(Math.max(0, len - 8)),
+  randomToken: (len = 32) => 'TESTTOKEN' + '0'.repeat(Math.max(0, len - 9)),
+  sha256Hex: async (val: string) => 'hash:' + val,
+  verifyPassword: verifyPasswordMock,
 }));
 
-jest.unstable_mockModule('../src/middleware/auth', () => ({
-  authMiddleware: async (c: any, next: any) => {
-    c.set('user', {
-      id: c.req.header('x-test-user-id') || '1',
-      role: c.req.header('x-test-user-role') || 'admin',
-    });
-    c.set('session', { id: 'session-1' });
-    await next();
-  },
-  adminOnly: async (c: any, next: any) => {
-    if (c.get('user')?.role !== 'admin') {
-      return c.json({ error: 'Acesso restrito ao administrador' }, 403);
-    }
-    await next();
-  },
-  csrfMiddleware: async (_c: any, next: any) => {
-    await next();
-  },
-}));
+let Hono: any;
+let Bindings: any;
+let Variables: any;
+let customersRoutes: any;
+let profileRoutes: any;
 
-const { default: customersRoutes } = await import('../src/routes/customers') as any;
-const { default: profileRoutes } = await import('../src/routes/profile') as any;
+beforeAll(async () => {
+  const honoMod = await import('hono');
+  Hono = honoMod.Hono;
+
+  const typesMod = await import('../src/types');
+  Bindings = typesMod.Bindings;
+  Variables = typesMod.Variables;
+
+  const customers = await import('../src/modules/customers/routes');
+  customersRoutes = customers.default;
+  const profile = await import('../src/modules/customers/profileRoutes');
+  profileRoutes = profile.default;
+});
 
 function buildDbMock(handlers: any = {}) {
   const query = jest.fn(async (text: string, params: any[]) => {
@@ -56,6 +52,21 @@ function buildApp(route: any, db: any) {
   const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
   app.use('*', async (c, next) => {
     c.set('db', db);
+
+    // Injetar sessão para testes para evitar 401 do authMiddleware
+    const userId = c.req.header('x-test-user-id') || '1';
+    const role = c.req.header('x-test-user-role') || 'admin';
+    const session = {
+      id: 'session-1',
+      userId,
+      user: { id: userId, role, name: 'Test User' },
+      csrfToken: 'test-csrf',
+      expiresAt: new Date(Date.now() + 3600000),
+    };
+    c.set('user', session.user);
+    c.set('session', session);
+    c.set('resolvedSession', session);
+
     await next();
   });
   app.route('/', route);
@@ -74,7 +85,11 @@ describe('Customers and Profile Security', () => {
       '/?ignored=1',
       {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': 'test-csrf',
+          'Cookie': 'lz_csrf=test-csrf'
+        },
         body: JSON.stringify({ adminSecret: 'SHURA_ADMIN' }),
       }
     );

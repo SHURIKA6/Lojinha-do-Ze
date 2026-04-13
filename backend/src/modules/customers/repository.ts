@@ -1,4 +1,4 @@
-import { Database, CustomerCreateData, CustomerUpdateData } from '../types';
+import { Database, CustomerCreateData, CustomerUpdateData } from '../../core/types';
 
 export async function findAllCustomers(db: Database, limit: number, offset: number) {
   const { rows } = await db.query(

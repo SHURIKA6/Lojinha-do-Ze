@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import {
   formatCurrency,
   formatDate,
   getOrders,
   getStatusLabel,
   getStatusVariant,
-} from '@/lib/api';
+} from '@/core/api';
 import { FiCheckCircle, FiClock, FiPackage, FiTruck } from 'react-icons/fi';
 import { Order } from '@/types';
 

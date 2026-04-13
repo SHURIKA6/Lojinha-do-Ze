@@ -2,14 +2,15 @@ import React from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
-import { AuthContext } from '@/services/auth/AuthContext';
+import { AuthContext } from '@/core/contexts/AuthContext';
 import { useCheckout } from './useCheckout';
 
 const mockCreateOrder = jest.fn();
 const mockCreatePixPayment = jest.fn();
 const mockGetPixPaymentStatus = jest.fn();
 
-jest.mock('@/services/api/client', () => ({
+jest.mock('@/core/api', () => ({
+  ...jest.requireActual('@/core/api'),
   createOrder: (...args: any[]) => mockCreateOrder(...args),
   createPixPayment: (...args: any[]) => mockCreatePixPayment(...args),
   getPixPaymentStatus: (...args: any[]) => mockGetPixPaymentStatus(...args),
@@ -99,8 +100,6 @@ describe('useCheckout', () => {
       name: 'Ana Silva',
       phone: '(65) 99999-0000',
       email: 'ana@example.com',
-      address: 'Rua A, 123',
-      coords: null,
     });
   });
 });

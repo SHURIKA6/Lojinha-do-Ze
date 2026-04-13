@@ -1,5 +1,5 @@
 import { MercadoPagoConfig, Payment } from 'mercadopago';
-import { logger } from '../utils/logger';
+import { logger } from '../../core/utils/logger';
 
 // Polyfill para compatibilidade do SDK do Mercado Pago com Cloudflare Workers
 if (typeof Headers !== 'undefined' && !(Headers.prototype as any).raw) {

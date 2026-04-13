@@ -6,10 +6,10 @@ import {
   PASSWORD_SETUP_TTL_HOURS,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
-} from '../domain/constants';
-import { randomCode, randomToken, sha256Hex, verifyPassword } from '../utils/crypto';
+} from '../../core/domain/constants';
+import { randomCode, randomToken, sha256Hex, verifyPassword } from '../../core/utils/crypto';
 
-import { logger } from '../utils/logger';
+import { logger } from '../../core/utils/logger';
 import {
   createSessionRecord,
   deleteExpiredSessions,
@@ -18,16 +18,16 @@ import {
   findSessionByTokenHash,
   touchSession,
   SessionRecord,
-} from '../repositories/sessionRepository';
-import * as userRepository from '../repositories/userRepository';
+} from './repository';
+import * as userRepository from '../customers/userRepository';
 import {
   consumeSetupToken,
   createPasswordSetupToken,
   deleteExpiredSetupTokens,
   findOpenSetupToken,
   revokeOpenSetupTokensForUser,
-} from '../repositories/passwordSetupRepository';
-import { Bindings, User, Variables, Database, UserDB, HonoCloudflareContext } from '../types';
+} from './passwordSetupRepository';
+import { Bindings, User, Variables, Database, UserDB, HonoCloudflareContext } from '../../core/types';
 
 type AppEnv = { Bindings: Bindings; Variables: Variables };
 

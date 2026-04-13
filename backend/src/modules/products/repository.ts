@@ -1,4 +1,4 @@
-import { Database } from '../types';
+import { Database } from '../../core/types';
 
 export interface Product {
   id: string;

@@ -1,7 +1,7 @@
 import { Context, Next, MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
-import { applySecurityHeaders, isSafeMethod, jsonError } from '../utils/http';
-import { Bindings } from '../types';
+import { applySecurityHeaders, isSafeMethod, jsonError } from '../../core/utils/http';
+import { Bindings } from '../../core/types';
 
 const LOCAL_ALLOWED_ORIGINS = [
   'http://localhost:3000',

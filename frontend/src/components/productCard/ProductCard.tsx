@@ -3,7 +3,7 @@
 import React from 'react';
 import { FiPackage, FiPlus } from 'react-icons/fi';
 import AppImage from '@/components/ui/AppImage';
-import { formatCurrency, getImageUrl } from '@/lib/api';
+import { formatCurrency, getImageUrl } from '@/core/api';
 import styles from './ProductCard.module.css';
 import { Product } from '@/types';
 
