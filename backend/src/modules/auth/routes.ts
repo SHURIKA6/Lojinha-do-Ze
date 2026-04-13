@@ -33,14 +33,23 @@ router.post(
           csrfToken,
         });
       } finally {
-        client.release();
+        try {
+          client.release();
+        } catch {}
       }
     } catch (error: any) {
       if (error.message === 'Credenciais inválidas') {
         return jsonError(c, 401, error.message);
       }
-      logger.error('Erro no processamento do login', error);
-      return jsonError(c, 500, 'Erro interno ao processar login');
+      
+      logger.error('Erro no processamento do login', {
+        error: error,
+        message: error.message,
+        stack: error.stack,
+        loginId: loginId
+      });
+      
+      return jsonError(c, 401, 'Credenciais inválidas');
     }
   }
 );
