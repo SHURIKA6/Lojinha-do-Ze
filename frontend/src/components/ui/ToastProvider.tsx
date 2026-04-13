@@ -61,10 +61,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Fallback seguro para quando useToast é chamado fora do ToastProvider
+// (ex: durante recuperação do ErrorBoundary ou SSR)
+const noopToast: ToastContextType = {
+  showToast: () => {},
+  success: () => {},
+  error: () => {},
+  info: () => {},
+};
+
 export function useToast(): ToastContextType {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast deve ser usado dentro de um ToastProvider');
+    if (typeof window !== 'undefined') {
+      console.warn('[ToastProvider] useToast chamado fora do ToastProvider – usando fallback silencioso.');
+    }
+    return noopToast;
   }
 
   return context;
