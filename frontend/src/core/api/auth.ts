@@ -20,9 +20,9 @@ export async function logout(): Promise<void> {
 }
 
 export async function getMe(): Promise<User> {
-  const res = await request<ApiResponse<User>>('/auth/me');
-  if (!res.data) throw new Error(res.message || 'Sessão inválida');
-  return res.data;
+  const res = await request<ApiResponse<{ user: User; csrfToken: string }>>('/auth/me');
+  if (!res.data || !res.data.user) throw new Error(res.message || 'Sessão inválida');
+  return res.data.user;
 }
 
 export async function setupPassword(payload: any): Promise<any> {
