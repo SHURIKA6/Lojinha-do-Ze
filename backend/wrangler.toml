@@ -13,3 +13,10 @@ ENVIRONMENT = "production"
 # MERCADO_PAGO_CLIENT_ID = ""
 # MERCADO_PAGO_CLIENT_SECRET = ""
 # GEMINI_API_KEY = ""
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
