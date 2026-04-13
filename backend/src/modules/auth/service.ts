@@ -53,6 +53,20 @@ function sessionCookieOptions(c: Context<AppEnv>, maxAge = SESSION_TTL_SECONDS, 
 }
 
 function serializeUser(row: UserDB): User {
+  let address = undefined;
+  
+  if (row.address) {
+    try {
+      address = JSON.parse(row.address);
+    } catch (parseError) {
+      logger.warn('Falha ao parsear endereço do usuário (JSON inválido)', { 
+        userId: row.id,
+        addressValue: row.address
+      });
+      address = undefined;
+    }
+  }
+
   return {
     id: row.id,
     name: row.name,
@@ -60,7 +74,7 @@ function serializeUser(row: UserDB): User {
     role: row.role as 'admin' | 'customer',
     phone: row.phone || undefined,
     cpf: row.cpf,
-    address: row.address ? JSON.parse(row.address) : undefined,
+    address,
     avatar: row.avatar || undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at || row.created_at),
