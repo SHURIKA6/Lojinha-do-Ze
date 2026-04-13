@@ -82,7 +82,18 @@ export async function authenticate(db: Database, identifier: string, password: s
     throw new Error('Credenciais inválidas');
   }
 
-  const validPassword = user.password ? await verifyPassword(password, user.password) : false;
+  let validPassword = false;
+  
+  try {
+    validPassword = user.password ? await verifyPassword(password, user.password) : false;
+  } catch (verifyError) {
+    logger.warn('Falha na verificação de senha (hash inválido ou formato incorreto)', { 
+      userId: user.id,
+      email: user.email 
+    });
+    validPassword = false;
+  }
+  
   if (!validPassword) {
     throw new Error('Credenciais inválidas');
   }
