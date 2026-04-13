@@ -99,11 +99,31 @@ export async function authenticate(db: Database, identifier: string, password: s
   let validPassword = false;
   
   try {
-    validPassword = user.password ? await verifyPassword(password, user.password) : false;
-  } catch (verifyError) {
-    logger.warn('Falha na verificação de senha (hash inválido ou formato incorreto)', { 
+    if (user.password) {
+      // Detecta hash BCrypt legado, SHA1, MD5 etc
+      if (user.password.startsWith('$2') || user.password.startsWith('$2a') || 
+          user.password.startsWith('$2b') || user.password.startsWith('$argon')) {
+        logger.warn('Usuário com hash de senha legado. Necessita reset de senha', { 
+          userId: user.id,
+          email: user.email,
+          hashType: user.password.substring(0, 4)
+        });
+        
+        // Para hash não suportado, retorna credenciais inválidas
+        // Mas não quebra o fluxo com erro 500
+        validPassword = false;
+      } else {
+        validPassword = await verifyPassword(password, user.password);
+      }
+    } else {
+      validPassword = false;
+    }
+  } catch (verifyError: unknown) {
+    logger.error('Exceção durante verificação de senha', { 
       userId: user.id,
-      email: user.email 
+      email: user.email,
+      errorMessage: verifyError instanceof Error ? verifyError.message : String(verifyError),
+      errorStack: verifyError instanceof Error ? verifyError.stack : undefined
     });
     validPassword = false;
   }
