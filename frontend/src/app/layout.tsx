@@ -117,8 +117,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="color-scheme" content="light dark" />
       </head>
       <body>
-        <ErrorBoundary>
-          <ToastProvider>
+        <ToastProvider>
+          <ErrorBoundary>
             <ConfirmDialogProvider>
               <AuthProvider>
                 <ServiceWorkerRegistration />
@@ -129,8 +129,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </main>
               </AuthProvider>
             </ConfirmDialogProvider>
-          </ToastProvider>
-        </ErrorBoundary>
+          </ErrorBoundary>
+        </ToastProvider>
         
         <AccessibilityStyles />
       </body>
