@@ -2,8 +2,10 @@ import { Pool, neon, neonConfig, QueryResult, QueryResultRow } from '@neondataba
 import { Database } from './types';
 import { logger } from './utils/logger';
 
-if (typeof process !== 'undefined') {
-  // Force disable WebSocket in Node.js to prevent ErrorEvent crashes
+// Safe detection of Node.js vs Cloudflare Workers
+const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+
+if (isNode) {
   neonConfig.webSocketConstructor = undefined;
 } else if (typeof globalThis.WebSocket !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
@@ -41,57 +43,56 @@ export function createDb(connectionString: string): Database {
 
   async function executeWithHttp<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     ensureOpen();
-    const processedParams = params?.map((p) => (p instanceof Date ? p.toISOString() : p));
-    
-    // The neon() driver returns the rows directly as an array or a specific structure
-    const rows = await sql(text, processedParams || []);
-    return {
-      rows: rows as T[],
-      rowCount: (rows as any).length,
-      command: 'SELECT',
-      oid: 0,
-      fields: []
-    } as QueryResult<T>;
+    try {
+      // The neon() driver returns the rows directly as an array or a specific structure
+      // It handles Date objects and other types natively.
+      const rows = await sql(text, params || []);
+      return {
+        rows: rows as T[],
+        rowCount: Array.isArray(rows) ? rows.length : 0,
+        command: 'SELECT',
+        oid: 0,
+        fields: []
+      } as QueryResult<T>;
+    } catch (err: any) {
+      logger.error(`Erro na query HTTP: ${err.message}`, { text });
+      throw err;
+    }
   }
 
   return {
     async query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
       try {
-        // Use HTTP driver for simple queries (no 'BEGIN' transaction block detected)
         const trimmed = text.trim().toUpperCase();
-        const isTransaction = trimmed.startsWith('BEGIN') || trimmed.startsWith('COMMIT') || trimmed.startsWith('ROLLBACK');
+        // Use HTTP driver for simple read queries (not transactions)
+        const isTransaction = trimmed.startsWith('BEGIN') || trimmed.startsWith('COMMIT') || trimmed.startsWith('ROLLBACK') || trimmed.startsWith('SAVEPOINT');
         
         if (!isTransaction) {
           return await executeWithHttp<T>(text, params);
         }
 
-        // Fallback to pool for transactions or explicit requests
-        const processedParams = params?.map((p) => (p instanceof Date ? p.toISOString() : p));
-        return await pool.query<T>(text, processedParams);
+        // Fallback to pool for transactions or explicit transaction control
+        return await pool.query<T>(text, params);
       } catch (err: any) {
+        // Auto-retry via HTTP if pool fails unexpectedly
         if (err.message?.includes('Connection terminated unexpectedly') || err.code === '57P01') {
-          logger.warn('Conexão do banco terminada inesperadamente. Tentando via HTTP...');
+          logger.warn('Conexão do pool terminada. Tentando via HTTP...');
           return executeWithHttp<T>(text, params);
         }
+        logger.error(`Erro na query: ${err.message}`, { text });
         throw err;
       }
     },
 
     async connect() {
       ensureOpen();
-      const client = await pool.connect();
-      const originalQuery = client.query.bind(client);
-      
-      // Override query to handle Date serialization
-      // @ts-ignore - complex overloads on pg client
-      client.query = (text: any, params?: any[]) => {
-        const processedParams = Array.isArray(params) 
-          ? params.map(p => (p instanceof Date ? p.toISOString() : p)) 
-          : params;
-        return originalQuery(text, processedParams);
-      };
-      
-      return client;
+      try {
+        const client = await pool.connect();
+        return client;
+      } catch (err: any) {
+        logger.error(`Erro ao conectar ao pool: ${err.message}`);
+        throw err;
+      }
     },
 
     async close() {
