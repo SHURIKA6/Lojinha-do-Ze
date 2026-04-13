@@ -27,7 +27,9 @@ async function fetchMe(request: NextRequest): Promise<AuthResult> {
       return { kind: 'error' };
     }
 
-    return { kind: 'auth', user: await res.json() };
+    const payload = await res.json();
+    const user = payload.success && payload.data?.user ? payload.data.user : payload.user || payload;
+    return { kind: 'auth', user };
   } catch {
     return { kind: 'error' };
   }
