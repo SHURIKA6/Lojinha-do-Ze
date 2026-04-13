@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { loadLocalEnv, getRequiredEnv } from '../src/load-local-env';
+import { loadLocalEnv, getRequiredEnv } from '../src/core/load-local-env';
 import { Hono } from 'hono';
 
 jest.unstable_mockModule('../src/middleware/auth', () => ({
@@ -12,7 +12,12 @@ jest.unstable_mockModule('../src/middleware/auth', () => ({
   },
 }));
 
-const { default: uploadRoutes } = await import('../src/routes/upload') as any;
+let uploadRoutes: any;
+
+beforeAll(async () => {
+  const mod = await import('../src/modules/system/uploadRoutes');
+  uploadRoutes = mod.default;
+});
 
 function buildApp() {
   const app = new Hono();

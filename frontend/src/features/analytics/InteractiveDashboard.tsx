@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
-import { getDemandForecast, getReviewSentiment } from '@/lib/api';
+import { getDemandForecast, getReviewSentiment } from '@/core/api';
 import { 
   FiRefreshCw, FiTrendingUp, FiTarget, FiAlertCircle, FiSmile, FiMeh, FiFrown
 } from 'react-icons/fi';

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiGrid, FiLock, FiShoppingBag, FiUser } from 'react-icons/fi';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 // @ts-ignore
 import CartSidebar from '@/components/loja/CartSidebar';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getCatalog } from '@/lib/api';
+import { getCatalog } from '@/core/api';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Product } from '@/types';
 

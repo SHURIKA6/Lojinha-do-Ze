@@ -3,8 +3,8 @@
  * Implementa algoritmos de previsão para estoque e produção
  */
 
-import { logger } from '../utils/logger';
-import { cacheService } from './cacheService';
+import { logger } from '../../core/utils/logger';
+import { cacheService } from '../system/cacheService';
 
 /**
  * Algoritmos de previsão disponíveis

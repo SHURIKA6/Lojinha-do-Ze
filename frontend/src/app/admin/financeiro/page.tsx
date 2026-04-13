@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
 import { useToast } from '@/components/ui/ToastProvider';
-import { getTransactions, createTransaction, deleteTransaction, formatCurrency, formatDate } from '@/lib/api';
+import { getTransactions, createTransaction, deleteTransaction, formatCurrency, formatDate } from '@/core/api';
 import Modal from '@/components/Modal';
 import { FiPlus, FiTrash2, FiTrendingUp, FiTrendingDown, FiDollarSign, FiSearch } from 'react-icons/fi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';

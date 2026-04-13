@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import * as authService from '../services/authService';
-import { jsonError, jsonSuccess, validationError } from '../utils/http';
-import { logger } from '../utils/logger';
-import { authMiddleware, csrfMiddleware } from '../middleware/auth';
-import { loginSchema } from '../domain/schemas';
-import { Bindings, Variables } from '../types';
+import * as authService from './service';
+import { jsonError, jsonSuccess, validationError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import { authMiddleware, csrfMiddleware } from '../../core/middleware/auth';
+import { loginSchema } from '../../core/domain/schemas';
+import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

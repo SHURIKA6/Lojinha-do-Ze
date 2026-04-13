@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware, csrfMiddleware } from '../middleware/auth';
-import { profileUpdateSchema } from '../domain/schemas';
+import { authMiddleware, csrfMiddleware } from '../../core/middleware/auth';
+import { profileUpdateSchema } from '../../core/domain/schemas';
 import {
   buildAvatar,
   cleanOptionalString,
   isUniqueViolation,
   normalizeEmail,
   uniqueFieldLabel,
-} from '../utils/normalize';
-import { jsonError, validationError } from '../utils/http';
-import { logger } from '../utils/logger';
-import { Bindings, Variables } from '../types';
+} from '../../core/utils/normalize';
+import { jsonError, validationError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

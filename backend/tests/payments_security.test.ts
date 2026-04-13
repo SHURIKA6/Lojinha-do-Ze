@@ -5,7 +5,7 @@ import { Bindings, Variables } from '../src/types';
 const mockCreatePixPayment = jest.fn() as any;
 const mockGetPayment = jest.fn() as any;
 
-jest.unstable_mockModule('../src/services/mercadoPagoService', () => ({
+jest.unstable_mockModule('../src/modules/payments/service', () => ({
   MercadoPagoService: class {
     async createPixPayment(payload: any) {
       return mockCreatePixPayment(payload);
@@ -17,7 +17,12 @@ jest.unstable_mockModule('../src/services/mercadoPagoService', () => ({
   },
 }));
 
-const { default: paymentsRoutes } = await import('../src/routes/payments') as any;
+let paymentsRoutes: any;
+
+beforeAll(async () => {
+  const mod = await import('../src/modules/payments/routes');
+  paymentsRoutes = mod.default;
+});
 
 function buildDbMock(handlers: any = {}) {
   const query = jest.fn(async (text: string, params: any[]) => {

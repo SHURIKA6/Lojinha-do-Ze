@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getMe, login as apiLogin, logout as apiLogout } from '@/services/api/auth';
+import { getMe, login as apiLogin, logout as apiLogout } from '@/core/api/auth';
 import { useToast } from '@/components/ui/ToastProvider';
 import { User, AuthContextType } from '@/types';
 

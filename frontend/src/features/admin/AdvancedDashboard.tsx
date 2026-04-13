@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 import { 
   getDashboard, 
   formatCurrency, 
   exportReportCsv,
   DashboardData
-} from '@/lib/api';
+} from '@/core/api';
 import { 
   FiShoppingBag, 
   FiPackage, 

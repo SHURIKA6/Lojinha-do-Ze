@@ -1,4 +1,4 @@
-import { Database, UserDB } from '../types';
+import { Database, UserDB } from '../../core/types';
 
 export async function findByEmail(client: Database, email: string): Promise<UserDB | null> {
   const { rows } = await client.query(

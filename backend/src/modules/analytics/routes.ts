@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { adminOnly, authMiddleware } from '../middleware/auth';
-import { jsonError, setNoStore } from '../utils/http';
-import { logger } from '../utils/logger';
-import BusinessIntelligenceService from '../services/businessIntelligenceService';
-import DemandForecastService from '../services/demandForecastService';
-import { Bindings, Variables } from '../types';
+import { adminOnly, authMiddleware } from '../../core/middleware/auth';
+import { jsonError, setNoStore } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import BusinessIntelligenceService from './biService';
+import DemandForecastService from './forecastService';
+import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

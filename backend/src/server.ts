@@ -1,8 +1,8 @@
 import { Hono, Next } from 'hono';
 import { createDb } from './core/db';
-import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './middleware/security';
-import { isSafeMethod, jsonError } from './utils/http';
-import { logger } from './utils/logger';
+import { createCorsMiddleware, originGuardMiddleware, securityHeadersMiddleware } from './core/middleware/security';
+import { isSafeMethod, jsonError } from './core/utils/http';
+import { logger } from './core/utils/logger';
 import { cacheService } from './modules/system/cacheService';
 import authRoutes from './modules/auth/routes';
 import catalogRoutes from './modules/products/catalogRoutes';
@@ -18,10 +18,10 @@ import paymentRoutes from './modules/payments/routes';
 import aiRoutes from './modules/system/aiRoutes';
 import analyticsRoutes from './modules/analytics/routes';
 
-import { apiLimiter } from './middleware/rateLimit';
-import { auditMiddleware } from './middleware/audit';
-import { csrfMiddleware, optionalAuthMiddleware } from './middleware/auth';
-import { Bindings, Variables, Database } from './types';
+import { apiLimiter } from './core/middleware/rateLimit';
+import { auditMiddleware } from './core/middleware/audit';
+import { csrfMiddleware, optionalAuthMiddleware } from './core/middleware/auth';
+import { Bindings, Variables, Database } from './core/types';
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 const DBLESS_PATH_PREFIXES = ['/api/health'];
@@ -101,7 +101,7 @@ app.use('/api/*', async (c, next) => {
     logger.error('Erro na Requisição API', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
-    const closePromise = db.close().catch((error) => {
+    const closePromise = db.close().catch((error: any) => {
       logger.warn('DB close error', { error: error?.message });
     });
 

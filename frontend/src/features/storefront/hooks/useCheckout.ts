@@ -3,10 +3,9 @@ import {
   createOrder,
   createPixPayment,
   getPixPaymentStatus,
-  isValidCpf,
-  isValidEmail,
-  formatAddress,
-} from '@/lib/api';
+} from '@/core/api';
+import { formatAddress } from '@/core/utils/formatting';
+import { isValidCpf, isValidEmail } from '@/utils/validation';
 import { useToast } from '@/components/ui/ToastProvider';
 import { CartItem } from './useCart';
 import { User, Order } from '@/types';

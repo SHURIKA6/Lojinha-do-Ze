@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { adminOnly, authMiddleware } from '../middleware/auth';
-import { randomToken } from '../utils/crypto';
-import { jsonError } from '../utils/http';
-import { logger } from '../utils/logger';
-import { validateFileSignature } from '../utils/file';
-import { Bindings, Variables } from '../types';
+import { adminOnly, authMiddleware } from '../../core/middleware/auth';
+import { randomToken } from '../../core/utils/crypto';
+import { jsonError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import { validateFileSignature } from '../../core/utils/file';
+import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;

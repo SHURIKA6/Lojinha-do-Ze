@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { FiLogOut, FiShoppingBag } from 'react-icons/fi';
 
 const navLinks = [

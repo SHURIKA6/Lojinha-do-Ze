@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { verifyPassword } from '../utils/crypto';
-import { adminOnly, authMiddleware } from '../middleware/auth';
-import { customerCreateSchema, customerUpdateSchema } from '../domain/schemas';
-import { jsonError, setNoStore, validationError } from '../utils/http';
-import { logger } from '../utils/logger';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/constants';
-import { Bindings, Variables } from '../types';
-import { CustomerService } from '../services/customerService';
+import { verifyPassword } from '../../core/utils/crypto';
+import { adminOnly, authMiddleware } from '../../core/middleware/auth';
+import { customerCreateSchema, customerUpdateSchema } from '../../core/domain/schemas';
+import { jsonError, setNoStore, validationError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../core/domain/constants';
+import { Bindings, Variables } from '../../core/types';
+import { CustomerService } from './service';
 import {
   buildAvatar,
   cleanOptionalString,
@@ -19,7 +19,7 @@ import {
   normalizeEmail,
   normalizePhoneDigits,
   uniqueFieldLabel,
-} from '../utils/normalize';
+} from '../../core/utils/normalize';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

@@ -3,7 +3,7 @@
  * Gerencia informações e performance de fornecedores
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
 
 /**

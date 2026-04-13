@@ -10,7 +10,7 @@ import {
   getOrders,
   updateOrderStatus,
   formatAddress
-} from '@/lib/api';
+} from '@/core/api';
 import {
   FiClock,
   FiCreditCard,

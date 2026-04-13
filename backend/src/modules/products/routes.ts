@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware, adminOnly } from '../middleware/auth';
-import { productCreateSchema, productUpdateSchema } from '../domain/schemas';
-import { isValidId } from '../utils/normalize';
-import { jsonError, setNoStore, validationError } from '../utils/http';
-import * as productService from '../services/productService';
-import { Bindings, Variables } from '../types';
+import { authMiddleware, adminOnly } from '../../core/middleware/auth';
+import { productCreateSchema, productUpdateSchema } from '../../core/domain/schemas';
+import { isValidId } from '../../core/utils/normalize';
+import { jsonError, setNoStore, validationError } from '../../core/utils/http';
+import * as productService from './service';
+import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 

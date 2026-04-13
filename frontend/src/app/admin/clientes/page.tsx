@@ -7,20 +7,22 @@ import { useToast } from '@/components/ui/ToastProvider';
 import {
   createCustomer,
   deleteCustomer,
+  getCustomer,
+  getCustomerOrders,
+  getCustomers,
+  sendCustomerInvite,
+  updateCustomer,
+  updateUserRole,
+} from '@/core/api';
+import {
   formatCpf,
   formatAddress,
   formatCurrency,
   formatDate,
-  getCustomer,
-  getCustomerOrders,
-  getCustomers,
   getStatusLabel,
   getStatusVariant,
-  isValidCpf,
-  sendCustomerInvite,
-  updateCustomer,
-  updateUserRole,
-} from '@/lib/api';
+} from '@/core/utils/formatting';
+import { isValidCpf } from '@/utils/validation';
 import {
   FiEdit2,
   FiEye,

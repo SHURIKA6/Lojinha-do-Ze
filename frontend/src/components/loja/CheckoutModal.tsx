@@ -3,7 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
-import { formatCurrency } from '@/lib/api';
+import { formatCurrency } from '@/core/api';
 import {
   FiCheckCircle,
   FiCreditCard,
@@ -208,7 +208,7 @@ export default function CheckoutModal({
                   if (!orderResult?.pix?.id) return;
                   setOrderResult((prev: any) => ({ ...prev, _checkingPayment: true }));
                   try {
-                    const { getPixPaymentStatus } = await import('@/lib/api');
+                    const { getPixPaymentStatus } = await import('@/core/api');
                     const status = await getPixPaymentStatus(orderResult.pix.id, {
                       orderId: orderResult.order.id,
                       phone: orderResult.order.customer_phone,

@@ -3,9 +3,9 @@
  * Implementa análises avançadas e recomendações inteligentes
  */
 
-import { logger } from '../utils/logger';
-import { cacheService } from './cacheService';
-import { Product, PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../types';
+import { logger } from '../../core/utils/logger';
+import { cacheService } from '../system/cacheService';
+import { Product, PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../../core/types';
 
 /**
  * Tipos de recomendação

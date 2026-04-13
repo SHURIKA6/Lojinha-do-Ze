@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from '@jest/globals';
-import { cacheService } from '../src/services/cacheService';
+import { cacheService } from '../src/modules/system/cacheService';
 
 describe('Cache Service', () => {
   beforeEach(() => {

@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FiArrowRight, FiKey, FiLock } from 'react-icons/fi';
-import { setupPassword } from '@/lib/api';
-import { useAuth } from '@/services/auth/AuthContext';
+import { setupPassword } from '@/core/api';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 
 export default function SetupPasswordPageClient() {

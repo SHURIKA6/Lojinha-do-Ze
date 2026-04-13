@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/services/auth/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import {
   FiArrowRight,
   FiCheckCircle,

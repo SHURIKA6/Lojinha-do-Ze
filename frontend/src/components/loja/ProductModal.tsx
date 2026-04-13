@@ -3,7 +3,7 @@
 import React from 'react';
 import Modal from '@/components/Modal';
 import AppImage from '@/components/ui/AppImage';
-import { formatCurrency, getImageUrl } from '@/lib/api';
+import { formatCurrency, getImageUrl } from '@/core/api';
 import { FiMinus, FiPackage, FiPlus } from 'react-icons/fi';
 import styles from './ProductModal.module.css';
 import { Product } from '@/types';

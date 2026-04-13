@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/core/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 import { IconType } from 'react-icons';
 import {

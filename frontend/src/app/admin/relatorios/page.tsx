@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getReport, formatCurrency, formatDate, getStatusLabel } from '@/lib/api';
+import { getReport, formatCurrency, formatDate, getStatusLabel } from '@/core/api';
 import { FiDownload, FiPrinter, FiFileText } from 'react-icons/fi';
 
 const reportTypes = [

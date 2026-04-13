@@ -1,9 +1,9 @@
-import { Database } from '../types';
-import { logger } from '../utils/logger';
-import { getRequiredEnv } from '../load-local-env';
-import { MercadoPagoService } from './mercadoPagoService';
-import * as orderRepository from '../repositories/orderRepository';
-import { normalizePhoneDigits, cleanOptionalString } from '../utils/normalize';
+import { Database } from '../../core/types';
+import { logger } from '../../core/utils/logger';
+import { getRequiredEnv } from '../../core/load-local-env';
+import { MercadoPagoService } from '../payments/service';
+import * as orderRepository from './repository';
+import { normalizePhoneDigits, cleanOptionalString } from '../../core/utils/normalize';
 
 interface CreateOrderPayload {
   customer_name: string;
