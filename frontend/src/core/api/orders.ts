@@ -3,8 +3,11 @@ import { Order, OrderStatus, ApiResponse } from '@/types';
 
 export async function getOrders(status?: OrderStatus): Promise<Order[]> {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  const res = await request<ApiResponse<Order[]>>(`/orders${query}`);
-  return res.data || [];
+  const res = await request<any>(`/orders${query}`);
+  // Backend returns array directly (c.json(rows)), not wrapped in ApiResponse
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  return [];
 }
 
 export async function createOrder(orderData: Partial<Order>): Promise<Order> {

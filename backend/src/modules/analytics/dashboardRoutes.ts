@@ -51,14 +51,20 @@ router.get('/', async (c) => {
 
     const chartData: Record<string, { day: string; receita: number; despesa: number }> = {};
     dailyTxRes.rows.forEach((row: any) => {
-      const day = new Date(row.day_date).toISOString().split('T')[0];
-      if (!chartData[day]) {
-        chartData[day] = { day, receita: 0, despesa: 0 };
-      }
-      if (row.type === 'receita') {
-        chartData[day].receita = parseFloat(row.total);
-      } else {
-        chartData[day].despesa = parseFloat(row.total);
+      if (!row.day_date) return;
+      
+      try {
+        const day = new Date(row.day_date).toISOString().split('T')[0];
+        if (!chartData[day]) {
+          chartData[day] = { day, receita: 0, despesa: 0 };
+        }
+        if (row.type === 'receita') {
+          chartData[day].receita = parseFloat(row.total);
+        } else {
+          chartData[day].despesa = parseFloat(row.total);
+        }
+      } catch (e) {
+        // Skip invalid dates
       }
     });
 

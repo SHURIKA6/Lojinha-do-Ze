@@ -2,8 +2,11 @@ import { request } from './client';
 import { Product, ApiResponse } from '@/types';
 
 export async function getProducts(): Promise<Product[]> {
-  const res = await request<ApiResponse<Product[]>>('/products');
-  return res.data || [];
+  const res = await request<any>('/products');
+  // Backend returns array directly (c.json(products)), not wrapped in ApiResponse
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  return [];
 }
 
 export async function createProduct(product: Partial<Product>): Promise<Product> {

@@ -3,8 +3,11 @@ import { Transaction, ApiResponse } from '@/types';
 
 export async function getTransactions(type?: string): Promise<Transaction[]> {
   const query = type ? `?type=${encodeURIComponent(type)}` : '';
-  const res = await request<ApiResponse<Transaction[]>>(`/transactions${query}`);
-  return res.data || [];
+  const res = await request<any>(`/transactions${query}`);
+  // Backend returns array directly (c.json(rows)), not wrapped in ApiResponse
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  return [];
 }
 
 export async function createTransaction(transaction: Partial<Transaction>): Promise<Transaction> {

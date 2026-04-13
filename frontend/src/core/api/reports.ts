@@ -31,7 +31,28 @@ export interface DashboardData {
 }
 
 export async function getDashboard(): Promise<DashboardData | null> {
-  return request<DashboardData>('/panel-data');
+  const res = await request<any>('/panel-data');
+  
+  // O backend retorna os dados diretamente (c.json({ monthRevenue, ... }))
+  // Ou pode retornar no formato ApiResponse { success, data }
+  const data = res?.data || res;
+  
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+
+  // Sanitização básica para garantir que campos numéricos existam
+  return {
+    monthRevenue: Number(data.monthRevenue || 0),
+    monthExpenses: Number(data.monthExpenses || 0),
+    profit: Number(data.profit || 0),
+    activeOrders: Number(data.activeOrders || 0),
+    totalSales: Number(data.totalSales || 0),
+    lowStock: Array.isArray(data.lowStock) ? data.lowStock : [],
+    recentOrders: Array.isArray(data.recentOrders) ? data.recentOrders : [],
+    chartData: Array.isArray(data.chartData) ? data.chartData : [],
+    categoryChart: Array.isArray(data.categoryChart) ? data.categoryChart : []
+  };
 }
 
 export async function getReport<T = any>(type: string): Promise<T | null> {

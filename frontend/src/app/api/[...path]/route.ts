@@ -46,8 +46,12 @@ function buildProxyResponse(backendResponse: Response, body: any): NextResponse 
     ?? backendResponse.headers.get('set-cookie')?.split(/,(?=\s*\w+=)/) 
     ?? [];
 
-  for (const cookie of setCookies) {
+  for (let cookie of setCookies) {
     if (cookie) {
+      // Remover flag Secure em desenvolvimento para permitir cookies em HTTP (localhost)
+      if (process.env.NODE_ENV !== 'production' && cookie.toLowerCase().includes('secure')) {
+        cookie = cookie.replace(/;?\s?secure/gi, '');
+      }
       response.headers.append('Set-Cookie', cookie);
     }
   }
@@ -114,11 +118,35 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
   }
 
   try {
+    // Debug: log cookie forwarding for auth-relevant requests
+    const cookieHeader = headers['cookie'] || headers['Cookie'] || '';
+    const hasSession = cookieHeader.includes('lz_session');
+    console.log(`[Proxy] ${method} ${parsedPath} → ${backendUrl} | cookie forwarded: ${hasSession} | cookie length: ${cookieHeader.length}`);
+
     const response = await fetch(backendUrl, fetchOptions);
+
+    // Debug: log Set-Cookie relay
+    const setCookieHeaders = (response.headers as any).getSetCookie?.() ?? [];
+    if (setCookieHeaders.length > 0) {
+      console.log(`[Proxy] ${parsedPath} ← Set-Cookie count: ${setCookieHeaders.length}`);
+      for (const sc of setCookieHeaders) {
+        const name = sc.split('=')[0];
+        console.log(`[Proxy]   cookie name: ${name}, length: ${sc.length}`);
+      }
+    }
+
+    if (response.status === 401) {
+      console.log(`[Proxy] 401 on ${parsedPath} — session cookie present in request: ${hasSession}`);
+    }
+
     const data = await parseBackendResponse(response);
     return buildProxyResponse(response, data);
   } catch (error: any) {
-    console.error(`Proxy error (${method} ${backendUrl}):`, error);
+    if (error.name === 'AbortError') {
+      console.error(`[Proxy] Timeout na requisição (${method} ${backendUrl})`);
+    } else {
+      console.error(`[Proxy] Erro na requisição (${method} ${backendUrl}):`, error.message);
+    }
     
     // Tentar porta alternativa em desenvolvimento se a primeira falhar
     if (process.env.NODE_ENV !== 'production' && !process.env.BACKEND_URL) {
