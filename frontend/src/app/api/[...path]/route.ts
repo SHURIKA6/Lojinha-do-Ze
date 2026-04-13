@@ -74,13 +74,20 @@ async function parseBackendResponse(response: Response): Promise<any> {
 }
 
 async function proxyRequest(request: NextRequest, params: any, method: string): Promise<NextResponse> {
-  // Next.js 15+: params é uma Promise
   const resolvedParams = await params;
-  const path = resolvedParams.path.join('/');
+  let parsedPath = resolvedParams.path.join('/');
+  
+  // Adblocker evasion: remap friendly paths back to the real backend endpoints
+  if (parsedPath === 'panel-data') {
+    parsedPath = 'dashboard';
+  } else if (parsedPath === 'panel-metrics') {
+    parsedPath = 'analytics';
+  }
+
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
   const queryString = searchParams ? `?${searchParams}` : '';
-  const backendUrl = `${BACKEND_URL}/api/${path}${queryString}`;
+  const backendUrl = `${BACKEND_URL}/api/${parsedPath}${queryString}`;
 
   const headers = buildProxyHeaders(request);
 

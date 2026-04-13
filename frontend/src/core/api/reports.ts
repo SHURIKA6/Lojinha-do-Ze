@@ -31,7 +31,7 @@ export interface DashboardData {
 }
 
 export async function getDashboard(): Promise<DashboardData | null> {
-  return request<DashboardData>('/dashboard');
+  return request<DashboardData>('/panel-data');
 }
 
 export async function getReport<T = any>(type: string): Promise<T | null> {
