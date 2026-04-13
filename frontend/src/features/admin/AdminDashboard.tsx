@@ -25,7 +25,7 @@ import {
   Cell
 } from 'recharts';
 import { useAuth } from '@/core/contexts/AuthContext';
-import { useToast } from '@/core/hooks/useToast';
+import { useToast } from '@/components/ui/ToastProvider';
 import { getDashboard, DashboardData } from '@/core/api';
 import { formatCurrency, getStatusLabel, getStatusVariant } from '@/core/utils/formatting';
 import { CHART_COLORS } from '@/styles/theme';
@@ -35,7 +35,7 @@ import StorefrontPageClient from '../storefront/StorefrontPageClient';
 
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
-  const { addToast } = useToast();
+  const toast = useToast();
   
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       } catch (err) {
         console.error('Erro ao carregar dados do dashboard:', err);
         setError('Não foi possível carregar as métricas do dashboard.');
-        addToast('Erro ao carregar os dados do painel.', 'error');
+        toast.error('Erro ao carregar os dados do painel.');
       } finally {
         setLoading(false);
       }
@@ -60,7 +60,7 @@ export default function AdminDashboard() {
     if (isAdmin) {
       loadDashboardData();
     }
-  }, [isAdmin, addToast]);
+  }, [isAdmin, toast]);
 
   if (isPreviewMode) {
     return (
