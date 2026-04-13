@@ -44,14 +44,34 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function loadDashboardData() {
+      // 1. Tentar carregar do cache para renderização imediata (SWR)
+      const cached = localStorage.getItem('lz_dashboard_cache');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setData(parsed);
+          setLoading(false); // Já temos algo para mostrar
+        } catch (e) {
+          localStorage.removeItem('lz_dashboard_cache');
+        }
+      }
+
       try {
-        setLoading(true);
+        if (!data) setLoading(true); // Só mostra loader se não tiver cache
+        
         const result = await getDashboard();
         setData(result);
+        
+        // 2. Salvar no cache para a próxima vez
+        localStorage.setItem('lz_dashboard_cache', JSON.stringify(result));
+        setError(null);
       } catch (err) {
         console.error('Erro ao carregar dados do dashboard:', err);
-        setError('Não foi possível carregar as métricas do dashboard.');
-        toast.error('Erro ao carregar os dados do painel.');
+        if (!data) {
+          // Se não tiver nem cache nem dados novos, aí sim mostra erro
+          setError('Não foi possível carregar as métricas do dashboard.');
+          toast.error('Erro ao carregar os dados do painel.');
+        }
       } finally {
         setLoading(false);
       }
@@ -60,7 +80,7 @@ export default function AdminDashboard() {
     if (isAdmin) {
       loadDashboardData();
     }
-  }, [isAdmin, toast]);
+  }, [isAdmin, toast]); // Removi 'data' da dependência para evitar loop se fosse o caso, mas 'isAdmin' e 'toast' são estáveis.
 
   if (isPreviewMode) {
     return (

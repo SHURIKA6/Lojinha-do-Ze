@@ -117,26 +117,23 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
     }
   }
 
+  const startTime = Date.now();
   try {
-    // Debug: log cookie forwarding for auth-relevant requests
-    const cookieHeader = headers['cookie'] || headers['Cookie'] || '';
-    const hasSession = cookieHeader.includes('lz_session');
-    console.log(`[Proxy] ${method} ${parsedPath} → ${backendUrl} | cookie forwarded: ${hasSession} | cookie length: ${cookieHeader.length}`);
-
     const response = await fetch(backendUrl, fetchOptions);
+    const duration = Date.now() - startTime;
+
+    // Log consolidado para monitoramento de performance
+    console.log(`[Proxy] ${method} ${parsedPath} → ${response.status} (${duration}ms)`);
 
     // Debug: log Set-Cookie relay
     const setCookieHeaders = (response.headers as any).getSetCookie?.() ?? [];
     if (setCookieHeaders.length > 0) {
-      console.log(`[Proxy] ${parsedPath} ← Set-Cookie count: ${setCookieHeaders.length}`);
-      for (const sc of setCookieHeaders) {
-        const name = sc.split('=')[0];
-        console.log(`[Proxy]   cookie name: ${name}, length: ${sc.length}`);
-      }
+      console.log(`[Proxy]   Set-Cookie: ${setCookieHeaders.length} cookies relaying...`);
     }
 
     if (response.status === 401) {
-      console.log(`[Proxy] 401 on ${parsedPath} — session cookie present in request: ${hasSession}`);
+      const cookieHeader = headers['cookie'] || headers['Cookie'] || '';
+      console.log(`[Proxy]   401 detectado — cookie presente: ${cookieHeader.includes('lz_session')}`);
     }
 
     const data = await parseBackendResponse(response);
