@@ -100,10 +100,10 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
       credentials: 'include',
       cache: 'no-store',
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof TypeError) {
       throw new ApiError(
-        'Não foi possível conectar ao servidor. Verifique se o backend está online e acessível.',
+        `Falha de rede (${endpoint}): ${error.message}. Verifique sua conexão ou se um adblocker está bloqueando a requisição.`,
         0,
         null
       );

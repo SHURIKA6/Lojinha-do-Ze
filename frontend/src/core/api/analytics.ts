@@ -24,9 +24,9 @@ export interface SentimentResponse {
 }
 
 export async function getDemandForecast(): Promise<ForecastResponse> {
-  return request<ForecastResponse>('/analytics/forecast');
+  return request<ForecastResponse>('/panel-metrics/forecast');
 }
 
 export async function getReviewSentiment(): Promise<SentimentResponse> {
-  return request<SentimentResponse>('/analytics/bi/sentiment');
+  return request<SentimentResponse>('/panel-metrics/bi/sentiment');
 }
