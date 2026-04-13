@@ -101,15 +101,9 @@ app.use('/api/*', async (c, next) => {
     logger.error('Erro na Requisição API', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
-    const closePromise = db.close().catch((error: any) => {
+    await db.close().catch((error: any) => {
       logger.warn('DB close error', { error: error?.message });
     });
-
-    if ((c as any).executionCtx?.waitUntil) {
-      (c as any).executionCtx.waitUntil(closePromise);
-    } else {
-      await closePromise;
-    }
   }
 });
 

@@ -1,5 +1,4 @@
 import { request } from './client';
-import { ApiResponse } from '@/types';
 
 export interface DashboardData {
   monthRevenue: number;
@@ -32,13 +31,11 @@ export interface DashboardData {
 }
 
 export async function getDashboard(): Promise<DashboardData | null> {
-  const res = await request<ApiResponse<DashboardData>>('/dashboard');
-  return res.data || null;
+  return request<DashboardData>('/dashboard');
 }
 
 export async function getReport<T = any>(type: string): Promise<T | null> {
-  const res = await request<ApiResponse<T>>(`/reports/${type}`);
-  return res.data || null;
+  return request<T>(`/reports/${type}`);
 }
 
 export async function exportReportCsv(reportType: string): Promise<void> {

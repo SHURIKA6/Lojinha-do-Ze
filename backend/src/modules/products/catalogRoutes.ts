@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { orderCreateSchema } from '../../core/domain/schemas';
 import { orderLimiter } from '../../core/middleware/rateLimit';
 import { cleanOptionalString, normalizePhoneDigits } from '../../core/utils/normalize';
-import { jsonError, validationError } from '../../core/utils/http';
+import { jsonError, setNoStore, validationError } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../core/domain/constants';
 import { Bindings, Variables } from '../../core/types';
@@ -51,7 +51,7 @@ router.post(
     const authUser = c.get('user');
 
     try {
-      const order = await orderService.createOrder(db, payload, authUser, c.env);
+      const order = await orderService.createOrder(db, payload, authUser ?? null, c.env);
       return c.json(
         {
           order,
