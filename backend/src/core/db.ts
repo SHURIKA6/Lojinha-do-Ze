@@ -10,37 +10,42 @@ if (typeof process !== 'undefined') {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 
-const poolCache = new Map<string, Pool>();
-
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  let pool = poolCache.get(connectionString);
-  if (!pool) {
-    pool = new Pool({ connectionString });
-    poolCache.set(connectionString, pool);
+  // Em Cloudflare Workers, o pool precisa viver apenas durante a requisição atual.
+  // Reutilizar pools entre requests vaza I/O assíncrono para outros handlers.
+  const pool = new Pool({ connectionString });
+  let closed = false;
+
+  function ensureOpen() {
+    if (closed) {
+      throw new Error('Database connection has already been closed for this request');
+    }
+  }
+
+  async function executeQuery<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+    ensureOpen();
+    const processedParams = params?.map((p) => (p instanceof Date ? p.toISOString() : p));
+    return pool.query<T>(text, processedParams);
   }
 
   return {
     query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
-      const executeQuery = async () => {
-        const processedParams = params?.map(p => (p instanceof Date ? p.toISOString() : p));
-        return (pool as Pool).query<T>(text, processedParams);
-      };
-
-      return executeQuery().catch(async (err) => {
+      return executeQuery<T>(text, params).catch(async (err) => {
         if (err.message?.includes('Connection terminated unexpectedly') || err.code === '57P01') {
           logger.warn('Conexão do banco terminada inesperadamente. Tentando novamente...');
-          return executeQuery();
+          return executeQuery<T>(text, params);
         }
         throw err;
       });
     },
 
     async connect() {
-      const client = await (pool as Pool).connect();
+      ensureOpen();
+      const client = await pool.connect();
       const originalQuery = client.query.bind(client);
       
       // Override query to handle Date serialization
@@ -56,9 +61,9 @@ export function createDb(connectionString: string): Database {
     },
 
     async close() {
-      // No longer automatically close the pool to allow reuse.
-      // Pool end should be handled by a global lifecycle if needed,
-      // but in serverless we usually just let it handle it.
+      if (closed) return;
+      closed = true;
+      await pool.end();
     },
   };
 }

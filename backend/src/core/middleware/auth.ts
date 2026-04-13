@@ -17,6 +17,13 @@ async function loadSession(c: Context<{ Bindings: Bindings; Variables: Variables
     return cached;
   }
 
+  const sessionToken = getCookie(c, SESSION_COOKIE_NAME);
+  if (!sessionToken) {
+    // @ts-ignore
+    c.set('resolvedSession', null);
+    return null;
+  }
+
   const client = await db.connect();
   try {
     return await resolveSession(c, client);

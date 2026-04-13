@@ -27,7 +27,7 @@ import {
   findOpenSetupToken,
   revokeOpenSetupTokensForUser,
 } from './passwordSetupRepository';
-import { Bindings, User, Variables, Database, UserDB, HonoCloudflareContext } from '../../core/types';
+import { Bindings, User, Variables, Database, UserDB } from '../../core/types';
 
 type AppEnv = { Bindings: Bindings; Variables: Variables };
 
@@ -170,17 +170,11 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   // @ts-ignore
   c.set('session', session);
 
-  const touchPromise = touchSession(client, session.id).catch((error) => {
+  try {
+    await touchSession(client, session.id);
+  } catch (error) {
     logger.error('Erro ao atualizar sessão (touch)', error);
-  });
-
-  const executionCtx = (c as any).executionCtx;
-  if (executionCtx && typeof executionCtx.waitUntil === 'function') {
-    executionCtx.waitUntil(touchPromise);
-  } else {
-    await touchPromise;
   }
-
 
   return session;
 }
