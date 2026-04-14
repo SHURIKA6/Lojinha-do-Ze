@@ -19,6 +19,7 @@ import {
   touchSession,
   SessionRecord,
 } from './repository';
+import { cacheService } from '../../modules/system/cacheService';
 import * as userRepository from '../customers/userRepository';
 import {
   consumeSetupToken,
@@ -151,6 +152,14 @@ export async function issueSession(c: Context<AppEnv>, client: Database, userId:
     userAgent: c.req.header('user-agent') || null,
   });
 
+  // PERF: Alimenta o cache imediatamente para acelerar a próxima requisição
+  cacheService.setSession(tokenHash, {
+    session_id: tokenHash, // Placeholder simplificado
+    user_id: userId,
+    csrf_token: csrfToken,
+    expires_at: expiresAt,
+  });
+
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions(c));
   setCookie(c, CSRF_COOKIE_NAME, csrfToken, sessionCookieOptions(c, SESSION_TTL_SECONDS, false));
 
@@ -167,6 +176,7 @@ export async function destroySession(c: Context<AppEnv>, client: Database) {
   if (sessionToken) {
     const tokenHash = await sha256Hex(sessionToken);
     await deleteSessionByTokenHash(client, tokenHash);
+    cacheService.deleteSession(tokenHash);
   }
 
   clearSessionCookies(c);
@@ -192,6 +202,19 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   }
 
   const tokenHash = await sha256Hex(sessionToken);
+
+  // PERF: Tenta obter do cache antes de consultar o banco
+  const fromCache = cacheService.getSession(tokenHash);
+  if (fromCache) {
+    // @ts-ignore
+    c.set('resolvedSession', fromCache);
+    // @ts-ignore
+    c.set('user', fromCache.user);
+    // @ts-ignore
+    c.set('session', fromCache);
+    return fromCache;
+  }
+
   const row = await findSessionByTokenHash(client, tokenHash);
   if (!row) {
     clearSessionCookies(c);
@@ -207,6 +230,9 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
     expiresAt: row.expires_at,
     user: serializeUser(row),
   };
+
+  // Alimenta o cache para as próximas chamadas
+  cacheService.setSession(tokenHash, session);
 
   // @ts-ignore
   c.set('resolvedSession', session);

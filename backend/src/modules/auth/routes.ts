@@ -24,19 +24,14 @@ router.post(
     try {
       const user = await authService.authenticate(db, loginId, password);
 
-      const client = await db.connect();
-      try {
-        const { csrfToken } = await authService.issueSession(c, client, user.id);
+      // PERF: Usamos o driver HTTP (db) em vez do Pool (db.connect) pois é mais rápido
+      // para operações isoladas em Workers e evita overhead de handshake WebSocket.
+      const { csrfToken } = await authService.issueSession(c, db, user.id);
 
-        return jsonSuccess(c, {
-          user: { id: user.id, role: user.role },
-          csrfToken,
-        });
-      } finally {
-        try {
-          client.release();
-        } catch {}
-      }
+      return jsonSuccess(c, {
+        user: { id: user.id, role: user.role },
+        csrfToken,
+      });
     } catch (error: any) {
       if (error.message === 'Credenciais inválidas') {
         return jsonError(c, 401, error.message);
