@@ -57,7 +57,7 @@ export function createDb(connectionString: string): Database {
     try {
       // The neon() driver returns the rows directly as an array or a specific structure
       // It handles Date objects and other types natively.
-      const rows = await sql(text, params || []);
+      const rows = await sql.query(text, params || []);
       return {
         rows: rows as T[],
         rowCount: Array.isArray(rows) ? rows.length : 0,
