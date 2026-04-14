@@ -42,14 +42,15 @@ router.post(
         return jsonError(c, 401, error.message);
       }
       
-      logger.error('Erro no processamento do login', {
+      const errorId = crypto.randomUUID().split('-')[0];
+      logger.error(`Erro crítico no processamento do login [${errorId}]`, {
         error: error,
         message: error.message,
         stack: error.stack,
         loginId: loginId
       });
       
-      return jsonError(c, 401, 'Credenciais inválidas');
+      return jsonError(c, 500, 'Erro interno ao processar login', { errorId });
     }
   }
 );

@@ -1,4 +1,4 @@
-import { Database } from '../../core/types';
+import { Database } from '../core/types';
 
 export interface Migration {
   id: string;

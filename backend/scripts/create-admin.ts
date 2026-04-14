@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import { hashPassword } from '../src/utils/crypto.ts';
+import { hashPassword } from '../src/core/utils/crypto.ts';
 import { neon } from '@neondatabase/serverless';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/core/load-local-env.ts';
 
 function getOptionalEnv(name: string, fallback: string = ''): string {
   const value = process.env[name];

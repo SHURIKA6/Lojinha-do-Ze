@@ -40,35 +40,29 @@ app.get('/api/health', async (c) => {
     status: 'ok',
     message: 'Lojinha do Zé API',
     timestamp: new Date().toISOString(),
+    checks: {}
   };
 
-  if (!isProduction) {
-    health.checks = {};
-  }
-
-  const connectionString = c.env?.DATABASE_URL;
-  if (connectionString) {
-    try {
+  try {
+    const connectionString = c.env?.DATABASE_URL;
+    if (connectionString) {
       const db = createDb(connectionString);
       await db.query('SELECT 1');
-      if (!isProduction) {
-        health.checks.database = { status: 'ok' };
-      }
-      await db.close();
-    } catch (error) {
+      health.checks.database = { status: 'ok' };
+    } else {
       health.status = 'degraded';
-      logger.error('Health check: falha na conexão com o banco', error as Error);
-      if (!isProduction) {
-        health.checks.database = { status: 'error' };
-      }
+      health.checks.database = { status: 'missing_config' };
     }
-  } else if (!isProduction) {
-    health.checks.database = { status: 'not_configured' };
+  } catch (error: any) {
+    health.status = 'degraded';
+    logger.error('Health check: falha na conexão com o banco', error as Error);
+    health.checks.database = { 
+      status: 'error',
+      message: error.message
+    };
   }
 
-  if (!isProduction) {
-    health.checks.cache = cacheService.getMetrics();
-  }
+  health.checks.cache = cacheService.getMetrics();
 
   const statusCode = health.status === 'ok' ? 200 : 503;
   return c.json(health, statusCode as any);
@@ -101,19 +95,23 @@ app.use('/api/*', async (c, next) => {
     logger.error('Erro na Requisição API', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
-    await db.close().catch((error: any) => {
-      logger.warn('DB close error', { error: error?.message });
-    });
+    const db = c.get('db');
+    if (db) {
+      await db.close().catch((error: any) => {
+        logger.warn('DB close error', { error: error?.message });
+      });
+    }
   }
 });
 
 app.onError((error, c) => {
-  logger.error('Unhandled Global Error', error, {
+  const errorId = crypto.randomUUID().split('-')[0];
+  logger.error(`Unhandled Global Error [${errorId}]`, error, {
     path: c.req.path,
     method: c.req.method,
     user: (c.get('user') as any)?.id,
   });
-  return jsonError(c, 500, 'Erro interno no servidor');
+  return jsonError(c, 500, 'Erro interno no servidor', { errorId });
 });
 
 app.route('/api/auth', authRoutes as any);
@@ -127,7 +125,7 @@ app.route('/api/reports', reportsRoutes as any);
 app.route('/api/transactions', transactionsRoutes as any);
 app.route('/api/upload', uploadRoutes as any);
 app.route('/api/payments', paymentRoutes as any);
-app.route('/api/admin', aiRoutes as any);
+app.route('/api/ai', aiRoutes as any);
 app.route('/api/analytics', analyticsRoutes as any);
 
 export default app;

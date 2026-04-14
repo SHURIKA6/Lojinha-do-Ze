@@ -52,7 +52,7 @@ describe('useCheckout', () => {
       id: 12,
       total: 15,
       customer_phone: '(65) 99999-0000',
-      items: [{ productId: 1, name: 'Erva', quantity: 1, price: 10 }],
+      items: [{ productId: '1', name: 'Erva', quantity: 1, price: 10 }],
     });
     mockCreatePixPayment.mockResolvedValue({ id: 'pix-1', status: 'pending' });
   });
@@ -62,7 +62,7 @@ describe('useCheckout', () => {
     const { result } = renderHook(
       () =>
         useCheckout({
-          cart: [{ productId: 1, name: 'Erva', quantity: 1, price: 10, category: 'Outros' }],
+          cart: [{ productId: '1', name: 'Erva', quantity: 1, price: 10 }],
           cartTotal: 10,
           setError,
           user: null,
