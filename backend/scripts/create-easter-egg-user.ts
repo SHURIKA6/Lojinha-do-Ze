@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import bcrypt from 'bcryptjs';
-import { createDb } from '../src/db.ts';
-import { getRequiredEnv, loadLocalEnv } from '../src/load-local-env.ts';
+import { createDb } from '../src/core/db.ts';
+import { getRequiredEnv, loadLocalEnv } from '../src/core/load-local-env.ts';
 
 async function createEasterEggUser(): Promise<void> {
   loadLocalEnv();

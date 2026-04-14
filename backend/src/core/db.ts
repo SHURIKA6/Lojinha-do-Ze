@@ -17,13 +17,24 @@ const httpCache = new Map<string, any>();
 
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
+    logger.error('DATABASE_URL ausente! Verifique as variáveis de ambiente ou secrets do Cloudflare.');
     throw new Error('DATABASE_URL is not set');
   }
 
   // Use cached Pool if available, or create a new one
   if (!poolCache.has(connectionString)) {
-    logger.debug('Criando novo Pool de conexões para o banco');
-    poolCache.set(connectionString, new Pool({ connectionString }));
+    const obscuredUrl = connectionString.replace(/:\/\/.*@/, '://****:****@');
+    logger.debug(`Criando novo Pool de conexões (URI: ${obscuredUrl})`);
+    
+    try {
+      poolCache.set(connectionString, new Pool({ 
+        connectionString,
+        connectionTimeoutMillis: 5000 // Timeout para falhar rápido em caso de rede bloqueada
+      }));
+    } catch (err: any) {
+      logger.error(`Falha crítica ao instanciar Pool do Postgres: ${err.message}`);
+      throw err;
+    }
   }
   
   // Use cached HTTP client for single-shot queries
