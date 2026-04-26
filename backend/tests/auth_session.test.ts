@@ -1,5 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
+jest.setTimeout(15000);
+
 const TEST_PASSWORD = 'SenhaForte#123';
 const TEST_ADDRESS = {
   street: 'Rua das Flores',

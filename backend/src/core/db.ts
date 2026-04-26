@@ -11,6 +11,11 @@ if (isNode) {
   neonConfig.webSocketConstructor = globalThis.WebSocket;
 }
 
+// PERF: Route pool queries through fetch (HTTP) when WebSocket is unreliable
+// This avoids the WebSocket handshake overhead and prevents Worker crashes
+neonConfig.poolQueryViaFetch = true;
+neonConfig.useSecureWebSocket = true;
+
 // Global cache for connection resources to survive between requests in the same isolate
 const poolCache = new Map<string, Pool>();
 const httpCache = new Map<string, any>();
@@ -71,6 +76,35 @@ export function createDb(connectionString: string): Database {
     }
   }
 
+  /**
+   * Creates a pseudo-client that wraps the HTTP driver.
+   * Transaction commands (BEGIN/COMMIT/ROLLBACK) become no-ops since HTTP queries are auto-committed.
+   * This is used as a fallback when pool.connect() fails.
+   * WARNING: This does NOT provide true transaction isolation.
+   */
+  function createHttpFallbackClient() {
+    logger.warn('Usando fallback HTTP para client (sem transação real)');
+    
+    const txCommands = new Set(['BEGIN', 'COMMIT', 'ROLLBACK', 'SAVEPOINT']);
+    
+    return {
+      async query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+        const trimmed = text.trim().toUpperCase();
+        const firstWord = trimmed.split(/\s/)[0];
+        
+        // No-op for transaction control statements in HTTP mode
+        if (txCommands.has(firstWord)) {
+          return { rows: [] as T[], rowCount: 0, command: firstWord, oid: 0, fields: [] } as QueryResult<T>;
+        }
+        
+        return executeWithHttp<T>(text, params);
+      },
+      release() {
+        // No-op for HTTP fallback
+      },
+    };
+  }
+
   return {
     async query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
       try {
@@ -101,8 +135,9 @@ export function createDb(connectionString: string): Database {
         const client = await pool.connect();
         return client;
       } catch (err: any) {
-        logger.error(`Erro ao conectar ao pool: ${err.message}`);
-        throw err;
+        logger.error(`Erro ao conectar ao pool: ${err.message}. Usando fallback HTTP.`);
+        // Instead of crashing the Worker, return HTTP fallback client
+        return createHttpFallbackClient();
       }
     },
 
@@ -125,3 +160,4 @@ export async function withDb<T>(
     await db.close();
   }
 }
+

@@ -56,13 +56,9 @@ router.post(
  */
 router.post('/logout', async (c) => {
   const db = c.get('db');
-  const client = await db.connect();
-  try {
-    await authService.destroySession(c, client);
-    return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
-  } finally {
-    client.release();
-  }
+  // PERF: Usa db diretamente (HTTP driver) em vez de db.connect() (Pool/WebSocket)
+  await authService.destroySession(c, db);
+  return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
 });
 
 /**
@@ -71,16 +67,12 @@ router.post('/logout', async (c) => {
  */
 router.get('/me', async (c) => {
   const db = c.get('db');
-  const client = await db.connect();
-  try {
-    const session = await authService.resolveSession(c, client);
-    if (!session) {
-      return jsonError(c, 401, 'Não autenticado');
-    }
-    return jsonSuccess(c, { user: session.user, csrfToken: session.csrfToken });
-  } finally {
-    client.release();
+  // PERF: Usa db diretamente (HTTP driver) em vez de db.connect() (Pool/WebSocket)
+  const session = await authService.resolveSession(c, db);
+  if (!session) {
+    return jsonError(c, 401, 'Não autenticado');
   }
+  return jsonSuccess(c, { user: session.user, csrfToken: session.csrfToken });
 });
 
 /**

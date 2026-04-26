@@ -24,12 +24,9 @@ async function loadSession(c: Context<{ Bindings: Bindings; Variables: Variables
     return null;
   }
 
-  const client = await db.connect();
-  try {
-    return await resolveSession(c, client);
-  } finally {
-    if (client.release) client.release();
-  }
+  // PERF: Usa db diretamente (HTTP driver) em vez de db.connect() (Pool/WebSocket)
+  // para evitar crash do isolate no Cloudflare Workers
+  return await resolveSession(c, db);
 }
 
 export const optionalAuthMiddleware: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
