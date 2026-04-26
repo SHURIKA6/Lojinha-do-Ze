@@ -111,10 +111,10 @@ export default function Sidebar() {
         <div className={styles.footer}>
           <Link href="/login" className={styles.user} onClick={handleLogout} title="Sair">
             <div className={styles.avatar}>
-              {user?.avatar ? (
+              {user?.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('/')) ? (
                 <img src={user.avatar} alt="" role="presentation" />
               ) : (
-                (user?.name?.[0] || 'U')
+                (user?.avatar || user?.name?.[0] || 'U')
               )}
             </div>
             <div>
