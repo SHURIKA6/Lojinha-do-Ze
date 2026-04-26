@@ -2,6 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "moduleResolution": "bundler",
-    "isolatedModules": true
-  }
+    "isolatedModules": true,
+    "types": ["@cloudflare/workers-types", "jest"],
+    "lib": ["ESNext", "DOM"]
+  },
+  "include": ["src/**/*", "tests/**/*"]
 }

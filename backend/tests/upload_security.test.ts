@@ -1,8 +1,7 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { loadLocalEnv, getRequiredEnv } from '../src/core/load-local-env';
+import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Hono } from 'hono';
 
-jest.unstable_mockModule('../src/middleware/auth', () => ({
+jest.unstable_mockModule('../src/core/middleware/auth', () => ({
   authMiddleware: async (c: any, next: any) => {
     c.set('user', { id: 'admin-1', role: 'admin' });
     await next();

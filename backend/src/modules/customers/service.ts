@@ -49,8 +49,8 @@ export class CustomerService {
     const cleanEmail = normalizeEmail(payload.email);
     const cleanPhone = cleanOptionalString(payload.phone)?.trim() || null;
     const cleanCpf = payload.cpf ? normalizeCpfDigits(payload.cpf) : null;
-    const cleanAddress = cleanOptionalString(payload.address);
-    const cleanNotes = cleanOptionalString(payload.notes);
+    const cleanAddress = cleanOptionalString(payload.address) ?? null;
+    const cleanNotes = cleanOptionalString(payload.notes) ?? null;
     const avatar = buildAvatar(cleanName);
 
     const client = await this.db.connect();

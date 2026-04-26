@@ -47,21 +47,21 @@ export interface CustomerDB {
 
 export interface CustomerCreateData {
   name: string;
-  email: string;
-  phone: string;
-  cpf: string;
-  address: string;
-  notes: string;
+  email: string | null;
+  phone: string | null;
+  cpf: string | null;
+  address: string | null;
+  notes: string | null;
   avatar: string;
 }
 
 export interface CustomerUpdateData {
   name?: string;
-  email?: string;
-  phone?: string;
-  cpf?: string;
-  address?: string;
-  notes?: string;
+  email?: string | null;
+  phone?: string | null;
+  cpf?: string | null;
+  address?: string | null;
+  notes?: string | null;
   avatar?: string;
 }
 

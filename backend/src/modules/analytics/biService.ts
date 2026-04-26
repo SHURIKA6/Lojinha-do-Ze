@@ -5,7 +5,7 @@
 
 import { logger } from '../../core/utils/logger';
 import { cacheService } from '../system/cacheService';
-import { Product, PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../../core/types';
+import { PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../../core/types';
 
 /**
  * Tipos de recomendação
@@ -61,9 +61,17 @@ export interface ProductRecommendation {
   reason: string;
 }
 
+interface RecommendationProduct {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  rating: number;
+}
+
 export class BusinessIntelligenceService {
   private userProfiles = new Map<string | number, UserProfile>();
-  private productFeatures = new Map<number, Product>();
+  private productFeatures = new Map<number, RecommendationProduct>();
   private interactions: Record<string, unknown>[] = [];
   private recommendations = new Map<string | number, ProductRecommendation[]>();
 
@@ -130,7 +138,7 @@ export class BusinessIntelligenceService {
   /**
    * Carrega produtos disponíveis
    */
-  async getAvailableProducts() {
+  async getAvailableProducts(): Promise<RecommendationProduct[]> {
     // Simula carregamento de produtos
     return [
       { id: 1, name: 'Óleo Essencial de Lavanda', category: 'Óleos Essenciais', price: 45.00, rating: 4.8 },
@@ -143,7 +151,11 @@ export class BusinessIntelligenceService {
   /**
    * Aplica algoritmos de recomendação
    */
-  async applyRecommendationAlgorithms(userProfile: UserProfile, products: Product[], options: RecommendationOptions): Promise<ProductRecommendation[]> {
+  async applyRecommendationAlgorithms(
+    userProfile: UserProfile,
+    products: RecommendationProduct[],
+    options: RecommendationOptions
+  ): Promise<ProductRecommendation[]> {
     const recommendations: ProductRecommendation[] = [];
     
     // Recomendação baseada em conteúdo
@@ -167,7 +179,7 @@ export class BusinessIntelligenceService {
   /**
    * Filtragem baseada em conteúdo
    */
-  contentBasedFiltering(userProfile: UserProfile, products: Product[]): ProductRecommendation[] {
+  contentBasedFiltering(userProfile: UserProfile, products: RecommendationProduct[]): ProductRecommendation[] {
     return products
       .filter(product => {
         // Filtra por categorias preferidas
@@ -190,32 +202,36 @@ export class BusinessIntelligenceService {
   /**
    * Filtragem colaborativa (simulada)
    */
-  collaborativeFiltering(userProfile: UserProfile, products: Product[]): ProductRecommendation[] {
+  collaborativeFiltering(_userProfile: UserProfile, products: RecommendationProduct[]): ProductRecommendation[] {
     // Simula recomendações de usuários similares
     const similarUsersRecommendations = [
       { productId: 2, score: 0.85 },
       { productId: 3, score: 0.78 }
     ];
-    
-    return similarUsersRecommendations
-      .map(rec => {
-        const product = products.find(p => p.id === rec.productId);
-        if (!product) return null;
-        
-        return {
-          ...product,
-          score: rec.score,
-          algorithm: RECOMMENDATION_ALGORITHMS.COLLABORATIVE,
-          reason: 'Usuários similares compraram este produto'
-        };
-      })
-      .filter((rec): rec is ProductRecommendation => rec !== null);
+
+    const recommendations: ProductRecommendation[] = [];
+
+    for (const rec of similarUsersRecommendations) {
+      const product = products.find((p) => p.id === rec.productId);
+      if (!product) {
+        continue;
+      }
+
+      recommendations.push({
+        ...product,
+        score: rec.score,
+        algorithm: RECOMMENDATION_ALGORITHMS.COLLABORATIVE,
+        reason: 'Usuários similares compraram este produto'
+      });
+    }
+
+    return recommendations;
   }
 
   /**
    * Recomendações de produtos em tendência
    */
-  trendingRecommendations(products: Product[]): ProductRecommendation[] {
+  trendingRecommendations(products: RecommendationProduct[]): ProductRecommendation[] {
     return products
       .filter(product => product.rating >= 4.5)
       .map(product => ({
@@ -229,7 +245,7 @@ export class BusinessIntelligenceService {
   /**
    * Calcula score baseado em conteúdo
    */
-  calculateContentScore(product: Product, userProfile: UserProfile): number {
+  calculateContentScore(product: RecommendationProduct, userProfile: UserProfile): number {
     let score = 0;
     
     // Score por categoria

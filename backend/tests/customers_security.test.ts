@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 const verifyPasswordMock = jest.fn(async (password: string, hash: string) => hash === `hash:${password}`);
 
-jest.unstable_mockModule('../src/utils/crypto', () => ({
+jest.unstable_mockModule('../src/core/utils/crypto', () => ({
   randomCode: (len = 8) => 'TESTCODE' + '0'.repeat(Math.max(0, len - 8)),
   randomToken: (len = 32) => 'TESTTOKEN' + '0'.repeat(Math.max(0, len - 9)),
   sha256Hex: async (val: string) => 'hash:' + val,
@@ -10,18 +10,12 @@ jest.unstable_mockModule('../src/utils/crypto', () => ({
 }));
 
 let Hono: any;
-let Bindings: any;
-let Variables: any;
 let customersRoutes: any;
 let profileRoutes: any;
 
 beforeAll(async () => {
   const honoMod = await import('hono');
   Hono = honoMod.Hono;
-
-  const typesMod = await import('../src/types');
-  Bindings = typesMod.Bindings;
-  Variables = typesMod.Variables;
 
   const customers = await import('../src/modules/customers/routes');
   customersRoutes = customers.default;
@@ -49,8 +43,8 @@ function buildDbMock(handlers: any = {}) {
 }
 
 function buildApp(route: any, db: any) {
-  const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-  app.use('*', async (c, next) => {
+  const app = new Hono();
+  app.use('*', async (c: any, next: any) => {
     c.set('db', db);
 
     // Injetar sessão para testes para evitar 401 do authMiddleware

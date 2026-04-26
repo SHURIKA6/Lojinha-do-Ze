@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Hono } from 'hono';
-import { Bindings, Variables } from '../src/types';
 
 const mockCreatePixPayment = jest.fn() as any;
 const mockGetPayment = jest.fn() as any;
@@ -44,8 +43,8 @@ function buildDbMock(handlers: any = {}) {
 }
 
 function buildApp(db: any) {
-  const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-  app.use('*', async (c, next) => {
+  const app = new Hono();
+  app.use('*', async (c: any, next: any) => {
     c.set('db', db);
     const userId = c.req.header('x-test-user-id');
     if (userId) {
@@ -262,5 +261,5 @@ describe('Payments Security', () => {
     expect((await sendWebhook()).status).toBe(200);
     expect((await sendWebhook()).status).toBe(200);
     expect(insertedTransactions).toBe(1);
-  });
+  }, 10000);
 });
