@@ -17,7 +17,6 @@ import {
   deleteSessionByTokenHash,
   findSessionByTokenHash,
   touchSession,
-  SessionRecord,
 } from './repository';
 import { cacheService } from '../../modules/system/cacheService';
 import * as userRepository from '../customers/userRepository';
@@ -32,6 +31,76 @@ import { Bindings, User, Variables, Database, UserDB } from '../../core/types';
 
 type AppEnv = { Bindings: Bindings; Variables: Variables };
 
+type ResolvedSession = {
+  id: string;
+  userId: string;
+  csrfToken: string;
+  expiresAt: Date;
+  user: User;
+};
+
+function isResolvedSessionUser(value: unknown): value is User {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === 'string' && typeof candidate.role === 'string';
+}
+
+function normalizeResolvedSession(value: unknown): ResolvedSession | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const expiresAtValue = candidate.expiresAt;
+  const expiresAt = expiresAtValue instanceof Date
+    ? expiresAtValue
+    : typeof expiresAtValue === 'string' || typeof expiresAtValue === 'number'
+      ? new Date(expiresAtValue)
+      : null;
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.userId !== 'string' ||
+    typeof candidate.csrfToken !== 'string' ||
+    !isResolvedSessionUser(candidate.user) ||
+    !expiresAt ||
+    Number.isNaN(expiresAt.getTime())
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    userId: candidate.userId,
+    csrfToken: candidate.csrfToken,
+    expiresAt,
+    user: candidate.user,
+  };
+}
+
+function buildResolvedSession(row: Record<string, any>, user?: User): ResolvedSession {
+  const expiresAtValue = row.expires_at ?? row.expiresAt;
+
+  return {
+    id: row.session_id ?? row.id,
+    userId: row.user_id ?? row.userId ?? user?.id,
+    csrfToken: row.csrf_token ?? row.csrfToken,
+    expiresAt: expiresAtValue instanceof Date ? expiresAtValue : new Date(expiresAtValue),
+    user: user ?? serializeUser(row as UserDB),
+  };
+}
+
+function storeResolvedSession(c: Context<AppEnv>, session: ResolvedSession | null) {
+  // @ts-ignore
+  c.set('resolvedSession', session);
+  // @ts-ignore
+  c.set('session', session);
+  // @ts-ignore
+  c.set('user', session?.user ?? null);
+}
 
 function isSecureRequest(c: Context): boolean {
   return new URL(c.req.url).protocol === 'https:';
@@ -137,14 +206,15 @@ export async function authenticate(db: Database, identifier: string, password: s
 }
 
 
-export async function issueSession(c: Context<AppEnv>, client: Database, userId: string) {
+export async function issueSession(c: Context<AppEnv>, client: Database, user: User | UserDB) {
+  const resolvedUser = 'createdAt' in user ? user : serializeUser(user);
   const sessionToken = randomToken(32);
   const csrfToken = randomToken(24);
   const tokenHash = await sha256Hex(sessionToken);
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-  await createSessionRecord(client, {
-    userId,
+  const createdSession = await createSessionRecord(client, {
+    userId: resolvedUser.id,
     tokenHash,
     csrfToken,
     expiresAt,
@@ -152,13 +222,10 @@ export async function issueSession(c: Context<AppEnv>, client: Database, userId:
     userAgent: c.req.header('user-agent') || null,
   });
 
+  const session = buildResolvedSession(createdSession, resolvedUser);
+
   // PERF: Alimenta o cache imediatamente para acelerar a próxima requisição
-  cacheService.setSession(tokenHash, {
-    session_id: tokenHash, // Placeholder simplificado
-    user_id: userId,
-    csrf_token: csrfToken,
-    expires_at: expiresAt,
-  });
+  cacheService.setSession(tokenHash, session);
 
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions(c));
   setCookie(c, CSRF_COOKIE_NAME, csrfToken, sessionCookieOptions(c, SESSION_TTL_SECONDS, false));
@@ -206,40 +273,31 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   // PERF: Tenta obter do cache antes de consultar o banco
   const fromCache = cacheService.getSession(tokenHash);
   if (fromCache) {
-    // @ts-ignore
-    c.set('resolvedSession', fromCache);
-    // @ts-ignore
-    c.set('user', fromCache.user);
-    // @ts-ignore
-    c.set('session', fromCache);
-    return fromCache;
+    const session = normalizeResolvedSession(fromCache);
+    if (session) {
+      storeResolvedSession(c, session);
+      return session;
+    }
+
+    logger.warn('Entrada inválida no cache de sessão ignorada; consultando banco', {
+      tokenHashPrefix: tokenHash.slice(0, 8),
+    });
+    cacheService.deleteSession(tokenHash);
   }
 
   const row = await findSessionByTokenHash(client, tokenHash);
   if (!row) {
     clearSessionCookies(c);
-    // @ts-ignore
-    c.set('resolvedSession', null);
+    storeResolvedSession(c, null);
     return null;
   }
 
-  const session = {
-    id: row.session_id,
-    userId: row.user_id,
-    csrfToken: row.csrf_token,
-    expiresAt: row.expires_at,
-    user: serializeUser(row),
-  };
+  const session = buildResolvedSession(row);
 
   // Alimenta o cache para as próximas chamadas
   cacheService.setSession(tokenHash, session);
 
-  // @ts-ignore
-  c.set('resolvedSession', session);
-  // @ts-ignore
-  c.set('user', session.user);
-  // @ts-ignore
-  c.set('session', session);
+  storeResolvedSession(c, session);
 
   try {
     await touchSession(client, session.id);
@@ -257,12 +315,7 @@ export async function invalidateResolvedSession(c: Context<AppEnv>, client: Data
     await deleteSessionById(client, session.id);
   }
 
-  // @ts-ignore
-  c.set('resolvedSession', null);
-  // @ts-ignore
-  c.set('session', null);
-  // @ts-ignore
-  c.set('user', null);
+  storeResolvedSession(c, null);
   clearSessionCookies(c);
 }
 

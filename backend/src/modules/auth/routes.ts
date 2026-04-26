@@ -26,7 +26,7 @@ router.post(
 
       // PERF: Usamos o driver HTTP (db) em vez do Pool (db.connect) pois é mais rápido
       // para operações isoladas em Workers e evita overhead de handshake WebSocket.
-      const { csrfToken } = await authService.issueSession(c, db, user.id);
+      const { csrfToken } = await authService.issueSession(c, db, user);
 
       return jsonSuccess(c, {
         user: { id: user.id, role: user.role },
