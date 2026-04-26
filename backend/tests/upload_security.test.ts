@@ -1,16 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Hono } from 'hono';
 
-jest.unstable_mockModule('../src/core/middleware/auth', () => ({
-  authMiddleware: async (c: any, next: any) => {
-    c.set('user', { id: 'admin-1', role: 'admin' });
-    await next();
-  },
-  adminOnly: async (_c: any, next: any) => {
-    await next();
-  },
-}));
-
 let uploadRoutes: any;
 
 beforeAll(async () => {
@@ -20,6 +10,27 @@ beforeAll(async () => {
 
 function buildApp() {
   const app = new Hono();
+  app.use('*', async (c: any, next: any) => {
+    c.set('db', {
+      query: jest.fn(),
+      connect: async () => ({ query: jest.fn(), release() {} }),
+      close: async () => {},
+    });
+
+    const session = {
+      id: 'session-1',
+      userId: 'admin-1',
+      user: { id: 'admin-1', role: 'admin', name: 'Admin' },
+      csrfToken: 'csrf-token',
+      expiresAt: new Date('2030-01-01T00:00:00.000Z'),
+    };
+
+    c.set('user', session.user);
+    c.set('session', session);
+    c.set('resolvedSession', session);
+
+    await next();
+  });
   app.route('/', uploadRoutes);
   return app;
 }

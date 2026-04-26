@@ -6,6 +6,28 @@ import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+function toNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toObjectArray<T = Record<string, unknown>>(value: unknown): T[] {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
@@ -69,10 +91,10 @@ router.get('/', async (c) => {
     `;
 
     const res = await db.query(dashboardQuery, [monthStart, monthEnd]);
-    const row = res.rows[0];
+    const row = res.rows[0] || {};
 
     const chartData: Record<string, { day: string; receita: number; despesa: number }> = {};
-    const dailyTx = Array.isArray(row.daily_tx) ? row.daily_tx : [];
+    const dailyTx = toObjectArray<any>(row.daily_tx);
     
     dailyTx.forEach((item: any) => {
       if (!item.day_date) return;
@@ -82,27 +104,31 @@ router.get('/', async (c) => {
           chartData[day] = { day, receita: 0, despesa: 0 };
         }
         if (item.type === 'receita') {
-          chartData[day].receita = parseFloat(item.total);
+          chartData[day].receita = toNumber(item.total);
         } else {
-          chartData[day].despesa = parseFloat(item.total);
+          chartData[day].despesa = toNumber(item.total);
         }
       } catch (e) {}
     });
 
+    const lowStock = toObjectArray<any>(row.low_stock);
+    const recentOrders = toObjectArray<any>(row.recent_orders);
+    const categoryChart = toObjectArray<any>(row.category_chart).map((item: any) => ({
+      name: String(item?.name || ''),
+      value: toNumber(item?.value),
+    }));
+
     setNoStore(c as any);
     return c.json({
-      monthRevenue: parseFloat(row.month_revenue),
-      monthExpenses: parseFloat(row.month_expenses),
-      profit: parseFloat(row.month_revenue) - parseFloat(row.month_expenses),
-      activeOrders: parseInt(row.active_orders_count, 10),
-      totalSales: parseInt(row.total_sales_count, 10),
-      lowStock: row.low_stock,
-      recentOrders: row.recent_orders,
+      monthRevenue: toNumber(row.month_revenue),
+      monthExpenses: toNumber(row.month_expenses),
+      profit: toNumber(row.month_revenue) - toNumber(row.month_expenses),
+      activeOrders: Math.trunc(toNumber(row.active_orders_count)),
+      totalSales: Math.trunc(toNumber(row.total_sales_count)),
+      lowStock,
+      recentOrders,
       chartData: Object.values(chartData),
-      categoryChart: row.category_chart.map((item: any) => ({ 
-        name: item.name, 
-        value: parseFloat(item.value) 
-      })),
+      categoryChart,
     });
   } catch (error) {
     logger.error('Erro no Dashboard', error as Error);
