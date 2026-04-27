@@ -48,20 +48,22 @@ export async function auditMiddleware(c: Context, next: Next) {
     });
 
     try {
-      return await next();
+      const response = await next();
+
+      const duration = Date.now() - startTime;
+      const status = c.res.status;
+
+      logger.info(`Audit Response: ${method} ${path} - ${status}`, {
+        requestId,
+        status,
+        duration: `${duration}ms`,
+      });
+
+      return response;
     } catch (error) {
       logger.error('Audit middleware: next() crashed', error as Error, { requestId });
       throw error;
     }
-
-    const duration = Date.now() - startTime;
-    const status = c.res.status;
-
-    logger.info(`Audit Response: ${method} ${path} - ${status}`, {
-      requestId,
-      status,
-      duration: `${duration}ms`,
-    });
   } else {
     return await next();
   }
