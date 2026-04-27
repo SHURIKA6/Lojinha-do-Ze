@@ -4,7 +4,7 @@ const config: Config = {
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
-    '^.+\\.tsx?$': ['@swc/jest'],
+    '^.+\\.tsx?$': ['@swc/jest', {}],
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
