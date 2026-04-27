@@ -82,7 +82,9 @@ export default function HomePageClient() {
       <div className="landing-shell animate-fadeIn">
         <header className="landing-topbar">
           <div className="landing-topbar__brand">
-            <div className="brand-mark">LZ</div>
+            <div className="brand-mark">
+              <img src="/images/logo.png" alt="Lojinha do Zé Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+            </div>
             <div className="brand-copy">
               <div className="brand-copy__name">Lojinha do Zé</div>
               <div className="brand-copy__sub">Produtos fitoterápicos e naturais</div>

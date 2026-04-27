@@ -49,7 +49,9 @@ export default function LoginPageClient() {
       <div className="login-shell animate-fadeIn">
         <section className="login-card">
           <header className="login-card__header">
-            <div className="login-card__logo">LZ</div>
+            <div className="login-card__logo">
+              <img src="/images/logo.png" alt="Lojinha do Zé Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+            </div>
             <h1 className="login-card__title">Entrar</h1>
             <p className="login-card__subtitle">Acesse sua conta com e-mail ou telefone</p>
           </header>

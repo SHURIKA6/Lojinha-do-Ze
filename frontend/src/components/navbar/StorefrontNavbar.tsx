@@ -47,7 +47,9 @@ export default function StorefrontNavbar({
     <header className={styles.header}>
       <div className={styles.inner}>
         <div className={styles.brand} style={{ cursor: 'pointer' }} onClick={handleLogoClick}>
-          <div className={styles.logo}>LZ</div>
+          <div className={styles.logo}>
+            <img src="/images/logo.png" alt="Lojinha do Zé Logo" className={styles.logoImg} />
+          </div>
           <div>
             <h1 className={styles.title}>Lojinha do Zé</h1>
             <span className={styles.subtitle}>Produtos fitoterápicos e naturais</span>

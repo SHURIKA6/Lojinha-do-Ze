@@ -75,7 +75,9 @@ export default function Sidebar() {
 
       <aside className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ''}`}>
         <div className={styles.brand}>
-          <div className={styles.logo}>LZ</div>
+          <div className={styles.logo}>
+            <img src="/images/logo.png" alt="Lojinha do Zé Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+          </div>
           <div>
             <div className={styles.brandName}>Lojinha do Zé</div>
             <div className={styles.brandSub}>Operação e gestão</div>

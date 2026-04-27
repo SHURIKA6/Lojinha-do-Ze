@@ -52,7 +52,9 @@ export default function ClienteLayoutClient({ children }: ClienteLayoutClientPro
     <div>
       <div className="customer-topbar">
         <div className="customer-topbar__brand">
-          <div className="customer-topbar__logo">LZ</div>
+          <div className="customer-topbar__logo">
+            <img src="/images/logo.png" alt="Lojinha do Zé Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+          </div>
           <span className="customer-topbar__name">Lojinha do Zé</span>
         </div>
 
