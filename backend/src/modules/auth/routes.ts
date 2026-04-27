@@ -4,6 +4,7 @@ import * as authService from './service';
 import { jsonError, jsonSuccess, validationError } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import { authMiddleware, csrfMiddleware } from '../../core/middleware/auth';
+import { loginLimiter } from '../../core/middleware/rateLimit';
 import { loginSchema } from '../../core/domain/schemas';
 import { Bindings, Variables } from '../../core/types';
 
@@ -15,6 +16,7 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
  */
 router.post(
   '/login',
+  loginLimiter,
   zValidator('json', loginSchema, validationError),
   async (c) => {
     const db = c.get('db');

@@ -126,6 +126,7 @@ app.route('/api/transactions', transactionsRoutes as any);
 app.route('/api/upload', uploadRoutes as any);
 app.route('/api/payments', paymentRoutes as any);
 app.route('/api/ai', aiRoutes as any);
+app.route('/api/admin', aiRoutes as any);
 app.route('/api/analytics', analyticsRoutes as any);
 
 export default app;
