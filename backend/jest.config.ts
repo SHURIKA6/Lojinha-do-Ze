@@ -11,6 +11,19 @@ const config: Config = {
   },
   testMatch: ['**/tests/**/*.test.ts'],
   verbose: true,
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/types.ts',
+    '!src/migrations/**',
+  ],
+  coverageThreshold: {
+    global: {
+      lines: 80,
+      functions: 80,
+      branches: 60,
+      statements: 80,
+    },
+  },
 };
 
 export default config;
