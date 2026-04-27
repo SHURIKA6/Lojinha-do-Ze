@@ -11,12 +11,13 @@ export async function getTransactions(type?: string): Promise<Transaction[]> {
 }
 
 export async function createTransaction(transaction: Partial<Transaction>): Promise<Transaction> {
-  const res = await request<ApiResponse<Transaction>>('/transactions', {
+  const res = await request<any>('/transactions', {
     method: 'POST',
     body: JSON.stringify(transaction),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao criar transação');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao criar transação');
 }
 
 export async function deleteTransaction(id: string): Promise<void> {

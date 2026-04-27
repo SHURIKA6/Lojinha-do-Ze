@@ -10,40 +10,45 @@ export async function getCustomers(): Promise<User[]> {
 }
 
 export async function getCustomer(id: string): Promise<User> {
-  const res = await request<ApiResponse<User>>(`/customers/${id}`);
-  if (!res.data) throw new Error(res.message || 'Usuário não encontrado');
-  return res.data;
+  const res = await request<any>(`/customers/${id}`);
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Usuário não encontrado');
 }
 
 export async function getCustomerOrders(id: string): Promise<Order[]> {
-  const res = await request<ApiResponse<Order[]>>(`/customers/${id}/orders`);
-  return res.data || [];
+  const res = await request<any>(`/customers/${id}/orders`);
+  if (Array.isArray(res)) return res;
+  return res?.data || [];
 }
 
 export async function createCustomer(customer: Partial<User>): Promise<User> {
-  const res = await request<ApiResponse<User>>('/customers', {
+  const res = await request<any>('/customers', {
     method: 'POST',
     body: JSON.stringify(customer),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao criar usuário');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao criar usuário');
 }
 
 export async function updateCustomer(id: string, customer: Partial<User>): Promise<User> {
-  const res = await request<ApiResponse<User>>(`/customers/${id}`, {
+  const res = await request<any>(`/customers/${id}`, {
     method: 'PUT',
     body: JSON.stringify(customer),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao atualizar usuário');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao atualizar usuário');
 }
 
 export async function sendCustomerInvite(id: string): Promise<User> {
-  const res = await request<ApiResponse<User>>(`/customers/${id}/invite`, {
+  const res = await request<any>(`/customers/${id}/invite`, {
     method: 'POST',
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao gerar convite');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao gerar convite');
 }
 
 export async function resetCustomerPassword(id: string): Promise<void> {

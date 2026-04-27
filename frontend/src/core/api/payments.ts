@@ -26,12 +26,13 @@ export interface PixStatusResponse {
  * Cria um pagamento via Pix
  */
 export async function createPixPayment(data: PixPaymentData): Promise<PixPaymentResponse> {
-  const res = await request<ApiResponse<PixPaymentResponse>>('/payments/pix', {
+  const res = await request<any>('/payments/pix', {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao gerar Pix');
-  return res.data;
+  if (res && res.paymentId) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao gerar Pix');
 }
 
 /**
@@ -46,7 +47,8 @@ export async function getPixPaymentStatus(
     phone: String(params.phone || ''),
   });
 
-  const res = await request<ApiResponse<PixStatusResponse>>(`/payments/pix/${paymentId}?${query.toString()}`);
-  if (!res.data) throw new Error(res.message || 'Erro ao consultar status');
-  return res.data;
+  const res = await request<any>(`/payments/pix/${paymentId}?${query.toString()}`);
+  if (res && res.status) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao consultar status');
 }

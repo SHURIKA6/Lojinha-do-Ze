@@ -10,21 +10,23 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function createProduct(product: Partial<Product>): Promise<Product> {
-  const res = await request<ApiResponse<Product>>('/products', {
+  const res = await request<any>('/products', {
     method: 'POST',
     body: JSON.stringify(product),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao criar produto');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao criar produto');
 }
 
 export async function updateProduct(id: string | number, product: Partial<Product>): Promise<Product> {
-  const res = await request<ApiResponse<Product>>(`/products/${id}`, {
+  const res = await request<any>(`/products/${id}`, {
     method: 'PUT',
     body: JSON.stringify(product),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao atualizar produto');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao atualizar produto');
 }
 
 export async function deleteProduct(id: string | number): Promise<void> {
@@ -35,10 +37,11 @@ export async function uploadImage(file: File): Promise<{ url: string }> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await request<ApiResponse<{ url: string }>>('/upload', {
+  const res = await request<any>('/upload', {
     method: 'POST',
     body: formData,
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao enviar imagem');
-  return res.data;
+  if (res && res.url) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao enviar imagem');
 }

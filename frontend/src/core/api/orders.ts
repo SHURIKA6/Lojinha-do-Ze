@@ -21,12 +21,13 @@ export async function createOrder(orderData: Partial<Order>): Promise<Order> {
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
-  const res = await request<ApiResponse<Order>>(`/orders/${id}/status`, {
+  const res = await request<any>(`/orders/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
-  if (!res.data) throw new Error(res.message || 'Erro ao atualizar status do pedido');
-  return res.data;
+  if (res && res.id) return res;
+  if (res?.data) return res.data;
+  throw new Error(res?.message || 'Erro ao atualizar status do pedido');
 }
 
 export async function deleteOrder(id: string): Promise<void> {
