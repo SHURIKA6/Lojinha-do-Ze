@@ -227,7 +227,6 @@ router.patch(
 
 router.delete(
   '/:id',
-  zValidator('json', deleteSchema, validationError),
   async (c) => {
     try {
       const service = new CustomerService(c.get('db'));
@@ -241,7 +240,10 @@ router.delete(
         return jsonError(c, 400, 'A autoexclusão não é permitida por este endpoint');
       }
 
-      const { password } = c.req.valid('json');
+      const password = c.req.header('x-admin-password') || '';
+      if (!password) {
+        return jsonError(c, 400, 'Senha administrativa é obrigatória');
+      }
       const passwordCheck = await validatePrivilegedAction(
         c,
         service,

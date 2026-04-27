@@ -65,8 +65,13 @@ export async function updateUserRole(id: string, role: string, password?: string
 }
 
 export async function deleteCustomer(id: string, password?: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (password) {
+    headers['x-admin-password'] = password;
+  }
+  
   await request<ApiResponse<void>>(`/customers/${id}`, {
     method: 'DELETE',
-    body: JSON.stringify({ password }),
+    headers,
   });
 }
