@@ -4,11 +4,14 @@ import * as authService from './service';
 import { jsonError, jsonSuccess, validationError } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import { authMiddleware, csrfMiddleware } from '../../core/middleware/auth';
+import { hashPassword } from '../../core/utils/crypto';
 import { loginLimiter } from '../../core/middleware/rateLimit';
 import { loginSchema } from '../../core/domain/schemas';
 import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+
 
 /**
  * POST /api/auth/login
@@ -58,9 +61,38 @@ router.post(
  */
 router.post('/logout', async (c) => {
   const db = c.get('db');
-  // PERF: Usa db diretamente (HTTP driver) em vez de db.connect() (Pool/WebSocket)
   await authService.destroySession(c, db);
   return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
+});
+
+/**
+ * POST /api/auth/setup-password
+ * Ativa a conta usando um convite e define a nova senha
+ */
+router.post('/setup-password', async (c) => {
+  const db = c.get('db');
+  const payload = await c.req.json();
+  const { token, code, password, confirmPassword } = payload;
+
+  if (!password || password !== confirmPassword || password.length < 6) {
+    return jsonError(c, 400, 'Senhas não coincidem ou são muito curtas.');
+  }
+
+  try {
+    const result = await authService.consumePasswordSetupInvite(db, { token, code });
+    if (!result) {
+      return jsonError(c, 400, 'Convite inválido ou expirado.');
+    }
+
+    const hashed = await hashPassword(password);
+    await db.query('UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2', [hashed, result.user.id]);
+
+    const { csrfToken } = await authService.issueSession(c, db, result.user);
+    return jsonSuccess(c, { user: result.user, csrfToken });
+  } catch (error: any) {
+    logger.error('Erro no setup-password', error);
+    return jsonError(c, 500, 'Não foi possível ativar sua conta no momento.');
+  }
 });
 
 /**
