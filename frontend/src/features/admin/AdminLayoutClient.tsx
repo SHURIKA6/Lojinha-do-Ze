@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/core/contexts/AuthContext';
+import { useNotifications } from '@/core/hooks/useNotifications';
 import Sidebar from '@/components/Sidebar';
 
 interface AdminLayoutClientProps {
@@ -12,6 +13,9 @@ interface AdminLayoutClientProps {
 export default function AdminLayoutClient({ children }: AdminLayoutClientProps) {
   const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
+  
+  // Conecta ao WebSocket de Notificações
+  useNotifications();
 
   useEffect(() => {
     if (loading) {

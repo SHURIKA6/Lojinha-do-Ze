@@ -20,3 +20,12 @@ enabled = true
 [observability.logs]
 enabled = true
 invocation_logs = true
+
+[durable_objects]
+bindings = [
+  { name = "NOTIFICATIONS_DO", class_name = "NotificationDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["NotificationDO"]

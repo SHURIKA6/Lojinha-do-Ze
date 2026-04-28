@@ -24,7 +24,7 @@ import { csrfMiddleware, optionalAuthMiddleware } from './core/middleware/auth';
 import { Bindings, Variables, Database } from './core/types';
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
-const DBLESS_PATH_PREFIXES = ['/api/health'];
+const DBLESS_PATH_PREFIXES = ['/api/health', '/api/notifications/ws', '/api/notifications/broadcast'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
 
 app.use('/api/*', apiLimiter);
@@ -114,6 +114,9 @@ app.onError((error, c) => {
   return jsonError(c, 500, 'Erro interno no servidor', { errorId });
 });
 
+import notificationRoutes from './modules/notifications/routes';
+import { NotificationDO } from './modules/notifications/durableObject';
+
 app.route('/api/auth', authRoutes as any);
 app.route('/api/catalog', catalogRoutes as any);
 app.route('/api/customers', customersRoutes as any);
@@ -128,5 +131,7 @@ app.route('/api/payments', paymentRoutes as any);
 app.route('/api/ai', aiRoutes as any);
 app.route('/api/admin', aiRoutes as any);
 app.route('/api/analytics', analyticsRoutes as any);
+app.route('/api/notifications', notificationRoutes as any);
 
+export { NotificationDO };
 export default app;
