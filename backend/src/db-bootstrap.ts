@@ -27,8 +27,8 @@ export async function bootstrapDatabase(databaseUrl: string) {
       const adminPassHash = '$2b$10$TQH7yS2G9Wv7GK/Qo5xGue1X6m55H06E08e6/4H76L9.O5j2hGvG'; // admin123 (hash fixo para bootstrap)
 
       await sql.query(
-        'INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, $4, $5)',
-        ['José Riadd', 'jose@lojinha.com', adminPassHash, 'admin', 'active']
+        'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
+        ['José Riadd', 'jose@lojinha.com', adminPassHash, 'admin']
       );
 
       console.log('✅ Usuário admin criado com sucesso.');
@@ -41,4 +41,21 @@ export async function bootstrapDatabase(databaseUrl: string) {
     console.error('CRITICAL: Falha no bootstrap do banco de dados:', error);
     throw error;
   }
+}
+
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+// No need for a main check if we only run this file directly via tsx, but since it's imported elsewhere, we must check
+import { fileURLToPath } from 'url';
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMain) {
+  bootstrapDatabase(process.env.DATABASE_URL || '')
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 }

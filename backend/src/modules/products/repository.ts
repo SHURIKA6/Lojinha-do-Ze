@@ -58,14 +58,24 @@ export async function listProducts(client: Database, limit: number, offset: numb
 
 export async function searchProducts(
   client: Database,
-  options: { search?: string; category?: string; limit: number; offset: number }
+  options: { 
+    search?: string; 
+    category?: string; 
+    minPrice?: number;
+    maxPrice?: number;
+    sortBy?: string;
+    limit: number; 
+    offset: number;
+  }
 ) {
   const whereClauses = ['is_active = TRUE', 'quantity > 0'];
   const queryParams: any[] = [];
 
   if (options.search) {
-    queryParams.push(`%${options.search}%`);
-    whereClauses.push(`name ILIKE $${queryParams.length}`);
+    // Generate tsquery from search term, replacing spaces with & for full text match
+    const tsQuery = options.search.trim().split(/\\s+/).map(word => `${word}:*`).join(' & ');
+    queryParams.push(tsQuery);
+    whereClauses.push(`search_vector @@ to_tsquery('portuguese', $${queryParams.length})`);
   }
 
   if (options.category) {
@@ -73,17 +83,38 @@ export async function searchProducts(
     whereClauses.push(`category = $${queryParams.length}`);
   }
 
+  if (options.minPrice !== undefined) {
+    queryParams.push(options.minPrice);
+    whereClauses.push(`sale_price >= $${queryParams.length}`);
+  }
+
+  if (options.maxPrice !== undefined) {
+    queryParams.push(options.maxPrice);
+    whereClauses.push(`sale_price <= $${queryParams.length}`);
+  }
+
   const whereSql = whereClauses.join(' AND ');
 
   const countRes = await client.query(`SELECT COUNT(*) FROM products WHERE ${whereSql}`, queryParams);
   const totalCount = parseInt(countRes.rows[0].count);
+
+  let orderBySql = 'category, name';
+  if (options.sortBy === 'price_asc') orderBySql = 'sale_price ASC';
+  else if (options.sortBy === 'price_desc') orderBySql = 'sale_price DESC';
+  else if (options.sortBy === 'newest') orderBySql = 'created_at DESC';
+  else if (options.search && options.sortBy !== 'relevance') {
+    // if search exists, default to relevance (rank) if no other sort is specified
+    orderBySql = `ts_rank(search_vector, to_tsquery('portuguese', $1)) DESC`;
+  } else if (options.search && options.sortBy === 'relevance') {
+    orderBySql = `ts_rank(search_vector, to_tsquery('portuguese', $1)) DESC`;
+  }
 
   const limitOffsetParams = [...queryParams, options.limit, options.offset];
   const { rows } = await client.query(
     `SELECT id, code, name, description, photo, category, sale_price, quantity
      FROM products
      WHERE ${whereSql}
-     ORDER BY category, name
+     ORDER BY ${orderBySql}
      LIMIT $${limitOffsetParams.length - 1} OFFSET $${limitOffsetParams.length}`,
     limitOffsetParams
   );

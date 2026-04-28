@@ -14,6 +14,7 @@ import * as migration006 from './006_guest_customers_idx';
 import * as migration007 from './007_add_refresh_tokens';
 import * as migration008 from './008_add_performance_indexes';
 import * as migration009 from './009_add_tracking_to_orders';
+import * as migration010 from './010_add_full_text_search';
 
 const migrations: Migration[] = [
   { id: migration001.id, up: migration001.up },
@@ -25,6 +26,7 @@ const migrations: Migration[] = [
   { id: migration007.id, up: migration007.up },
   { id: migration008.id, up: migration008.up },
   { id: migration009.id, up: migration009.up },
+  { id: migration010.id, up: migration010.up },
 ];
 
 export async function runMigrations(db: Database): Promise<void> {

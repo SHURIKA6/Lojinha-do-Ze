@@ -41,6 +41,12 @@ export default function StorefrontPageClient({ initialCatalog = null }: Storefro
     setActiveCategory,
     search,
     setSearch,
+    sortBy,
+    setSortBy,
+    minPrice,
+    setMinPrice,
+    maxPrice,
+    setMaxPrice,
     filteredProducts,
     allProducts,
     loading,
@@ -209,6 +215,35 @@ export default function StorefrontPageClient({ initialCatalog = null }: Storefro
           ))}
         </div>
       </nav>
+
+      <div className={styles.filtersContainer}>
+        <select 
+          className={styles.filterSelect} 
+          value={sortBy} 
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="relevance">Relevância</option>
+          <option value="price_asc">Menor Preço</option>
+          <option value="price_desc">Maior Preço</option>
+          <option value="newest">Mais Novos</option>
+        </select>
+        
+        <input 
+          type="number" 
+          className={styles.filterInput} 
+          placeholder="Preço Min" 
+          value={minPrice ?? ''}
+          onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : undefined)}
+        />
+        
+        <input 
+          type="number" 
+          className={styles.filterInput} 
+          placeholder="Preço Max" 
+          value={maxPrice ?? ''}
+          onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : undefined)}
+        />
+      </div>
 
       <ProductGrid
         cart={cart}

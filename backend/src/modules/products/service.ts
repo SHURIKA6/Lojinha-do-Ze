@@ -16,10 +16,18 @@ export async function getProducts(db: Database, limit: number, offset: number) {
 
 export async function getCatalog(
   db: Database,
-  options: { search?: string; category?: string; limit: number; offset: number }
+  options: { 
+    search?: string; 
+    category?: string; 
+    minPrice?: number;
+    maxPrice?: number;
+    sortBy?: string;
+    limit: number; 
+    offset: number;
+  }
 ) {
-  const { search, category, limit, offset } = options;
-  const cacheKey = `${CACHE_PREFIXES.CATALOG}${limit}_${offset}_${search || ''}_${category || ''}`;
+  const { search, category, minPrice, maxPrice, sortBy, limit, offset } = options;
+  const cacheKey = `${CACHE_PREFIXES.CATALOG}${limit}_${offset}_${search || ''}_${category || ''}_${minPrice || ''}_${maxPrice || ''}_${sortBy || ''}`;
 
   const cached = cacheService.get(cacheKey);
   if (cached) {

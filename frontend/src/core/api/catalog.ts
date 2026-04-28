@@ -6,6 +6,9 @@ export interface CatalogParams {
   offset?: number;
   search?: string;
   category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: string;
 }
 
 export interface CatalogCategory {
@@ -22,10 +25,13 @@ export interface CatalogResponse {
 
 export function getCatalog(params: CatalogParams = {}): Promise<CatalogResponse> {
   const query = new URLSearchParams();
-  if (params.limit) query.set('limit', String(params.limit));
-  if (params.offset) query.set('offset', String(params.offset));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.offset !== undefined) query.set('offset', String(params.offset));
   if (params.search) query.set('search', params.search);
   if (params.category) query.set('category', params.category);
+  if (params.minPrice !== undefined) query.set('minPrice', String(params.minPrice));
+  if (params.maxPrice !== undefined) query.set('maxPrice', String(params.maxPrice));
+  if (params.sortBy) query.set('sortBy', params.sortBy);
 
   const queryString = query.toString();
   return request<CatalogResponse>(`/catalog${queryString ? `?${queryString}` : ''}`);

@@ -22,13 +22,22 @@ router.get('/', async (c) => {
   const offsetQuery = c.req.query('offset');
   const limit = Math.min(parseInt(limitQuery || '') || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
   const offset = Math.max(parseInt(offsetQuery || '') || 0, 0);
+  
   const search = c.req.query('search')?.trim();
   const category = c.req.query('category')?.trim();
+  const sortBy = c.req.query('sortBy')?.trim();
+  const minPriceStr = c.req.query('minPrice');
+  const minPrice = minPriceStr ? parseFloat(minPriceStr) : undefined;
+  const maxPriceStr = c.req.query('maxPrice');
+  const maxPrice = maxPriceStr ? parseFloat(maxPriceStr) : undefined;
 
   try {
     const response = await productService.getCatalog(db, {
       search,
       category,
+      minPrice,
+      maxPrice,
+      sortBy,
       limit,
       offset,
     });

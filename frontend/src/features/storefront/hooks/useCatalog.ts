@@ -28,6 +28,10 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
   });
   const [activeCategory, setActiveCategory] = useState<string>(() => initialCatalog?.categories?.[0]?.name || '');
   const [search, setSearch] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('relevance');
+  const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
+  
   const [loading, setLoading] = useState<boolean>(() => !hasInitialCatalog);
   const [error, setError] = useState<string>('');
   const toast = useToast();
@@ -36,8 +40,8 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
   const itemsPerPage = 50;
 
   useEffect(() => {
-    setPage(1); // Reseta a página em caso de busca ou mudança de categoria
-  }, [search, activeCategory]);
+    setPage(1); // Reseta a página em caso de busca ou mudança de categoria ou filtros
+  }, [search, activeCategory, sortBy, minPrice, maxPrice]);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +51,15 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
 
     const offset = (page - 1) * itemsPerPage;
     const timer = setTimeout(() => {
-      getCatalog({ search, category: activeCategory, limit: itemsPerPage, offset })
+      getCatalog({ 
+        search, 
+        category: activeCategory, 
+        sortBy,
+        minPrice,
+        maxPrice,
+        limit: itemsPerPage, 
+        offset 
+      })
         .then((data: any) => {
           if (!active) return;
           
@@ -123,6 +135,12 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
     setActiveCategory,
     search,
     setSearch,
+    sortBy,
+    setSortBy,
+    minPrice,
+    setMinPrice,
+    maxPrice,
+    setMaxPrice,
     filteredProducts,
     allProducts,
     loading,

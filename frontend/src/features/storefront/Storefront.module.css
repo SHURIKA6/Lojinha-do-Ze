@@ -84,6 +84,34 @@
   color: var(--forest-600);
 }
 
+.filtersContainer {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterSelect, .filterInput {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  background: white;
+  color: var(--gray-700);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.filterSelect:focus, .filterInput:focus {
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.filterInput {
+  width: 100px;
+}
+
 .cartBar {
   position: fixed;
   bottom: var(--space-4);
