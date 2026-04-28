@@ -31,4 +31,5 @@ tag = "v1"
 new_sqlite_classes = ["NotificationDO"]
 
 [triggers]
-crons = ["0 * * * *"] # Executa a cada hora
+crons = ["0 * * * *"]
+
