@@ -118,7 +118,7 @@ export class CustomerService {
 
   async inviteCustomer(c: Context, id: string) {
     const customer = await customerRepo.findCustomerById(this.db, id);
-    if (!customer) return null;
+    if (!customer || (customer as any).role === 'guest') return null;
 
     const client = await this.db.connect();
     try {

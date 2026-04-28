@@ -357,10 +357,10 @@ export default function ClientesPage() {
                   </td>
                   <td className="hide-mobile">
                     <span
-                      className={`badge badge--${customer.role === 'admin' ? 'primary' : 'secondary'}`}
+                      className={`badge badge--${customer.role === 'admin' ? 'primary' : customer.role === 'guest' ? 'warning' : 'secondary'}`}
                       style={{ textTransform: 'capitalize' }}
                     >
-                      {customer.role === 'admin' ? 'Administrador' : 'Cliente'}
+                      {customer.role === 'admin' ? 'Administrador' : customer.role === 'guest' ? 'Convidado' : 'Cliente'}
                     </span>
                   </td>
                   <td className="hide-mobile" style={{ fontWeight: 600 }}>{customer.phone || '—'}</td>
@@ -381,6 +381,8 @@ export default function ClientesPage() {
                         className="btn btn--secondary btn--sm"
                         aria-label={`Editar ${customer.name}`}
                         onClick={() => openEdit(customer)}
+                        disabled={customer.role === 'guest'}
+                        title={customer.role === 'guest' ? 'Clientes convidados não podem ser editados. Cadastre-os como usuários primeiro.' : 'Editar cliente'}
                       >
                         <FiEdit2 />
                       </button>
@@ -389,7 +391,8 @@ export default function ClientesPage() {
                         className="btn btn--secondary btn--sm"
                         aria-label={`Alterar cargo de ${customer.name}`}
                         onClick={() => openRoleModal(customer)}
-                        title="Alterar cargo (Admin/Cliente)"
+                        title={customer.role === 'guest' ? 'Não é possível alterar o cargo de convidados' : 'Alterar cargo (Admin/Cliente)'}
+                        disabled={customer.role === 'guest'}
                       >
                         <FiShield />
                       </button>
@@ -398,7 +401,8 @@ export default function ClientesPage() {
                         className="btn btn--secondary btn--sm"
                         aria-label={`Gerar convite para ${customer.name}`}
                         onClick={() => handleSendInvite(customer)}
-                        title="Gerar novo convite"
+                        title={customer.role === 'guest' ? 'Não é possível gerar convite para convidados' : 'Gerar novo convite'}
+                        disabled={customer.role === 'guest'}
                       >
                         <FiKey />
                       </button>
@@ -407,6 +411,8 @@ export default function ClientesPage() {
                         className="btn btn--danger btn--sm"
                         aria-label={`Excluir ${customer.name}`}
                         onClick={() => openDeleteModal(customer)}
+                        disabled={customer.role === 'guest'}
+                        title={customer.role === 'guest' ? 'Não é possível excluir clientes convidados' : 'Excluir usuário'}
                       >
                         <FiTrash2 />
                       </button>
@@ -533,7 +539,7 @@ export default function ClientesPage() {
               <div>
                 <span style={{ color: 'var(--gray-500)', fontSize: 'var(--font-sm)' }}>Cargo</span>
                 <div style={{ fontWeight: 700, textTransform: 'capitalize' }}>
-                  {selectedCustomer.role === 'admin' ? 'Administrador' : 'Cliente'}
+                  {selectedCustomer.role === 'admin' ? 'Administrador' : selectedCustomer.role === 'guest' ? 'Convidado' : 'Cliente'}
                 </div>
               </div>
               <div>

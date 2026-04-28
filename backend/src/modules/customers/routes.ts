@@ -152,7 +152,9 @@ router.put(
       const payload = c.req.valid('json') as any;
       const updatedCustomer = await service.updateCustomer(id, payload);
 
-      if (!updatedCustomer) return jsonError(c, 404, 'Usuário não encontrado');
+      if (!updatedCustomer) {
+        return jsonError(c, 404, `Usuário com ID ${id} não encontrado. Operações em clientes convidados (sem cadastro) não são permitidas via este endpoint.`);
+      }
       return c.json(updatedCustomer);
     } catch (error: any) {
       if (error.message === 'CPF_INVALID') {
@@ -173,7 +175,7 @@ router.post('/:id/invite', async (c) => {
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
   const customer = await service.inviteCustomer(c, id);
-  if (!customer) return jsonError(c, 404, 'Usuário não encontrado');
+  if (!customer) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para envio de convite.`);
   return c.json(customer);
 });
 
@@ -183,7 +185,7 @@ router.patch('/:id/reset-password', async (c) => {
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
   const customer = await service.inviteCustomer(c, id);
-  if (!customer) return jsonError(c, 404, 'Usuário não encontrado');
+  if (!customer) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para reset de senha.`);
   return c.json(customer);
 });
 
@@ -214,7 +216,7 @@ router.patch(
       if (!passwordCheck.ok) return passwordCheck.response;
 
       const updatedCustomer = await service.updateRole(id, role);
-      if (!updatedCustomer) return jsonError(c, 404, 'Usuário não encontrado');
+      if (!updatedCustomer) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para alteração de cargo.`);
       return c.json(updatedCustomer);
     } catch (error) {
       logger.error('Erro ao atualizar cargo do cliente (PATCH role)', error as Error, {
@@ -254,7 +256,7 @@ router.delete(
       if (!passwordCheck.ok) return passwordCheck.response;
 
       const deleted = await service.deleteCustomer(id);
-      if (!deleted) return jsonError(c, 404, 'Usuário não encontrado');
+      if (!deleted) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para exclusão.`);
       return c.json({ message: 'Usuário excluído' });
     } catch (error) {
       logger.error('Erro ao excluir cliente (DELETE)', error as Error, { id: c.req.param('id') });

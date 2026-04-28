@@ -10,7 +10,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'customer' | 'editor';
+  role: 'admin' | 'customer' | 'editor' | 'guest';
   phone?: string;
   cpf?: string;
   address?: string | Address;
