@@ -48,10 +48,10 @@ router.patch(
     const id = c.req.param('id');
     if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-    const { status } = c.req.valid('json');
+    const { status, tracking_code } = c.req.valid('json');
     const db = c.get('db');
 
-    const result = await orderService.updateOrderStatus(db, id, status, c.env);
+    const result = await orderService.updateOrderStatus(db, id, status, c.env, tracking_code);
 
     if (result.error) {
       return jsonError(c, result.error.code, result.error.message);

@@ -136,7 +136,8 @@ export async function updateOrderStatus(
   db: Database,
   id: string,
   status: string,
-  env: any
+  env: any,
+  trackingCode?: string
 ) {
   const client = await db.connect();
   let paymentIdToCancel: string | null = null;
@@ -182,7 +183,7 @@ export async function updateOrderStatus(
       });
     }
 
-    const updatedOrder = await orderRepository.updateOrderStatus(client, id, status);
+    const updatedOrder = await orderRepository.updateOrderStatus(client, id, status, trackingCode);
     await client.query('COMMIT');
 
     if (paymentIdToCancel) {

@@ -20,10 +20,10 @@ export async function createOrder(orderData: Partial<Order>): Promise<Order> {
   return res.order;
 }
 
-export async function updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
+export async function updateOrderStatus(id: string, status: OrderStatus, trackingCode?: string): Promise<Order> {
   const res = await request<any>(`/orders/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, tracking_code: trackingCode }),
   });
   if (res && res.id) return res;
   if (res?.data) return res.data;

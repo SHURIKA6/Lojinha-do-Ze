@@ -13,6 +13,7 @@ import * as migration005 from './005_add_mercado_pago_fields_to_orders';
 import * as migration006 from './006_guest_customers_idx';
 import * as migration007 from './007_add_refresh_tokens';
 import * as migration008 from './008_add_performance_indexes';
+import * as migration009 from './009_add_tracking_to_orders';
 
 const migrations: Migration[] = [
   { id: migration001.id, up: migration001.up },
@@ -23,6 +24,7 @@ const migrations: Migration[] = [
   { id: migration006.id, up: migration006.up },
   { id: migration007.id, up: migration007.up },
   { id: migration008.id, up: migration008.up },
+  { id: migration009.id, up: migration009.up },
 ];
 
 export async function runMigrations(db: Database): Promise<void> {

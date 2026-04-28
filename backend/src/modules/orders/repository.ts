@@ -10,6 +10,7 @@ export interface Order {
   delivery_fee: number;
   total: number;
   status: string;
+  tracking_code: string | null;
   delivery_type: string;
   address: string;
   payment_method: string;
@@ -52,7 +53,7 @@ export async function findOrders(
 ) {
   if (userId) {
     const { rows } = await client.query(
-      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
        FROM orders
        WHERE customer_id = $1
        ORDER BY created_at DESC
@@ -64,7 +65,7 @@ export async function findOrders(
 
   const params: (string | number | boolean | null)[] = [];
   let query = `
-    SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at
+    SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
     FROM orders
   `;
   if (status) {
@@ -79,7 +80,7 @@ export async function findOrders(
 
 export async function findOrderByIdForUpdate(client: Database, id: string) {
   const { rows } = await client.query(
-    `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at, payment_id
+    `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at, payment_id
      FROM orders
      WHERE id = $1
      FOR UPDATE`,
@@ -88,14 +89,18 @@ export async function findOrderByIdForUpdate(client: Database, id: string) {
   return rows[0] || null;
 }
 
-export async function updateOrderStatus(client: Database, id: string, status: string) {
-  const { rows } = await client.query(
-    `UPDATE orders
-     SET status = $1, updated_at = NOW()
-     WHERE id = $2
-     RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at`,
-    [status, id]
-  );
+export async function updateOrderStatus(client: Database, id: string, status: string, trackingCode?: string) {
+  let query = `UPDATE orders SET status = $1, updated_at = NOW()`;
+  const params: any[] = [status, id];
+  
+  if (trackingCode !== undefined) {
+    query += `, tracking_code = $3`;
+    params.push(trackingCode);
+  }
+  
+  query += ` WHERE id = $2 RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at`;
+
+  const { rows } = await client.query(query, params);
   return rows[0] || null;
 }
 

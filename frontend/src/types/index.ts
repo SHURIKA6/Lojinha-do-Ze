@@ -111,6 +111,7 @@ export interface Order {
   delivery_fee?: number;
   total: number;
   status: OrderStatus;
+  tracking_code?: string;
   delivery_type?: 'entrega' | 'retirada';
   address?: Address;
   shippingAddress?: Address;

@@ -229,6 +229,7 @@ export const orderCreateSchema = z
 
 export const orderStatusSchema = z.object({
   status: z.enum(ORDER_STATUS_VALUES),
+  tracking_code: optionalTrimmedString(100, 'Código de Rastreio'),
 });
 
 export const pixPaymentSchema = z.object({

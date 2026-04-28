@@ -107,66 +107,114 @@ export default function ClienteDashboard() {
           <h3 className="table-header__title">Histórico de pedidos</h3>
         </div>
 
-        <div className="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Pedido</th>
-                <th>Itens</th>
-                <th>Pagamento</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Data</th>
-              </tr>
-            </thead>
+        <div className="orders-timeline-list" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-4)' }}>
+          {validOrders.length > 0 ? (
+            validOrders.map((order) => {
+              let itemsLabel = '';
 
-            <tbody>
-              {validOrders.length > 0 ? (
-                validOrders.map((order) => {
-                  let itemsLabel = '';
+              try {
+                const items = typeof order.items === 'string' ? JSON.parse(order.items || '[]') : (order.items || []);
+                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => `${item.quantity}x ${item.name}`).join(', ');
+              } catch (error) {
+                console.error(error);
+              }
 
-                  try {
-                    const items = typeof order.items === 'string' ? JSON.parse(order.items || '[]') : (order.items || []);
-                    itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => `${item.quantity}x ${item.name}`).join(', ');
-                  } catch (error) {
-                    console.error(error);
-                  }
+              const steps = [
+                { id: 'novo', label: 'Pedido' },
+                { id: 'recebido', label: 'Confirmado' },
+                { id: 'em_preparo', label: 'Preparando' },
+                { id: 'saiu_entrega', label: order.delivery_type === 'retirada' ? 'Aguardando Retirada' : 'Enviado' },
+                { id: 'concluido', label: 'Concluído' }
+              ];
 
-                  return (
-                    <tr key={order.id}>
-                      <td>
-                        <strong>#{order.id}</strong>
-                        <div style={{ color: 'var(--gray-500)', fontSize: 'var(--font-xs)' }}>
-                          {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
-                        </div>
-                      </td>
-                      <td>{itemsLabel || 'Itens indisponíveis'}</td>
-                      <td>
-                        {order.payment_method === 'pix'
-                          ? 'PIX'
-                          : order.payment_method === 'maquininha'
-                            ? 'Maquininha'
-                            : order.payment_method}
-                      </td>
-                      <td style={{ fontWeight: 800 }}>{formatCurrency(Number(order.total))}</td>
-                      <td>
-                        <span className={`badge badge--${getStatusVariant(order.status || '')}`}>
-                          {getStatusLabel(order.status || '')}
-                        </span>
-                      </td>
-                      <td>{formatDate(order.created_at || '')}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="table-empty">
-                    Você ainda não fez nenhum pedido.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              let currentStepIndex = steps.findIndex(s => s.id === order.status);
+              if (order.status === 'cancelado') currentStepIndex = -1;
+
+              return (
+                <div key={order.id} className="surface" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Pedido #{order.id}</h4>
+                      <div style={{ color: 'var(--gray-500)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                        {formatDate(order.created_at || '')} • {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{formatCurrency(Number(order.total))}</div>
+                      <span className={`badge badge--${getStatusVariant(order.status || '')}`} style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+                        {getStatusLabel(order.status || '')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem', fontSize: '0.95rem', color: 'var(--gray-700)' }}>
+                    <strong>Itens:</strong> {itemsLabel || 'Itens indisponíveis'}
+                  </div>
+
+                  {order.status !== 'cancelado' ? (
+                    <div className="order-timeline" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
+                      {/* Linha de fundo */}
+                      <div style={{ position: 'absolute', top: '12px', left: '10%', right: '10%', height: '2px', background: 'var(--gray-200)', zIndex: 0 }} />
+                      
+                      {/* Linha de progresso */}
+                      {currentStepIndex > 0 && (
+                        <div style={{ 
+                          position: 'absolute', top: '12px', left: '10%', 
+                          width: `${(currentStepIndex / (steps.length - 1)) * 80}%`, 
+                          height: '2px', background: 'var(--primary-500)', zIndex: 1,
+                          transition: 'width 0.3s ease'
+                        }} />
+                      )}
+
+                      {steps.map((step, index) => {
+                        const isCompleted = currentStepIndex >= index;
+                        const isCurrent = currentStepIndex === index;
+                        
+                        return (
+                          <div key={step.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, width: '20%' }}>
+                            <div style={{ 
+                              width: '24px', height: '24px', borderRadius: '50%', 
+                              background: isCompleted ? 'var(--primary-500)' : 'var(--gray-200)',
+                              border: isCurrent ? '4px solid var(--primary-100)' : '2px solid white',
+                              boxShadow: '0 0 0 1px var(--gray-200)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: 'white', fontSize: '12px'
+                            }}>
+                              {isCompleted && <FiCheckCircle />}
+                            </div>
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', fontWeight: isCurrent ? 600 : 400, color: isCompleted ? 'var(--gray-900)' : 'var(--gray-500)', textAlign: 'center' }}>
+                              {step.label}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '1rem', background: 'var(--danger-50)', color: 'var(--danger-600)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+                      Este pedido foi cancelado.
+                    </div>
+                  )}
+
+                  {order.tracking_code && (
+                    <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gray-200)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <FiTruck style={{ color: 'var(--primary-500)' }} />
+                      <div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>Código de Rastreio</div>
+                        <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '1.1rem' }}>{order.tracking_code}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state__icon">
+                <FiPackage />
+              </div>
+              <p>Você ainda não fez nenhum pedido.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

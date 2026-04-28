@@ -49,6 +49,7 @@ export default function PedidosPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
   const confirm = useConfirm();
   const toast = useToast();
 
@@ -58,7 +59,15 @@ export default function PedidosPage() {
 
   const loadData = async () => {
     try {
-      setOrders(await getOrders());
+      const data = await getOrders();
+      setOrders(data);
+      const initialTracking: Record<string, string> = {};
+      data.forEach(order => {
+        if (order.tracking_code) {
+          initialTracking[order.id] = order.tracking_code;
+        }
+      });
+      setTrackingCodes(initialTracking);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Não foi possível carregar os pedidos.');
@@ -67,9 +76,9 @@ export default function PedidosPage() {
     }
   };
 
-  const handleStatusChange = async (id: number | string, status: string) => {
+  const handleStatusChange = async (id: number | string, status: string, trackingCode?: string) => {
     try {
-      await updateOrderStatus(String(id), status as any);
+      await updateOrderStatus(String(id), status as any, trackingCode);
       toast.success('Status do pedido atualizado.');
       await loadData();
     } catch (err: any) {
@@ -128,7 +137,11 @@ export default function PedidosPage() {
       next = 'concluido';
     }
 
-    handleStatusChange(id, next);
+    handleStatusChange(id, next, trackingCodes[String(id)]);
+  };
+
+  const updateTrackingCode = (id: string, code: string) => {
+    setTrackingCodes(prev => ({ ...prev, [id]: code }));
   };
 
   const getActionLabel = (status: string, deliveryType: string) => {
@@ -277,6 +290,19 @@ export default function PedidosPage() {
                   </div>
                 </div>
 
+                {order.delivery_type === 'entrega' && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <div className="ops-order-card__label">Rastreio (Opcional)</div>
+                    <input
+                      type="text"
+                      className="form-input form-input--sm"
+                      placeholder="Código de rastreio (Correios/Transportadora)"
+                      value={trackingCodes[String(order.id)] || ''}
+                      onChange={(e) => updateTrackingCode(String(order.id), e.target.value)}
+                    />
+                  </div>
+                )}
+
                 {order.notes && <div className="ops-order-card__note">{order.notes}</div>}
               </div>
 
@@ -284,7 +310,7 @@ export default function PedidosPage() {
                 <select
                   className="form-select"
                   value={order.status}
-                  onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                  onChange={(e) => handleStatusChange(order.id, e.target.value, trackingCodes[String(order.id)])}
                 >
                   {orderStatuses.map((status) => (
                     <option key={status} value={status}>
