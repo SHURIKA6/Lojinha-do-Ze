@@ -4,6 +4,8 @@ import { getRequiredEnv } from '../../core/load-local-env';
 import { MercadoPagoService } from '../payments/service';
 import * as orderRepository from './repository';
 import { normalizePhoneDigits, cleanOptionalString } from '../../core/utils/normalize';
+import { sendWhatsAppMessage } from '../notifications/whatsapp';
+
 
 interface CreateOrderPayload {
   customer_name: string;
@@ -113,6 +115,30 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
 
 
     await client.query('COMMIT');
+
+    // WhatsApp Notifications (Post-Commit)
+    const orderItemsSummary = enrichedItems
+      .map(i => `- ${i.quantity}x ${i.name}`)
+      .join('\n');
+    
+    const customerMsg = `Olá, ${payload.customer_name}! Seu pedido #${order.id} na Lojinha do Zé foi recebido com sucesso. Total: R$ ${total.toFixed(2)}.`;
+    const zeMsg = `Novo pedido recebido! #${order.id}\nCliente: ${payload.customer_name}\nTelefone: ${payload.customer_phone}\nTotal: R$ ${total.toFixed(2)}\nItens:\n${orderItemsSummary}`;
+
+    // Use waitUntil if available (for Cloudflare Workers) to not block the response
+    const notifyPromises = [
+      sendWhatsAppMessage(env, payload.customer_phone, customerMsg),
+    ];
+    if (env.ZE_PHONE) {
+      notifyPromises.push(sendWhatsAppMessage(env, env.ZE_PHONE, zeMsg));
+    }
+
+    if (env.executionCtx?.waitUntil) {
+      env.executionCtx.waitUntil(Promise.all(notifyPromises));
+    } else {
+      // Background execution for other environments
+      Promise.all(notifyPromises).catch(err => logger.error('Order creation WhatsApp error', err));
+    }
+
     return order;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -185,6 +211,29 @@ export async function updateOrderStatus(
 
     const updatedOrder = await orderRepository.updateOrderStatus(client, id, status, trackingCode);
     await client.query('COMMIT');
+
+    // WhatsApp Notification for Status Update
+    const statusMap: Record<string, string> = {
+      'pendente': 'está pendente',
+      'pago': 'foi pago e está sendo preparado',
+      'enviado': 'foi enviado! Logo chegará até você',
+      'concluido': 'foi finalizado. Obrigado pela preferência!',
+      'cancelado': 'foi cancelado',
+    };
+
+    const statusText = statusMap[status] || `mudou para ${status}`;
+    let msg = `Olá, ${currentOrder.customer_name}! O status do seu pedido #${id} na Lojinha do Zé ${statusText}.`;
+    
+    if (trackingCode) {
+      msg += `\nCódigo de rastreio: ${trackingCode}`;
+    }
+
+    const notifyPromise = sendWhatsAppMessage(env, currentOrder.customer_phone, msg);
+    if (env.executionCtx?.waitUntil) {
+      env.executionCtx.waitUntil(notifyPromise);
+    } else {
+      notifyPromise.catch(err => logger.error('Order status update WhatsApp error', err));
+    }
 
     if (paymentIdToCancel) {
       try {

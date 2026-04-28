@@ -28,8 +28,9 @@ export interface UserDB {
   role: string;
   created_at: Date;
   updated_at: Date | null;
+  login_attempts: number;
+  locked_until: string | null;
 }
-
 
 export interface CustomerDB {
   id: string;
@@ -269,6 +270,13 @@ export type Bindings = {
   TRUST_PROXY?: string;
   JWT_SECRET?: string;
   NEXT_PUBLIC_VAPID_KEY?: string;
+  WHATSAPP_API_TYPE?: 'official' | 'evolution';
+  WHATSAPP_API_URL?: string;
+  WHATSAPP_API_KEY?: string;
+  WHATSAPP_INSTANCE_NAME?: string;
+  WHATSAPP_PHONE_ID?: string;
+  WHATSAPP_ACCESS_TOKEN?: string;
+  ZE_PHONE?: string;
   [key: string]: any;
 };
 

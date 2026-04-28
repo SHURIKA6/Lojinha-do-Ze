@@ -17,6 +17,9 @@ import uploadRoutes from './modules/system/uploadRoutes';
 import paymentRoutes from './modules/payments/routes';
 import aiRoutes from './modules/system/aiRoutes';
 import analyticsRoutes from './modules/analytics/routes';
+import { handleScheduledTasks } from './modules/system/cron';
+import { logSystemEvent } from './modules/system/logService';
+
 
 import { apiLimiter } from './core/middleware/rateLimit';
 import { auditMiddleware } from './core/middleware/audit';
@@ -31,7 +34,7 @@ app.use('/api/*', apiLimiter);
 app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
 app.use('/api/*', originGuardMiddleware);
-app.use('/api/*', auditMiddleware);
+// auditMiddleware movido para depois do dbMiddleware para ter acesso ao c.get('db') e c.get('user')
 
 app.get('/api/health', async (c) => {
   const isProduction = c.env?.ENVIRONMENT === 'production';
@@ -104,13 +107,43 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
+// Middleware de auditoria deve rodar DEPOIS do DB para ter acesso ao banco e usuário,
+// mas ANTES de fechar a conexão no finally do middleware acima? 
+// Não, o middleware acima ENVELOPA o próximo. Então auditMiddleware rodará "dentro" do try/finally.
+app.use('/api/*', auditMiddleware);
+
 app.onError((error, c) => {
   const errorId = crypto.randomUUID().split('-')[0];
+  const db = c.get('db');
+  const user = c.get('user') as any;
+
   logger.error(`Unhandled Global Error [${errorId}]`, error, {
     path: c.req.path,
     method: c.req.method,
-    user: (c.get('user') as any)?.id,
+    userId: user?.id,
   });
+
+  // Persiste o erro no banco e alerta via WhatsApp se possível
+  if (db) {
+    const logPromise = logSystemEvent(
+      db, 
+      c.env, 
+      'error', 
+      `Erro Global [${errorId}]: ${error.message}`, 
+      {
+        path: c.req.path,
+        method: c.req.method,
+        userId: user?.id,
+        requestId: errorId
+      }, 
+      error as Error
+    );
+
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(logPromise);
+    }
+  }
+
   return jsonError(c, 500, 'Erro interno no servidor', { errorId });
 });
 
@@ -134,4 +167,11 @@ app.route('/api/analytics', analyticsRoutes as any);
 app.route('/api/notifications', notificationRoutes as any);
 
 export { NotificationDO };
-export default app;
+
+export default {
+  fetch: app.fetch,
+  async scheduled(event: any, env: Bindings, ctx: any) {
+    ctx.waitUntil(handleScheduledTasks(env));
+  },
+};
+

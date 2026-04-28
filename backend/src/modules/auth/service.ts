@@ -166,6 +166,12 @@ export async function authenticate(db: Database, identifier: string, password: s
     throw new Error('Credenciais inválidas');
   }
 
+  // SEC-12: Verificação de bloqueio de conta por tentativas excessivas
+  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    const diff = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / (60 * 1000));
+    throw new Error(`Conta temporariamente bloqueada por segurança. Tente novamente em ${diff} minutos.`);
+  }
+
   let validPassword = false;
   
   try {
@@ -179,8 +185,6 @@ export async function authenticate(db: Database, identifier: string, password: s
           hashType: user.password.substring(0, 4)
         });
         
-        // Para hash não suportado, retorna credenciais inválidas
-        // Mas não quebra o fluxo com erro 500
         validPassword = false;
       } else {
         validPassword = await verifyPassword(password, user.password);
@@ -193,13 +197,35 @@ export async function authenticate(db: Database, identifier: string, password: s
       userId: user.id,
       email: user.email,
       errorMessage: verifyError instanceof Error ? verifyError.message : String(verifyError),
-      errorStack: verifyError instanceof Error ? verifyError.stack : undefined
     });
     validPassword = false;
   }
   
   if (!validPassword) {
-    throw new Error('Credenciais inválidas');
+    // Incrementa tentativas falhas
+    const attempts = (user.login_attempts || 0) + 1;
+    const MAX_ATTEMPTS = 5;
+    
+    if (attempts >= MAX_ATTEMPTS) {
+      const lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // Bloqueio de 15 minutos
+      await userRepository.updateLoginAttempts(db, parseInt(user.id), attempts, lockedUntil);
+      
+      logger.warn(`Conta bloqueada por excesso de tentativas`, { 
+        userId: user.id, 
+        email: user.email,
+        attempts 
+      });
+      
+      throw new Error('Muitas tentativas falhas. Conta bloqueada por 15 minutos por segurança.');
+    } else {
+      await userRepository.updateLoginAttempts(db, parseInt(user.id), attempts);
+      throw new Error('Credenciais inválidas');
+    }
+  }
+
+  // Resetar tentativas após sucesso
+  if (user.login_attempts > 0 || user.locked_until) {
+    await userRepository.updateLoginAttempts(db, parseInt(user.id), 0, null);
   }
 
   return user;
