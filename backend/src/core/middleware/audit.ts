@@ -65,7 +65,7 @@ export async function auditMiddleware(c: Context, next: Next) {
           userId: user.id,
           action: `${method} ${path}`,
           entityType: path.split('/')[2] || 'unknown',
-          entityId: path.split('/')[3] || null,
+          entityId: path.split('/')[3] || undefined,
           details: {
             body: sanitizeObject(bodyData),
             status,

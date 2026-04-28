@@ -32,4 +32,3 @@ new_sqlite_classes = ["NotificationDO"]
 
 [triggers]
 crons = ["0 * * * *"]
-
