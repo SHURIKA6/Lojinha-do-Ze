@@ -114,7 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
         {/* Meta tags para acessibilidade */}
         <meta name="theme-color" content="#667eea" />
-        <meta name="color-scheme" content="light dark" />
+        <meta name="color-scheme" content="light" />
       </head>
       <body>
         <ToastProvider>
