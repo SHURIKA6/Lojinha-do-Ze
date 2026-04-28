@@ -13,7 +13,7 @@ export interface AppNotification {
 
 export function useNotifications() {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const toast = useToast();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const ws = useRef<WebSocket | null>(null);
 
@@ -50,10 +50,10 @@ export function useNotifications() {
         setNotifications(prev => [newNotif, ...prev]);
 
         // Mostrar um Toast para o admin
-        toast({
+        toast.showToast({
           title: newNotif.title,
-          description: newNotif.message,
-          variant: newNotif.type === 'payment' ? 'success' : 'default',
+          message: newNotif.message,
+          type: newNotif.type === 'payment' ? 'success' : 'info',
         });
       } catch (err) {
         console.error('Invalid WS message payload', err);

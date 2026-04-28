@@ -28,4 +28,4 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["NotificationDO"]
+new_sqlite_classes = ["NotificationDO"]
