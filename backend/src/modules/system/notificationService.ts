@@ -86,7 +86,7 @@ export const NOTIFICATION_TEMPLATES: Partial<Record<NotificationType, Notificati
   [NOTIFICATION_TYPES.LOW_STOCK]: {
     title: 'Estoque Baixo',
     message: 'O produto "{productName}" está com estoque baixo ({quantity} unidades).',
-    channels: [NOTIFICATION_CHANNELS.EMAIL, NOTIFICATION_CHANNELS.IN_APP]
+    channels: [NOTIFICATION_CHANNELS.EMAIL, NOTIFICATION_CHANNELS.IN_APP, NOTIFICATION_CHANNELS.WHATSAPP]
   },
   [NOTIFICATION_TYPES.SECURITY_ALERT]: {
     title: 'Alerta de Segurança',
@@ -258,7 +258,8 @@ export class NotificationService {
    * Envia WhatsApp
    */
   async sendWhatsApp(notification: Notification) {
-    const phone = notification.data.phone || (typeof process !== 'undefined' ? process.env.ZE_PHONE : undefined);
+    const phone = notification.data.phone || 
+                  (typeof process !== 'undefined' ? (process.env.ZE_PHONE || process.env.ZE_PHONE_1) : undefined);
     if (!phone) {
       throw new Error('Número de telefone não configurado');
     }

@@ -6,6 +6,7 @@ import * as orderRepository from './repository';
 import { normalizePhoneDigits, cleanOptionalString } from '../../core/utils/normalize';
 import { sendWhatsAppMessage } from '../notifications/whatsapp';
 import { broadcastNotification } from '../notifications/notifier';
+import { notificationService, NOTIFICATION_TYPES } from '../system/notificationService';
 import { loyaltyService } from '../customers/loyaltyService';
 
 
@@ -104,6 +105,7 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
       items: enrichedItems,
       deliveryFee,
       discount,
+      subtotal,
       total,
       deliveryType: payload.delivery_type,
       address: cleanOptionalString(payload.address) || '',
@@ -126,14 +128,12 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
       }
 
       // Check for low stock alerts
-      const lowStockAlerts = updatedProducts.filter((p: any) => p.quantity <= 5);
+      const lowStockAlerts = updatedProducts.filter((p: any) => p.quantity <= (p.min_stock ?? 5));
       for (const p of lowStockAlerts) {
-        broadcastNotification(env, {
-          type: 'stock',
-          title: 'Estoque Baixo!',
-          message: `O produto "${p.name}" está com apenas ${p.quantity} unidades restantes.`,
-          productId: p.id,
-          quantity: p.quantity
+        notificationService.send(NOTIFICATION_TYPES.LOW_STOCK, {
+          productName: p.name,
+          quantity: p.quantity,
+          productId: p.id
         }).catch(err => logger.error('Low stock notification error', err));
       }
 

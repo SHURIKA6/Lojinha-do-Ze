@@ -1,5 +1,6 @@
 import { Database } from '../../core/types';
 import { cacheService } from '../system/cacheService';
+import { notificationService, NOTIFICATION_TYPES } from '../system/notificationService';
 import { CACHE_PREFIXES } from '../../core/domain/cacheKeys';
 import { CATALOG_CACHE_TTL_SECONDS } from '../../core/domain/constants';
 import * as productRepo from './repository';
@@ -133,6 +134,15 @@ export async function updateProduct(db: Database, id: string, payload: any) {
     if (payload.is_active !== undefined) updates.is_active = payload.is_active;
 
     const updatedProduct = await productRepo.updateProduct(client, id, updates);
+
+    // Alerta de estoque baixo na atualização manual
+    if (updatedProduct.quantity <= (updatedProduct.min_stock ?? 5)) {
+      notificationService.send(NOTIFICATION_TYPES.LOW_STOCK, {
+        productName: updatedProduct.name,
+        quantity: updatedProduct.quantity,
+        productId: updatedProduct.id
+      }).catch(err => logger.error('Low stock notification error (manual update)', err));
+    }
 
     if (payload.quantity !== undefined && payload.quantity > oldProduct.quantity) {
       const diff = payload.quantity - oldProduct.quantity;

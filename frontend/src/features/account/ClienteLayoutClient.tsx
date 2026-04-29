@@ -8,6 +8,7 @@ import { FiLogOut, FiShoppingBag } from 'react-icons/fi';
 const navLinks = [
   { href: '/conta', label: 'Meus Pedidos' },
   { href: '/conta/perfil', label: 'Meu Perfil' },
+  { href: '/conta/fidelidade', label: 'Meus Pontos' },
 ];
 
 interface ClienteLayoutClientProps {
