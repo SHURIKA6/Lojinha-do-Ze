@@ -15,6 +15,9 @@ export async function processWhatsAppWithAI(
     return 'Olá! No momento estamos com muita demanda, mas o Seu Zé já vai te atender. Como posso ajudar?';
   }
 
+  // Debug: mostrar início da chave para verificar se está carregando corretamente
+  logger.info(`AI Key check: starts with "${apiKey.substring(0, 6)}...", length=${apiKey.length}`);
+
   try {
     // 1. Buscar informações contextuais da loja (Produtos em destaque, categorias, etc)
     // Se for admin, buscamos também a quantidade em estoque e custo
@@ -60,10 +63,11 @@ export async function processWhatsAppWithAI(
       Resposta do Seu Zé:
     `;
 
-    // 3. Chamar Gemini API (usando gemini-pro que é o mais estável)
+    // 3. Chamar Gemini API (gemini-2.0-flash-lite é leve, rápido e gratuito)
     const cleanApiKey = apiKey.trim();
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${cleanApiKey}`;
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${cleanApiKey}`,
+      geminiUrl,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
