@@ -21,7 +21,8 @@ export function applySecurityHeaders(c: Context): void {
     headers.set(
       'Content-Security-Policy',
       // SEC-15: script-src 'none' explícito — API não serve HTML/scripts
-      "default-src 'self'; script-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      // Adicionado connect-src para permitir WebSockets (wss/ws)
+      "default-src 'self'; script-src 'none'; connect-src 'self' https: wss: ws:; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     );
   }
 

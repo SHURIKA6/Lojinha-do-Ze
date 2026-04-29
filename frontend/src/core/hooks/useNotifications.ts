@@ -24,11 +24,19 @@ export function useNotifications() {
 
     const connect = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = process.env.NEXT_PUBLIC_API_URL 
-        ? process.env.NEXT_PUBLIC_API_URL.replace(/^http(s?):\/\//, '') 
-        : window.location.host;
+      let host = window.location.host;
+      let pathPrefix = '/api';
+
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL);
+        host = apiUrl.host;
+        // Se a URL da API já termina com /api, removemos do prefixo para não duplicar
+        if (apiUrl.pathname.endsWith('/api') || apiUrl.pathname.endsWith('/api/')) {
+          pathPrefix = '';
+        }
+      }
       
-      const wsUrl = `${protocol}//${host}/api/notifications/ws`;
+      const wsUrl = `${protocol}//${host}${pathPrefix}/notifications/ws`;
 
       console.log('Connecting to notifications websocket...', wsUrl);
       const ws = new WebSocket(wsUrl);
