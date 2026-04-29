@@ -1,6 +1,36 @@
 import { Bindings, Database } from '../../core/types';
 import { logger } from '../../core/utils/logger';
 
+/**
+ * Faz uma chamada ao Gemini com retry automático em caso de rate limit (429).
+ */
+async function callGeminiWithRetry(url: string, body: object, maxRetries = 2): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 429 && attempt < maxRetries) {
+      // Rate limit: espera antes de tentar novamente
+      const waitMs = (attempt + 1) * 5000; // 5s, 10s
+      logger.warn(`Gemini rate limit hit, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+      continue;
+    }
+
+    return response;
+  }
+
+  // Fallback (não deve chegar aqui)
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function processWhatsAppWithAI(
   db: Database,
   env: Bindings,
@@ -14,9 +44,6 @@ export async function processWhatsAppWithAI(
     logger.warn('AI Assistant: GEMINI_API_KEY not configured');
     return 'Olá! No momento estamos com muita demanda, mas o Seu Zé já vai te atender. Como posso ajudar?';
   }
-
-  // Debug: mostrar início da chave para verificar se está carregando corretamente
-  logger.info(`AI Key check: starts with "${apiKey.substring(0, 6)}...", length=${apiKey.length}`);
 
   try {
     // 1. Buscar informações contextuais da loja (Produtos em destaque, categorias, etc)
@@ -63,20 +90,14 @@ export async function processWhatsAppWithAI(
       Resposta do Seu Zé:
     `;
 
-    // 3. Chamar Gemini API (gemini-2.0-flash-lite é leve, rápido e gratuito)
+    // 3. Chamar Gemini API com retry automático para rate limits
     const cleanApiKey = apiKey.trim();
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${cleanApiKey}`;
-    const response = await fetch(
-      geminiUrl,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
-        }),
-      }
-    );
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanApiKey}`;
+
+    const response = await callGeminiWithRetry(geminiUrl, {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
