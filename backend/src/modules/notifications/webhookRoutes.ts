@@ -52,7 +52,7 @@ webhookRoutes.post('/evolution', async (c) => {
     if (!remoteJid) return c.json({ status: 'ignored', reason: 'no_remote_jid' });
 
     // Tenta pegar o telefone do campo 'sender' ou do remoteJid
-    const rawPhone = body.sender || messageData.key?.remoteJid || '';
+    const rawPhone = messageData.key?.remoteJid || body.sender || '';
     const phone = rawPhone.split('@')[0].replace(/[^0-9]/g, '');
 
     // Verificação de administradores específicos
