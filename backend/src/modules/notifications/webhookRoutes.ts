@@ -51,26 +51,23 @@ webhookRoutes.post('/evolution', async (c) => {
     if (!text) return c.json({ status: 'ignored', reason: 'no_text' });
     if (!remoteJid) return c.json({ status: 'ignored', reason: 'no_remote_jid' });
 
-    // Tenta pegar o telefone do campo 'sender' ou do remoteJid
-    const rawPhone = messageData.key?.remoteJid || body.sender || '';
-    const phone = rawPhone.split('@')[0].replace(/[^0-9]/g, '');
-
-    // Verificação de administradores específicos
+    // Verificação de administradores (usamos apenas os dígitos para comparar)
+    const phoneDigits = remoteJid.split('@')[0].replace(/[^0-9]/g, '');
     const adminPhones = [env.ZE_PHONE_1, env.ZE_PHONE_2, env.SHURA_PHONE].filter(Boolean);
-    const isAdmin = adminPhones.includes(phone);
-
-    logger.info('Verificação de Admin:', { phone, isAdmin, adminList: adminPhones });
-
-    // 2. Processar com a IA do Seu Zé
-    const aiResponse = await processWhatsAppWithAI(db, env, phone, text, isAdmin);
-
-    // 3. Responder via WhatsApp (assíncrono para não travar o webhook)
+    const isAdmin = adminPhones.includes(phoneDigits);
+ 
+    logger.info('Verificação de Admin:', { phone: phoneDigits, isAdmin, jid: remoteJid });
+ 
+    // 2. Processar com a IA do Seu Zé (passamos o ID completo para a resposta)
+    const aiResponse = await processWhatsAppWithAI(db, env, remoteJid, text, isAdmin);
+ 
+    // 3. Responder via WhatsApp (usando o remoteJid completo)
     if (c.executionCtx?.waitUntil) {
       c.executionCtx.waitUntil(
-        sendWhatsAppMessage(env, phone, aiResponse)
+        sendWhatsAppMessage(env, remoteJid, aiResponse)
       );
     } else {
-      await sendWhatsAppMessage(env, phone, aiResponse);
+      await sendWhatsAppMessage(env, remoteJid, aiResponse);
     }
 
     return c.json({ status: 'processed' });

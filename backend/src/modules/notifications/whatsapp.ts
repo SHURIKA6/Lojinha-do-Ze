@@ -4,10 +4,10 @@ import { normalizePhoneDigits } from '../../core/utils/normalize';
 
 export async function sendWhatsAppMessage(env: Bindings, to: string, message: string): Promise<void> {
   const apiType = env.WHATSAPP_API_TYPE || 'evolution';
-  const cleanPhone = normalizePhoneDigits(to);
-  
-  // WhatsApp requires country code. Assuming Brazil (55) if not present
-  const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+  // Se já for um JID completo (contém @), usamos direto. 
+  // Caso contrário, normalizamos como número comum.
+  const isJid = to.includes('@');
+  const formattedPhone = isJid ? to : (normalizePhoneDigits(to).length <= 11 ? `55${normalizePhoneDigits(to)}` : normalizePhoneDigits(to));
 
   try {
     if (apiType === 'evolution') {
