@@ -73,7 +73,11 @@ export async function processWhatsAppWithAI(
       }
     );
 
-    if (!response.ok) throw new Error('Gemini API Error');
+    if (!response.ok) {
+      const errorBody = await response.text();
+      logger.error('Gemini API Error Detail:', { status: response.status, body: errorBody });
+      throw new Error(`Gemini API Error: ${response.status}`);
+    }
 
     const data = await response.json() as any;
     return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Opa, me distraí aqui com o café. Pode repetir?';

@@ -51,8 +51,10 @@ webhookRoutes.post('/evolution', async (c) => {
     if (!text) return c.json({ status: 'ignored', reason: 'no_text' });
     if (!remoteJid) return c.json({ status: 'ignored', reason: 'no_remote_jid' });
 
-    const phone = remoteJid.split('@')[0];
-    
+    // Tenta pegar o telefone do campo 'sender' ou do remoteJid
+    const rawPhone = body.sender || messageData.key?.remoteJid || '';
+    const phone = rawPhone.split('@')[0].replace(/[^0-9]/g, '');
+
     // Verificação de administradores específicos
     const isAdmin = [
       env.ZE_PHONE_1,
