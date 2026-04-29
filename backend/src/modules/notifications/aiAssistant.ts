@@ -5,7 +5,8 @@ export async function processWhatsAppWithAI(
   db: Database,
   env: Bindings,
   customerPhone: string,
-  userMessage: string
+  userMessage: string,
+  isAdmin: boolean = false
 ): Promise<string> {
   const apiKey = env.GEMINI_API_KEY;
 
@@ -16,11 +17,20 @@ export async function processWhatsAppWithAI(
 
   try {
     // 1. Buscar informações contextuais da loja (Produtos em destaque, categorias, etc)
-    const { rows: products } = await db.query(
-      `SELECT name, sale_price, category FROM products WHERE is_active = true LIMIT 10`
-    );
+    // Se for admin, buscamos também a quantidade em estoque e custo
+    const query = isAdmin 
+      ? `SELECT name, sale_price, category, quantity, min_stock FROM products LIMIT 20`
+      : `SELECT name, sale_price, category FROM products WHERE is_active = true LIMIT 12`;
 
-    const productContext = products.map((p: any) => `- ${p.name} (${p.category}): R$ ${p.sale_price}`).join('\n');
+    const { rows: products } = await db.query(query);
+
+    const productContext = products.map((p: any) => {
+      let info = `- ${p.name} (${p.category}): R$ ${p.sale_price}`;
+      if (isAdmin) {
+        info += ` | Estoque: ${p.quantity} (Mín: ${p.min_stock})`;
+      }
+      return info;
+    }).join('\n');
 
     // 2. Montar Prompt para o Gemini
     const prompt = `
@@ -40,7 +50,13 @@ export async function processWhatsAppWithAI(
       - Se não souber algo, peça para ele aguardar um pouquinho que você vai conferir no caderninho (atendimento humano).
       - Responda sempre em português, de forma curta e amigável.
       
-      Mensagem do Cliente: "${userMessage}"
+      Mensagem do ${isAdmin ? 'Administrador (Zé)' : 'Cliente'}: "${userMessage}"
+      
+      Regras de Contexto:
+      ${isAdmin 
+        ? '- O usuário é o DONO (Zé). Você pode passar detalhes técnicos de estoque e avisar o que está acabando.' 
+        : '- O usuário é um CLIENTE. NUNCA revele quantidades exatas de estoque ou preços de custo.'}
+
       Resposta do Seu Zé:
     `;
 
