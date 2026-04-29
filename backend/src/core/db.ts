@@ -60,18 +60,30 @@ export function createDb(connectionString: string): Database {
   async function executeWithHttp<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     ensureOpen();
     try {
-      // The neon() driver returns the rows directly as an array or a specific structure
-      // It handles Date objects and other types natively.
-      const rows = await sql.query(text, params || []);
+      // O driver neon() pode ser chamado como função ou via .query()
+      // Tentamos .query() primeiro por ser mais explícito para o padrão pg
+      let result: any;
+      if (typeof (sql as any).query === 'function') {
+        result = await (sql as any).query(text, params || []);
+      } else {
+        // Fallback para chamada direta do driver neon(query, params)
+        result = await (sql as any)(text, params || []);
+      }
+
+      // Normaliza o resultado para o formato QueryResult do pg
+      const rows = Array.isArray(result) ? result : (result.rows || []);
+      const rowCount = result.rowCount !== undefined ? result.rowCount : (Array.isArray(rows) ? rows.length : 0);
+
       return {
         rows: rows as T[],
-        rowCount: Array.isArray(rows) ? rows.length : 0,
-        command: 'SELECT',
+        rowCount,
+        command: result.command || 'SELECT',
         oid: 0,
-        fields: []
+        fields: result.fields || []
       } as QueryResult<T>;
     } catch (err: any) {
-      logger.error(`Erro na query HTTP: ${err.message}`, { text });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      logger.error(`Erro na query HTTP: ${errorMsg}`, { text, params: params ? 'present' : 'none' });
       throw err;
     }
   }
@@ -119,12 +131,16 @@ export function createDb(connectionString: string): Database {
         // Fallback to pool for transactions or explicit transaction control
         return await pool.query<T>(text, params);
       } catch (err: any) {
+        const errorMsg = err?.message || String(err);
+        const errorCode = err?.code;
+        
         // Auto-retry via HTTP if pool fails unexpectedly
-        if (err.message?.includes('Connection terminated unexpectedly') || err.code === '57P01') {
-          logger.warn('Conexão do pool terminada. Tentando via HTTP...');
+        if (errorMsg.includes('Connection terminated unexpectedly') || errorCode === '57P01') {
+          logger.warn(`Conexão do pool falhou (${errorCode}). Tentando via HTTP...`, { text });
           return executeWithHttp<T>(text, params);
         }
-        logger.error(`Erro na query: ${err.message}`, { text });
+        
+        logger.error(`Erro na query do pool: ${errorMsg}`, { text, code: errorCode });
         throw err;
       }
     },

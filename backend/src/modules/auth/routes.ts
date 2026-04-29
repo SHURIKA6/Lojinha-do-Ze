@@ -38,15 +38,19 @@ router.post(
         csrfToken,
       });
     } catch (error: any) {
-      if (error.message === 'Credenciais inválidas') {
-        return jsonError(c, 401, error.message);
-      }
-      
       const errorId = crypto.randomUUID().split('-')[0];
-      logger.error(`Erro crítico no processamento do login [${errorId}]`, {
-        error: error,
-        message: error.message,
-        stack: error.stack,
+      const message = error.message || 'Erro desconhecido';
+
+      if (message === 'Credenciais inválidas') {
+        return jsonError(c, 401, message);
+      }
+
+      if (message.includes('bloqueada') || message.includes('tentativas falhas')) {
+        return jsonError(c, 403, message);
+      }
+
+      logger.error(`Erro no login: ${message}`, error, { 
+        errorId,
         loginId: loginId
       });
       

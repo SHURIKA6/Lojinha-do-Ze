@@ -47,6 +47,7 @@ jest.unstable_mockModule('../src/core/utils/crypto', () => ({
   randomToken: randomTokenMock,
   sha256Hex: async (value: string) => `hash:${value}`,
   verifyPassword: verifyPasswordMock,
+  hashPassword: async (password: string) => `hash:${password}`,
 }));
 
 let Hono: any;

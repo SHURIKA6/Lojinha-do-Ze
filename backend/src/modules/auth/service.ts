@@ -244,17 +244,24 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
     tokenHash,
     csrfToken,
     expiresAt,
-    ipAddress: c.req.header('cf-connecting-ip') || null,
+    ipAddress: c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || null,
     userAgent: c.req.header('user-agent') || null,
   });
+
+  if (!createdSession) {
+    logger.error('Falha ao criar registro de sessão no banco de dados', { userId: resolvedUser.id });
+    throw new Error('Erro ao processar login. Tente novamente.');
+  }
 
   const session = buildResolvedSession(createdSession, resolvedUser);
 
   // PERF: Alimenta o cache imediatamente para acelerar a próxima requisição
-  cacheService.setSession(tokenHash, session);
+  cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS);
 
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions(c));
   setCookie(c, CSRF_COOKIE_NAME, csrfToken, sessionCookieOptions(c, SESSION_TTL_SECONDS, false));
+
+  logger.info('Sessão emitida com sucesso', { userId: resolvedUser.id, sessionId: createdSession.id });
 
   return { csrfToken };
 }
