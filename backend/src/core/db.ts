@@ -43,8 +43,10 @@ export function createDb(connectionString: string): Database {
   }
   
   // Use cached HTTP client for single-shot queries
+  // CRITICAL: fullResults: true faz o driver retornar {rows, rowCount, fields, command}
+  // em vez de apenas um array de rows cru. Sem isso, queries RETURNING falham silenciosamente.
   if (!httpCache.has(connectionString)) {
-    httpCache.set(connectionString, neon(connectionString));
+    httpCache.set(connectionString, neon(connectionString, { fullResults: true }));
   }
 
   const pool = poolCache.get(connectionString)!;
@@ -60,30 +62,21 @@ export function createDb(connectionString: string): Database {
   async function executeWithHttp<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     ensureOpen();
     try {
-      // O driver neon() pode ser chamado como função ou via .query()
-      // Tentamos .query() primeiro por ser mais explícito para o padrão pg
-      let result: any;
-      if (typeof (sql as any).query === 'function') {
-        result = await (sql as any).query(text, params || []);
-      } else {
-        // Fallback para chamada direta do driver neon(query, params)
-        result = await (sql as any)(text, params || []);
-      }
-
-      // Normaliza o resultado para o formato QueryResult do pg
-      const rows = Array.isArray(result) ? result : (result.rows || []);
-      const rowCount = result.rowCount !== undefined ? result.rowCount : (Array.isArray(rows) ? rows.length : 0);
+      // Com fullResults: true, sql.query() retorna
+      // {rows, rowCount, command, fields} — compatível com pg QueryResult.
+      // Usamos .query() porque sql() é uma tagged template function.
+      const result = await sql.query(text, params || []) as any;
 
       return {
-        rows: rows as T[],
-        rowCount,
-        command: result.command || 'SELECT',
+        rows: (result.rows ?? []) as T[],
+        rowCount: result.rowCount ?? 0,
+        command: result.command ?? 'SELECT',
         oid: 0,
-        fields: result.fields || []
+        fields: result.fields ?? []
       } as QueryResult<T>;
     } catch (err: any) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      logger.error(`Erro na query HTTP: ${errorMsg}`, { text, params: params ? 'present' : 'none' });
+      logger.error(`Erro na query HTTP: ${errorMsg}`, err, { text });
       throw err;
     }
   }

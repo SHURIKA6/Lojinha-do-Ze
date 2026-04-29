@@ -27,11 +27,14 @@ router.post(
     const loginId = (email || identifier) as string;
 
     try {
+      logger.info('[LOGIN] Step 1: Starting authenticate', { loginId });
       const user = await authService.authenticate(db, loginId, password);
+      logger.info('[LOGIN] Step 2: authenticate OK', { userId: user.id });
 
       // PERF: Usamos o driver HTTP (db) em vez do Pool (db.connect) pois é mais rápido
       // para operações isoladas em Workers e evita overhead de handshake WebSocket.
       const { csrfToken } = await authService.issueSession(c, db, user);
+      logger.info('[LOGIN] Step 3: issueSession OK');
 
       return jsonSuccess(c, {
         user: { id: user.id, role: user.role },
@@ -49,9 +52,10 @@ router.post(
         return jsonError(c, 403, message);
       }
 
-      logger.error(`Erro no login: ${message}`, error, { 
+      logger.error(`[LOGIN] FALHA: ${message}`, error, { 
         errorId,
-        loginId: loginId
+        loginId: loginId,
+        stack: error.stack
       });
       
       return jsonError(c, 500, 'Erro interno ao processar login', { errorId });
