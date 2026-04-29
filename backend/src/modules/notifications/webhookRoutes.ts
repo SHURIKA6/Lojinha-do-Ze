@@ -22,17 +22,34 @@ webhookRoutes.post('/evolution', async (c) => {
   const env = c.env;
   const db = c.get('db');
 
+  // LOG DE DEPURAÇÃO: Vamos ver o que está chegando
+  logger.info('Webhook WhatsApp recebido:', { 
+    event: body.event, 
+    instance: body.instance,
+    hasData: !!body.data 
+  });
+
   try {
-    // 1. Validar se é uma mensagem de texto recebida
-    if (body.event !== 'messages.upsert') return c.json({ status: 'ignored' });
+    // 1. Validar se é uma mensagem de texto recebida (aceita variações de case)
+    const event = (body.event || '').toLowerCase();
+    if (event !== 'messages.upsert' && event !== 'messages_upsert') {
+      logger.info(`Evento ignorado: ${body.event}`);
+      return c.json({ status: 'ignored', reason: 'wrong_event' });
+    }
     
     const messageData = body.data;
-    const isFromMe = messageData.key.fromMe;
-    const remoteJid = messageData.key.remoteJid;
-    const text = messageData.message?.conversation || messageData.message?.extendedTextMessage?.text;
+    if (!messageData) return c.json({ status: 'ignored', reason: 'no_data' });
+
+    const isFromMe = messageData.key?.fromMe;
+    const remoteJid = messageData.key?.remoteJid;
+    const text = messageData.message?.conversation || 
+                 messageData.message?.extendedTextMessage?.text ||
+                 messageData.message?.buttonsResponseMessage?.selectedButtonId;
 
     // Ignora se for mensagem enviada por nós mesmos ou se não tiver texto
-    if (isFromMe || !text || !remoteJid) return c.json({ status: 'ignored' });
+    if (isFromMe) return c.json({ status: 'ignored', reason: 'from_me' });
+    if (!text) return c.json({ status: 'ignored', reason: 'no_text' });
+    if (!remoteJid) return c.json({ status: 'ignored', reason: 'no_remote_jid' });
 
     const phone = remoteJid.split('@')[0];
     
