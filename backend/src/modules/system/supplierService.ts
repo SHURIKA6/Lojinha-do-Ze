@@ -96,7 +96,7 @@ export class SupplierService {
       this.suppliers.set(supplier.id, supplier);
       
       // Cache do fornecedor
-      cacheService.set(`supplier:${supplier.id}`, supplier, 3600);
+      await cacheService.set(`supplier:${supplier.id}`, supplier, 3600);
       
       logger.info('Fornecedor criado', { supplierId: supplier.id, name: supplier.name });
       
@@ -126,7 +126,7 @@ export class SupplierService {
       this.suppliers.set(supplierId, updatedSupplier);
       
       // Atualiza cache
-      cacheService.set(`supplier:${supplierId}`, updatedSupplier, 3600);
+      await cacheService.set(`supplier:${supplierId}`, updatedSupplier, 3600);
       
       logger.info('Fornecedor atualizado', { supplierId });
       
@@ -143,12 +143,12 @@ export class SupplierService {
   async getSupplier(supplierId: string) {
     try {
       // Tenta cache primeiro
-      let supplier: Supplier | null = cacheService.get(`supplier:${supplierId}`);
+      let supplier: Supplier | null = await cacheService.get(`supplier:${supplierId}`);
       
       if (!supplier) {
         supplier = this.suppliers.get(supplierId) || null;
         if (supplier) {
-          cacheService.set(`supplier:${supplierId}`, supplier, 3600);
+          await cacheService.set(`supplier:${supplierId}`, supplier, 3600);
         }
       }
       
@@ -238,7 +238,7 @@ export class SupplierService {
       await this.updateSupplierPerformance(supplierId, delivery);
       
       // Cache da entrega
-      cacheService.set(`delivery:${delivery.id}`, delivery, 86400);
+      await cacheService.set(`delivery:${delivery.id}`, delivery, 86400);
       
       logger.info('Entrega registrada', { 
         supplierId, 
@@ -290,7 +290,7 @@ export class SupplierService {
     supplier.updatedAt = new Date();
     
     this.suppliers.set(supplierId, supplier);
-    cacheService.set(`supplier:${supplierId}`, supplier, 3600);
+    await cacheService.set(`supplier:${supplierId}`, supplier, 3600);
   }
 
   /**

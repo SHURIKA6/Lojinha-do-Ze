@@ -317,7 +317,7 @@ export class NotificationService {
     }
 
     const cacheKey = `notifications:${userId}`;
-    const existing = cacheService.get(cacheKey) || [];
+    const existing = (await cacheService.get(cacheKey)) || [];
     
     const inAppNotification: InAppNotification = {
       id: notification.id,
@@ -375,14 +375,14 @@ export class NotificationService {
   /**
    * Marca notificação como lida
    */
-  markAsRead(userId: number, notificationId: string) {
+  async markAsRead(userId: number, notificationId: string) {
     const cacheKey = `notifications:${userId}`;
-    const notifications: InAppNotification[] = cacheService.get(cacheKey) || [];
+    const notifications: InAppNotification[] = (await cacheService.get(cacheKey)) || [];
     
     const notification = notifications.find(n => n.id === notificationId);
     if (notification) {
       notification.read = true;
-      cacheService.set(cacheKey, notifications, 86400);
+      await cacheService.set(cacheKey, notifications, 86400);
       return true;
     }
     
@@ -392,9 +392,9 @@ export class NotificationService {
   /**
    * Obtém notificações não lidas do usuário
    */
-  getUnreadNotifications(userId: number) {
+  async getUnreadNotifications(userId: number) {
     const cacheKey = `notifications:${userId}`;
-    const notifications: InAppNotification[] = cacheService.get(cacheKey) || [];
+    const notifications: InAppNotification[] = (await cacheService.get(cacheKey)) || [];
     return notifications.filter(n => !n.read);
   }
 

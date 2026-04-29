@@ -129,11 +129,11 @@ export class PermissionService {
   async hasPermission(userId: number, resource: Resource, action: Action) {
     try {
       const cacheKey = `permissions:${userId}`;
-      let permissions: ResourcePermissions | null = cacheService.get(cacheKey);
+      let permissions: ResourcePermissions | null = await cacheService.get(cacheKey);
       
       if (!permissions) {
         permissions = await this.getUserPermissions(userId);
-        cacheService.set(cacheKey, permissions, 3600); // 1 hora
+        await cacheService.set(cacheKey, permissions, 3600); // 1 hora
       }
       
       const resourcePermissions = permissions[resource];
@@ -155,12 +155,12 @@ export class PermissionService {
     try {
       // Tenta cache primeiro
       const cacheKey = `user_permissions:${userId}`;
-      let permissions: ResourcePermissions | null = cacheService.get(cacheKey);
+      let permissions: ResourcePermissions | null = await cacheService.get(cacheKey);
       
       if (!permissions) {
         // Busca do banco de dados (simulado)
         permissions = await this.fetchUserPermissionsFromDB(userId);
-        cacheService.set(cacheKey, permissions, 3600);
+        await cacheService.set(cacheKey, permissions, 3600);
       }
       
       return permissions || {};
@@ -201,7 +201,7 @@ export class PermissionService {
   async setUserPermissions(userId: number, permissions: ResourcePermissions) {
     try {
       const cacheKey = `user_permissions:${userId}`;
-      cacheService.set(cacheKey, permissions, 3600);
+      await cacheService.set(cacheKey, permissions, 3600);
       
       // Salva no banco de dados (simulado)
       await this.saveUserPermissionsToDB(userId, permissions);
@@ -378,7 +378,7 @@ export class PermissionService {
           delete permissions[resource];
         }
         
-        cacheService.set(cacheKey, permissions, 3600);
+        await cacheService.set(cacheKey, permissions, 3600);
         await this.saveUserPermissionsToDB(userId, permissions);
       }
       
@@ -395,10 +395,10 @@ export class PermissionService {
    */
   async clearUserPermissionCache(userId: number) {
     const cacheKey = `user_permissions:${userId}`;
-    cacheService.delete(cacheKey);
+    await cacheService.delete(cacheKey);
     
     const permissionsKey = `permissions:${userId}`;
-    cacheService.delete(permissionsKey);
+    await cacheService.delete(permissionsKey);
     
     logger.debug('Cache de permissões limpo', { userId });
   }

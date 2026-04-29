@@ -6,6 +6,7 @@ import * as orderRepository from './repository';
 import { normalizePhoneDigits, cleanOptionalString } from '../../core/utils/normalize';
 import { sendWhatsAppMessage } from '../notifications/whatsapp';
 import { broadcastNotification } from '../notifications/notifier';
+import { loyaltyService } from '../customers/loyaltyService';
 
 
 interface CreateOrderPayload {
@@ -16,6 +17,8 @@ interface CreateOrderPayload {
   address?: string;
   notes?: string;
   payment_method: string;
+  delivery_fee?: number;
+  points_to_redeem?: number;
 }
 
 interface OrderServiceUser {
@@ -44,7 +47,7 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
     const normalizedRequestPhone = normalizePhoneDigits(payload.customer_phone);
     const mergedItems = mergeOrderItems(payload.items);
     const deliveryFeeValue = parseFloat(env?.DELIVERY_FEE || '5');
-    const deliveryFee = payload.delivery_type === 'entrega' ? deliveryFeeValue : 0;
+    const deliveryFee = payload.delivery_type === 'entrega' ? (payload.delivery_fee ?? deliveryFeeValue) : 0;
 
     let subtotal = 0;
     const enrichedItems: orderRepository.EnrichedOrderItem[] = [];
@@ -86,20 +89,31 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
       customerId = authUser.id;
     }
 
-    const total = subtotal + deliveryFee;
+    let discount = 0;
+    if (payload.points_to_redeem && customerId) {
+      const balance = await loyaltyService.getBalance(client, parseInt(customerId));
+      const pointsToUse = Math.min(payload.points_to_redeem, balance);
+      discount = pointsToUse * 0.05; // R$ 0,05 por ponto
+    }
+
+    const total = Math.max(0, subtotal + deliveryFee - discount);
     const order = await orderRepository.createOrder(client, {
       customerId,
       customerName: payload.customer_name.trim(),
       customerPhone: payload.customer_phone.trim(),
       items: enrichedItems,
-      subtotal,
       deliveryFee,
+      discount,
       total,
       deliveryType: payload.delivery_type,
       address: cleanOptionalString(payload.address) || '',
       paymentMethod: payload.payment_method,
       notes: cleanOptionalString(payload.notes) || '',
     });
+
+    if (discount > 0 && customerId) {
+      await loyaltyService.spendPoints(client, parseInt(customerId), order.id, payload.points_to_redeem!);
+    }
 
     if (enrichedItems.length > 0) {
       const pIds = enrichedItems.map((i) => parseInt(i.productId));
@@ -233,6 +247,10 @@ export async function updateOrderStatus(
         value: currentOrder.total,
         orderId: id,
       });
+
+      if (currentOrder.customer_id) {
+        await loyaltyService.awardPoints(client, currentOrder.customer_id, parseInt(id), currentOrder.subtotal);
+      }
     }
 
     const updatedOrder = await orderRepository.updateOrderStatus(client, id, status, trackingCode);

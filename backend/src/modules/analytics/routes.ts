@@ -54,18 +54,21 @@ router.get('/forecast', async (c) => {
     );
     
     // Gerar relatórios de previsão para produtos (usando Regressão Linear ou Média Móvel)
-    const forecasts = products.map((p: { id: string; name: string; quantity: number; min_stock: number }) => {
-      // Mock de histórico para demonstração (em prod, bateria na tabela 'transactions')
-      const mockHistory = Array.from({ length: 12 }, () => Math.floor(Math.random() * 50) + 10);
+    const forecastsPromises = products.map(async (p: { id: string; name: string; quantity: number; min_stock: number }) => {
+      const productId = Number(p.id);
+      const forecast = await forecastService.generateForecast(db, productId);
+      
       return {
         id: p.id,
         name: p.name,
         currentStock: p.quantity,
-        movingAverage: forecastService.calculateMovingAverage(mockHistory, 3),
-        regression: forecastService.calculateLinearRegression(mockHistory, 12),
-        seasonality: forecastService.detectSeasonality(mockHistory as any)
+        movingAverage: forecast.success ? forecast.forecast?.prediction : 0,
+        regression: forecast.success ? forecast.forecast?.prediction : 0, // Simplificado
+        seasonality: forecast.success ? forecast.forecast?.seasonality : null
       };
     });
+
+    const forecasts = await Promise.all(forecastsPromises);
 
     setNoStore(c as any);
     return c.json({ forecasts });
@@ -92,6 +95,21 @@ router.get('/bi/sentiment', async (c) => {
   } catch(error) {
     logger.error('Erro no Analytics / Sentiment', error as Error);
     return jsonError(c, 500, 'Erro ao gerar análise de sentimento.');
+  }
+});
+
+// Recomendações personalizadas para o admin ver (simulando para o cliente 1 ou o próprio admin)
+router.get('/bi/recommendations', async (c) => {
+  try {
+    const db = c.get('db');
+    const user = c.get('user') as any;
+    
+    const result = await biService.generatePersonalizedRecommendations(db, user?.id || 1);
+    setNoStore(c as any);
+    return c.json(result);
+  } catch (error) {
+    logger.error('Erro no Analytics / Recommendations', error as Error);
+    return jsonError(c, 500, 'Erro ao gerar recomendações.');
   }
 });
 

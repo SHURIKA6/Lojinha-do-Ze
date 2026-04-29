@@ -80,17 +80,17 @@ export class BusinessIntelligenceService {
   /**
    * Gera recomendações personalizadas para um usuário
    */
-  async generatePersonalizedRecommendations(userId: string | number, options: RecommendationOptions = {}) {
+  async generatePersonalizedRecommendations(db: any, userId: string | number, options: RecommendationOptions = {}) {
     try {
       const cacheKey = `recommendations:${userId}`;
-      let recommendations = cacheService.get(cacheKey);
+      let recommendations = await cacheService.get(cacheKey);
       
       if (!recommendations) {
         // Carrega perfil do usuário
-        const userProfile = await this.getUserProfile(userId);
+        const userProfile = await this.getUserProfile(db, userId);
         
         // Carrega produtos disponíveis
-        const availableProducts = await this.getAvailableProducts();
+        const availableProducts = await this.getAvailableProducts(db);
         
         // Aplica algoritmos de recomendação
         recommendations = await this.applyRecommendationAlgorithms(
@@ -112,40 +112,73 @@ export class BusinessIntelligenceService {
   }
 
   /**
-   * Carrega perfil do usuário
+   * Carrega perfil do usuário do banco de dados
    */
-  async getUserProfile(userId: string | number): Promise<UserProfile> {
-    // Simula carregamento de perfil
+  async getUserProfile(db: any, userId: string | number): Promise<UserProfile> {
+    const { rows: userRows } = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+    const user = userRows[0];
+
+    const { rows: orderRows } = await db.query(`
+      SELECT items, total, created_at 
+      FROM orders 
+      WHERE customer_id = $1 AND status = 'concluido'
+      ORDER BY created_at DESC
+    `, [userId]);
+
+    const categories = new Set<string>();
+    const purchaseHistory: any[] = [];
+    let totalSpent = 0;
+
+    orderRows.forEach((order: any) => {
+      totalSpent += Number(order.total);
+      const items = order.items;
+      if (Array.isArray(items)) {
+        items.forEach((item: any) => {
+          categories.add(item.category);
+          purchaseHistory.push({
+            productId: item.id,
+            quantity: item.quantity,
+            date: order.created_at
+          });
+        });
+      }
+    });
+
     return {
       id: userId,
       preferences: {
-        categories: ['Óleos Essenciais', 'Chás e Infusões'],
-        priceRange: { min: 10, max: 100 },
-        brands: ['Natureza Viva', 'Ervas do Monte']
+        categories: Array.from(categories),
+        priceRange: { min: 0, max: 1000 },
+        brands: []
       },
-      purchaseHistory: [
-        { productId: 1, quantity: 2, date: '2026-03-15' },
-        { productId: 5, quantity: 1, date: '2026-03-10' }
-      ],
+      purchaseHistory,
       behavior: {
-        averageOrderValue: 85.50,
+        averageOrderValue: orderRows.length > 0 ? totalSpent / orderRows.length : 0,
         purchaseFrequency: 'monthly',
-        preferredPaymentMethod: 'pix'
+        preferredPaymentMethod: 'unknown'
       }
     };
   }
 
   /**
-   * Carrega produtos disponíveis
+   * Carrega produtos disponíveis do banco de dados
    */
-  async getAvailableProducts(): Promise<RecommendationProduct[]> {
-    // Simula carregamento de produtos
-    return [
-      { id: 1, name: 'Óleo Essencial de Lavanda', category: 'Óleos Essenciais', price: 45.00, rating: 4.8 },
-      { id: 2, name: 'Chá de Camomila', category: 'Chás e Infusões', price: 12.00, rating: 4.5 },
-      { id: 3, name: 'Mel Silvestre', category: 'Naturais', price: 35.00, rating: 4.9 },
-      { id: 4, name: 'Sabonete de Argila', category: 'Cosméticos Naturais', price: 15.00, rating: 4.3 }
-    ];
+  async getAvailableProducts(db: any): Promise<RecommendationProduct[]> {
+    const { rows } = await db.query(`
+      SELECT id, name, category, sale_price as price, 5.0 as rating 
+      FROM products 
+      WHERE is_active = true 
+      ORDER BY created_at DESC 
+      LIMIT 100
+    `);
+    
+    return rows.map((r: any) => ({
+      id: Number(r.id),
+      name: r.name,
+      category: r.category,
+      price: Number(r.price),
+      rating: Number(r.rating)
+    }));
   }
 
   /**

@@ -14,6 +14,7 @@ import {
   FiShoppingBag,
   FiTruck,
   FiUser,
+  FiGift,
 } from 'react-icons/fi';
 import styles from './CheckoutModal.module.css';
 import { CartItem } from '@/features/storefront/hooks/useCart';
@@ -79,6 +80,13 @@ interface CheckoutModalProps {
   pixConfirmed: boolean;
   setPixConfirmed: (confirmed: boolean) => void;
   onSendWhatsApp: () => void;
+  shippingFee: number;
+  calculatingShipping: boolean;
+  loyaltyBalance: number;
+  pointsToRedeem: number;
+  setPointsToRedeem: (points: number) => void;
+  usePoints: boolean;
+  setUsePoints: (use: boolean) => void;
 }
 
 export default function CheckoutModal({
@@ -107,8 +115,16 @@ export default function CheckoutModal({
   pixConfirmed,
   setPixConfirmed,
   onSendWhatsApp,
+  shippingFee,
+  calculatingShipping,
+  loyaltyBalance,
+  pointsToRedeem,
+  setPointsToRedeem,
+  usePoints,
+  setUsePoints,
 }: CheckoutModalProps) {
-  const checkoutTotal = deliveryType === 'entrega' ? cartTotal + 5 : cartTotal;
+  const pointsDiscount = usePoints ? pointsToRedeem * 0.05 : 0;
+  const checkoutTotal = Math.max(0, cartTotal + shippingFee - pointsDiscount);
 
   if (orderResult) {
     const isPix = orderResult._paymentMethod === 'pix';
@@ -310,8 +326,17 @@ export default function CheckoutModal({
 
           {deliveryType === 'entrega' && (
             <div className={styles.summaryRow}>
-              <span>Taxa de entrega</span>
-              <span>{formatCurrency(5)}</span>
+              <span>Frete</span>
+              <span className={calculatingShipping ? styles.loadingText : ''}>
+                {calculatingShipping ? 'Calculando...' : formatCurrency(shippingFee)}
+              </span>
+            </div>
+          )}
+
+          {usePoints && pointsDiscount > 0 && (
+            <div className={styles.summaryRow}>
+              <span className={styles.discountLabel}>Desconto (Pontos)</span>
+              <span className={styles.discountValue}>- {formatCurrency(pointsDiscount)}</span>
             </div>
           )}
 
@@ -437,7 +462,7 @@ export default function CheckoutModal({
                   active={deliveryType === 'entrega'}
                   icon={<FiTruck />}
                   label="Entrega"
-                  meta="+ R$ 5,00"
+                  meta={calculatingShipping ? '...' : shippingFee > 0 ? `+ ${formatCurrency(shippingFee)}` : 'Grátis'}
                   onClick={() => setDeliveryType('entrega')}
                 />
                 <ChoiceCard
@@ -457,6 +482,39 @@ export default function CheckoutModal({
                 coordinates={customerCoords}
                 onCoordinatesChange={setCustomerCoords}
               />
+            )}
+
+            {/* Fidelidade */}
+            {loyaltyBalance > 0 && !isRegistered && (
+              <div className={styles.loyaltySection}>
+                <div className={styles.loyaltyHeader}>
+                  <FiGift className={styles.loyaltyIcon} />
+                  <div>
+                    <h4 className={styles.loyaltyTitle}>Você tem {loyaltyBalance} pontos!</h4>
+                    <p className={styles.loyaltyText}>Deseja usar seus pontos para ganhar um desconto?</p>
+                  </div>
+                </div>
+                
+                <div className={styles.loyaltyAction}>
+                  <input
+                    type="range"
+                    min="0"
+                    max={loyaltyBalance}
+                    step="10"
+                    value={pointsToRedeem}
+                    onChange={(e) => {
+                      setPointsToRedeem(Number(e.target.value));
+                      setUsePoints(Number(e.target.value) > 0);
+                    }}
+                    className={styles.loyaltyRange}
+                  />
+                  <div className={styles.loyaltyValues}>
+                    <span>0</span>
+                    <span>{pointsToRedeem} pts = {formatCurrency(pointsToRedeem * 0.05)} de desconto</span>
+                    <span>{loyaltyBalance}</span>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}

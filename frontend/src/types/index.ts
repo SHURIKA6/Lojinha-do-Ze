@@ -109,6 +109,7 @@ export interface Order {
   items: OrderItem[];
   subtotal?: number;
   delivery_fee?: number;
+  points_to_redeem?: number;
   total: number;
   status: OrderStatus;
   tracking_code?: string;

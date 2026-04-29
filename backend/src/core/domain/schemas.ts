@@ -215,6 +215,8 @@ export const orderCreateSchema = z
     delivery_type: z.enum(DELIVERY_TYPE_VALUES).default('entrega'),
     address: optionalTrimmedString(320, 'Endereço'),
     payment_method: z.enum(PAYMENT_METHOD_VALUES).default('pix'),
+    delivery_fee: z.coerce.number().min(0).optional(),
+    points_to_redeem: z.coerce.number().int().min(0).optional(),
     items: z.array(orderItemSchema).min(1, 'Pedido deve conter ao menos 1 item'),
   })
   .superRefine((data, ctx) => {

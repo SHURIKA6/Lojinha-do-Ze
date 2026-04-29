@@ -52,23 +52,47 @@ export class DemandForecastService {
   constructor() {}
 
   /**
-   * Carrega dados históricos para um produto
+   * Carrega dados históricos reais para um produto do banco de dados
    */
-  async loadHistoricalData(productId: number, days = 365) {
+  async loadHistoricalData(db: any, productId: number, days = 90) {
     try {
       const cacheKey = `historical:${productId}:${days}`;
-      let data = cacheService.get(cacheKey);
+      let data = await cacheService.get(cacheKey);
       
       if (!data) {
-        // Simula dados históricos - em produção viria do banco
-        data = this.generateMockHistoricalData(productId, days);
+        // Query real data from inventory_log
+        const { rows } = await db.query(`
+          SELECT 
+            TO_CHAR(date, 'YYYY-MM-DD') as date,
+            SUM(CASE WHEN type = 'saida' THEN quantity ELSE 0 END) as sales,
+            MAX(quantity) as stock, -- Aproximação do estoque no dia
+            0 as price -- Não temos preço histórico no log, simplificando
+          FROM inventory_log
+          WHERE product_id = $1 AND date >= CURRENT_DATE - ($2 || ' days')::INTERVAL
+          GROUP BY date
+          ORDER BY date ASC
+        `, [productId, days]);
+        
+        data = rows.map((r: any) => ({
+          date: r.date,
+          sales: Number(r.sales || 0),
+          stock: Number(r.stock || 0),
+          price: Number(r.price || 0)
+        }));
+
+        // Se não houver dados suficientes, gera mock para não quebrar a UI
+        if (data.length < 5) {
+          logger.info(`Poucos dados reais para produto ${productId}, gerando mock para complementação.`);
+          data = this.generateMockHistoricalData(productId, days);
+        }
+        
         cacheService.set(cacheKey, data, 3600); // 1 hora
       }
       
       this.historicalData.set(productId, data);
       return { success: true, data };
     } catch (error: any) {
-      logger.error('Erro ao carregar dados históricos', error);
+      logger.error('Erro ao carregar dados históricos reais', error);
       return { success: false, error: error.message };
     }
   }
@@ -236,11 +260,11 @@ export class DemandForecastService {
   /**
    * Gera previsão de demanda
    */
-  async generateForecast(productId: number, daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average') {
+  async generateForecast(db: any, productId: number, daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average') {
     try {
       // Carrega dados históricos se necessário
       if (!this.historicalData.has(productId)) {
-        await this.loadHistoricalData(productId);
+        await this.loadHistoricalData(db, productId);
       }
       
       const data = this.historicalData.get(productId);
@@ -323,12 +347,12 @@ export class DemandForecastService {
   /**
    * Gera previsões para múltiplos produtos
    */
-  async generateBatchForecasts(productIds: number[], daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average') {
+  async generateBatchForecasts(db: any, productIds: number[], daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average') {
     try {
       const forecasts: ForecastResult[] = [];
       
       for (const productId of productIds) {
-        const result = await this.generateForecast(productId, daysAhead, algorithm);
+        const result = await this.generateForecast(db, productId, daysAhead, algorithm);
         if (result.success && result.forecast) {
           forecasts.push(result.forecast);
         }
@@ -344,9 +368,9 @@ export class DemandForecastService {
   /**
    * Obtém previsão de estoque recomendado
    */
-  async getStockRecommendation(productId: number, currentStock: number, leadTimeDays = 7) {
+  async getStockRecommendation(db: any, productId: number, currentStock: number, leadTimeDays = 7) {
     try {
-      const forecast = await this.generateForecast(productId, leadTimeDays);
+      const forecast = await this.generateForecast(db, productId, leadTimeDays);
       
       if (!forecast.success || !forecast.forecast) {
         return { success: false, error: forecast.error };

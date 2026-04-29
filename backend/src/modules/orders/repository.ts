@@ -15,6 +15,7 @@ export interface Order {
   address: string;
   payment_method: string;
   notes: string;
+  discount: number;
   created_at: Date;
   updated_at: Date;
   payment_id?: string;
@@ -45,6 +46,7 @@ export interface OrderCreateData {
   address: string;
   paymentMethod: string;
   notes: string;
+  discount: number;
 }
 
 export async function findOrders(
@@ -53,7 +55,7 @@ export async function findOrders(
 ) {
   if (userId) {
     const { rows } = await client.query(
-      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
+      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
        FROM orders
        WHERE customer_id = $1
        ORDER BY created_at DESC
@@ -65,7 +67,7 @@ export async function findOrders(
 
   const params: (string | number | boolean | null)[] = [];
   let query = `
-    SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
+    SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
     FROM orders
   `;
   if (status) {
@@ -80,7 +82,7 @@ export async function findOrders(
 
 export async function findOrderByIdForUpdate(client: Database, id: string) {
   const { rows } = await client.query(
-    `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at, payment_id
+    `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at, payment_id
      FROM orders
      WHERE id = $1
      FOR UPDATE`,
@@ -98,7 +100,7 @@ export async function updateOrderStatus(client: Database, id: string, status: st
     params.push(trackingCode);
   }
   
-  query += ` WHERE id = $2 RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at`;
+  query += ` WHERE id = $2 RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at`;
 
   const { rows } = await client.query(query, params);
   return rows[0] || null;
@@ -176,9 +178,9 @@ export async function findProductsByIds(client: Database, ids: number[]) {
 
 export async function createOrder(client: Database, data: OrderCreateData) {
   const { rows } = await client.query(
-    `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, delivery_type, address, payment_method, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-     RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, total, status, delivery_type, address, payment_method, notes, created_at, updated_at`,
+    `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, delivery_type, address, payment_method, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, delivery_type, address, payment_method, notes, created_at, updated_at`,
     [
       data.customerId,
       data.customerName,
@@ -186,6 +188,7 @@ export async function createOrder(client: Database, data: OrderCreateData) {
       JSON.stringify(data.items),
       data.subtotal,
       data.deliveryFee,
+      data.discount,
       data.total,
       data.deliveryType,
       data.address,

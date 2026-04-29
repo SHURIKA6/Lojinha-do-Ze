@@ -78,7 +78,12 @@ export default function StorefrontPageClient({ initialCatalog = null }: Storefro
     orderResult, setOrderResult,
     pixConfirmed, setPixConfirmed,
     handleCheckout,
-    sendWhatsAppReceipt
+    sendWhatsAppReceipt,
+    shippingFee,
+    calculatingShipping,
+    loyaltyBalance,
+    pointsToRedeem, setPointsToRedeem,
+    usePoints, setUsePoints
   } = useCheckout({ cart, cartTotal, setError, user });
 
   const konamiRef = useRef<string[]>([]);
@@ -337,6 +342,13 @@ export default function StorefrontPageClient({ initialCatalog = null }: Storefro
         submitting={submitting}
         pixConfirmed={pixConfirmed}
         setPixConfirmed={setPixConfirmed}
+        shippingFee={shippingFee}
+        calculatingShipping={calculatingShipping}
+        loyaltyBalance={loyaltyBalance}
+        pointsToRedeem={pointsToRedeem}
+        setPointsToRedeem={setPointsToRedeem}
+        usePoints={usePoints}
+        setUsePoints={setUsePoints}
         onSendWhatsApp={() => sendWhatsAppReceipt(orderResult.order, orderResult.order.items, orderResult._paymentMethod)}
       />
     </div>

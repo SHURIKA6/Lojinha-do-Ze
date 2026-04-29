@@ -4,6 +4,8 @@ import {
   createPixPayment,
   getPixPaymentStatus,
 } from '@/core/api';
+import { getLoyaltyBalance } from '@/core/api/profile';
+import { calculateShipping, ShippingOption } from '@/core/api/shipping';
 import { formatAddress } from '@/core/utils/formatting';
 import { isValidCpf, isValidEmail } from '@/core/api';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -44,6 +46,12 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [orderResult, setOrderResult] = useState<any | null>(null);
   const [pixConfirmed, setPixConfirmed] = useState<boolean>(false);
+  const [shippingFee, setShippingFee] = useState<number>(5);
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+  const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number>(0);
+  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+  const [usePoints, setUsePoints] = useState<boolean>(false);
   
   const toast = useToast();
 
@@ -79,7 +87,43 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     if (user.name && user.phone && !isRegistered) {
       setIsRegistered(true);
     }
+
+    if (user) {
+      getLoyaltyBalance().then(data => {
+        setLoyaltyBalance(data.balance);
+      }).catch(err => console.error('Erro ao carregar pontos:', err));
+    }
   }, [isRegistered, user]);
+
+  useEffect(() => {
+    async function updateShipping() {
+      if (deliveryType !== 'entrega') {
+        setShippingFee(0);
+        return;
+      }
+
+      if (!customerCoords) {
+        setShippingFee(5); // Default se não houver coords
+        return;
+      }
+
+      setCalculatingShipping(true);
+      try {
+        const result = await calculateShipping(customerCoords, cartTotal);
+        if (result.options.length > 0) {
+          // Pega a opção mais barata por padrão ou a primeira
+          setShippingOptions(result.options);
+          setShippingFee(result.options[0].price);
+        }
+      } catch (err) {
+        console.error('Erro ao calcular frete:', err);
+      } finally {
+        setCalculatingShipping(false);
+      }
+    }
+
+    updateShipping();
+  }, [customerCoords, deliveryType, cartTotal]);
 
   const sendWhatsAppReceipt = (order: any, items: any[], method: string) => {
     const zePhone = process.env.NEXT_PUBLIC_ZE_PHONE;
@@ -99,7 +143,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     items.forEach((item) => {
       message += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
     });
-    if (order.delivery_type === 'entrega') message += '  • Taxa de Entrega — R$ 5,00\n';
+    if (order.delivery_type === 'entrega') message += `  • Taxa de Entrega — R$ ${parseFloat(order.delivery_fee || '0').toFixed(2).replace('.', ',')}\n`;
     message += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2).replace('.', ',')}*\n`;
     if (order.delivery_type === 'entrega' && order.address) message += `\n📍 *Endereço:* ${order.address}\n`;
     if (order.notes) message += `\n📝 *Obs:* ${order.notes}`;
@@ -150,6 +194,8 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
         customer_phone: customerForm.phone,
         items: orderItems as any[], // Casting items as the backend handles enrichment
         delivery_type: deliveryType as any,
+        delivery_fee: shippingFee,
+        points_to_redeem: usePoints ? pointsToRedeem : 0,
         address: customerAddress as any,
         payment_method: paymentMethod as any,
         notes: customerForm.notes,
@@ -241,6 +287,12 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     orderResult, setOrderResult,
     pixConfirmed, setPixConfirmed,
     handleCheckout,
-    sendWhatsAppReceipt
+    sendWhatsAppReceipt,
+    shippingFee,
+    shippingOptions,
+    calculatingShipping,
+    loyaltyBalance,
+    pointsToRedeem, setPointsToRedeem,
+    usePoints, setUsePoints
   };
 }

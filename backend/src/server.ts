@@ -17,6 +17,7 @@ import uploadRoutes from './modules/system/uploadRoutes';
 import paymentRoutes from './modules/payments/routes';
 import aiRoutes from './modules/system/aiRoutes';
 import analyticsRoutes from './modules/analytics/routes';
+import shippingRoutes from './modules/shipping/routes';
 import { handleScheduledTasks } from './modules/system/cron';
 import { logSystemEvent } from './modules/system/logService';
 
@@ -168,6 +169,7 @@ app.post('/api/webhooks/mercadopago', async (c) => {
 app.route('/api/ai', aiRoutes as any);
 app.route('/api/admin', aiRoutes as any);
 app.route('/api/analytics', analyticsRoutes as any);
+app.route('/api/shipping', shippingRoutes as any);
 app.route('/api/notifications', notificationRoutes as any);
 app.route('/api/webhooks/whatsapp', webhookRoutes as any);
 

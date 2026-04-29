@@ -13,6 +13,7 @@ import { jsonError, validationError } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import { profileLimiter } from '../../core/middleware/rateLimit';
 import { Bindings, Variables } from '../../core/types';
+import { loyaltyService } from './loyaltyService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -50,6 +51,31 @@ router.put('/', profileLimiter, csrfMiddleware, zValidator('json', profileUpdate
 
     logger.error('Erro no PUT de Perfil', error as Error);
     return jsonError(c, 500, 'Erro ao atualizar suas informações de perfil.');
+  }
+});
+
+router.get('/loyalty', async (c) => {
+  try {
+    const db = c.get('db');
+    const user = c.get('user');
+    
+    if (!user) return jsonError(c, 401, 'Não autorizado');
+
+    const balance = await loyaltyService.getBalance(db, parseInt(user.id));
+    
+    // Busca as últimas 10 transações
+    const { rows: history } = await db.query(
+      'SELECT type, points, description, created_at FROM loyalty_transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
+      [user.id]
+    );
+
+    return c.json({
+      balance,
+      history
+    });
+  } catch (error) {
+    logger.error('Erro ao buscar fidelidade', error as Error);
+    return jsonError(c, 500, 'Erro ao carregar dados de fidelidade.');
   }
 });
 
