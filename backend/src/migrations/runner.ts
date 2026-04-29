@@ -18,6 +18,9 @@ import * as migration009 from './009_add_tracking_to_orders';
 import * as migration010 from './010_add_full_text_search';
 import * as migration011 from './011_security_and_maintenance';
 import * as migration012 from './012_add_analytics_events';
+import * as migration013 from './013_add_loyalty_system';
+import * as migration014 from './014_add_discount_to_orders';
+import * as migration015 from './015_add_product_reviews';
 
 const migrations: Migration[] = [
   { id: migration001.id, up: migration001.up },
@@ -32,6 +35,9 @@ const migrations: Migration[] = [
   { id: migration010.id, up: migration010.up },
   { id: migration011.id, up: migration011.up },
   { id: migration012.id, up: migration012.up },
+  { id: migration013.id, up: migration013.up },
+  { id: migration014.id, up: migration014.up },
+  { id: migration015.id, up: migration015.up },
 ];
 
 export async function runMigrations(db: Database): Promise<void> {

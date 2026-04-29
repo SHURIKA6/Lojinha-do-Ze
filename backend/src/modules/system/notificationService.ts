@@ -145,7 +145,7 @@ export class NotificationService {
   /**
    * Envia notificação para os canais apropriados
    */
-  async send(type: NotificationType, data: any, options: NotificationOptions = {}) {
+  async send(type: NotificationType, data: any, env: any, options: NotificationOptions = {}) {
     try {
       const template = NOTIFICATION_TEMPLATES[type];
       if (!template) {
@@ -167,7 +167,7 @@ export class NotificationService {
       };
 
       this.pendingNotifications.set(notification.id, notification);
-      const results = await this.processChannels(notification);
+      const results = await this.processChannels(notification, env);
       
       notification.status = results.every(r => r.success) ? 'sent' : 'partial';
       notification.sentAt = new Date();
@@ -192,12 +192,12 @@ export class NotificationService {
   /**
    * Processa envio para cada canal
    */
-  async processChannels(notification: Notification) {
+  async processChannels(notification: Notification, env: any) {
     const results: NotificationResult[] = [];
 
     for (const channel of notification.channels) {
       try {
-        const result = await this.sendToChannel(channel, notification);
+        const result = await this.sendToChannel(channel, notification, env);
         results.push({ channel, success: true, result });
       } catch (error: any) {
         logger.error(`Erro ao enviar notificação via ${channel}`, error);
@@ -211,7 +211,7 @@ export class NotificationService {
   /**
    * Envia para canal específico
    */
-  async sendToChannel(channel: NotificationChannel, notification: Notification) {
+  async sendToChannel(channel: NotificationChannel, notification: Notification, env: any) {
     switch (channel) {
       case NOTIFICATION_CHANNELS.EMAIL:
         return await this.sendEmail(notification);
@@ -220,7 +220,7 @@ export class NotificationService {
       case NOTIFICATION_CHANNELS.PUSH:
         return await this.sendPush(notification);
       case NOTIFICATION_CHANNELS.WHATSAPP:
-        return await this.sendWhatsApp(notification);
+        return await this.sendWhatsApp(notification, env);
       case NOTIFICATION_CHANNELS.WEBHOOK:
         return await this.sendWebhook(notification);
       case NOTIFICATION_CHANNELS.IN_APP:
@@ -257,9 +257,8 @@ export class NotificationService {
   /**
    * Envia WhatsApp
    */
-  async sendWhatsApp(notification: Notification) {
-    const phone = notification.data.phone || 
-                  (typeof process !== 'undefined' ? (process.env.ZE_PHONE || process.env.ZE_PHONE_1) : undefined);
+  async sendWhatsApp(notification: Notification, env: any) {
+    const phone = notification.data.phone || env?.ZE_PHONE || env?.ZE_PHONE_1;
     if (!phone) {
       throw new Error('Número de telefone não configurado');
     }

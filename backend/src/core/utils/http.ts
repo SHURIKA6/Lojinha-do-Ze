@@ -48,7 +48,7 @@ export function applySecurityHeaders(c: Context): void {
 }
 
 export function setNoStore(c: Context): void {
-  c.res.headers.set('Cache-Control', 'no-store');
+  c.header('Cache-Control', 'no-store');
 }
 
 interface ValidationResult {

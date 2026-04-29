@@ -1,4 +1,5 @@
 import { Database } from '../../core/types';
+import { logger } from '../../core/utils/logger';
 
 export interface Order {
   id: string;
@@ -54,15 +55,26 @@ export async function findOrders(
   { userId, status, limit, offset }: { userId?: string; status?: string; limit: number; offset: number }
 ) {
   if (userId) {
-    const { rows } = await client.query(
-      `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
-       FROM orders
-       WHERE customer_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset]
-    );
-    return rows;
+    try {
+      const { rows } = await client.query(
+        `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at
+         FROM orders
+         WHERE customer_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [userId, limit, offset]
+      );
+      return rows.map((row: any) => ({
+        ...row,
+        subtotal: parseFloat(row.subtotal),
+        delivery_fee: parseFloat(row.delivery_fee),
+        discount: parseFloat(row.discount),
+        total: parseFloat(row.total),
+      }));
+    } catch (error) {
+      logger.error('Erro na query findOrders (user)', error as Error, { userId, limit, offset });
+      throw error;
+    }
   }
 
   const params: (string | number | boolean | null)[] = [];
@@ -76,8 +88,19 @@ export async function findOrders(
   }
   query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
-  const { rows } = await client.query(query, [...params, limit, offset]);
-  return rows;
+  try {
+    const { rows } = await client.query(query, [...params, limit, offset]);
+    return rows.map((row: any) => ({
+      ...row,
+      subtotal: parseFloat(row.subtotal),
+      delivery_fee: parseFloat(row.delivery_fee),
+      discount: parseFloat(row.discount),
+      total: parseFloat(row.total),
+    }));
+  } catch (error) {
+    logger.error('Erro na query findOrders', error as Error, { query, params: [...params, limit, offset] });
+    throw error;
+  }
 }
 
 export async function findOrderByIdForUpdate(client: Database, id: string) {

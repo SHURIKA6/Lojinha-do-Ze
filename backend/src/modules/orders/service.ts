@@ -134,7 +134,7 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
           productName: p.name,
           quantity: p.quantity,
           productId: p.id
-        }).catch(err => logger.error('Low stock notification error', err));
+        }, env).catch(err => logger.error('Low stock notification error', err));
       }
 
       await orderRepository.logInventory(client, pIds, names, quantities, `Pedido #${order.id}`);
@@ -249,7 +249,7 @@ export async function updateOrderStatus(
       });
 
       if (currentOrder.customer_id) {
-        await loyaltyService.awardPoints(client, currentOrder.customer_id, parseInt(id), currentOrder.subtotal);
+        await loyaltyService.awardPoints(client, parseInt(currentOrder.customer_id), parseInt(id), currentOrder.subtotal);
       }
     }
 

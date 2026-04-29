@@ -141,7 +141,7 @@ export async function updateProduct(db: Database, id: string, payload: any) {
         productName: updatedProduct.name,
         quantity: updatedProduct.quantity,
         productId: updatedProduct.id
-      }).catch(err => logger.error('Low stock notification error (manual update)', err));
+      }, (payload as any).env).catch(err => logger.error('Low stock notification error (manual update)', err));
     }
 
     if (payload.quantity !== undefined && payload.quantity > oldProduct.quantity) {
