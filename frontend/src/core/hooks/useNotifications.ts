@@ -23,22 +23,32 @@ export function useNotifications() {
     if (!isAdmin) return;
 
     const connect = () => {
+      // 1. Prioridade para URL completa definida em variável de ambiente
+      if (process.env.NEXT_PUBLIC_WS_URL) {
+        console.log('Connecting to notifications websocket (env)...', process.env.NEXT_PUBLIC_WS_URL);
+        const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL);
+        wsRef.current = ws;
+        setupListeners(ws);
+        return;
+      }
+
+      // 2. Fallback: Construção dinâmica baseada na API URL ou localização atual
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       let host = window.location.host;
       let pathPrefix = '/api';
 
       if (process.env.NEXT_PUBLIC_API_URL) {
         try {
-          // Apenas tenta tratar como URL absoluta se começar com http
           if (process.env.NEXT_PUBLIC_API_URL.startsWith('http')) {
             const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL);
             host = apiUrl.host;
+            // Se a URL da API já termina com /api, não precisamos duplicar
             if (apiUrl.pathname.endsWith('/api') || apiUrl.pathname.endsWith('/api/')) {
-              pathPrefix = '';
+              pathPrefix = apiUrl.pathname.replace(/\/$/, '');
             }
           } else if (process.env.NEXT_PUBLIC_API_URL.startsWith('/api')) {
-            // Se for um path relativo que já inclui /api, limpamos o prefixo
-            pathPrefix = '';
+            // Mantemos o prefixo /api se for relativo
+            pathPrefix = '/api';
           }
         } catch (e) {
           console.warn('Erro ao processar NEXT_PUBLIC_API_URL, usando fallback:', e);
@@ -47,9 +57,13 @@ export function useNotifications() {
       
       const wsUrl = `${protocol}//${host}${pathPrefix}/notifications/ws`;
 
-      console.log('Connecting to notifications websocket...', wsUrl);
+      console.log('Connecting to notifications websocket (dynamic)...', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      setupListeners(ws);
+    };
+
+    const setupListeners = (ws: WebSocket) => {
 
       ws.onmessage = (event) => {
         try {
