@@ -32,3 +32,7 @@ new_sqlite_classes = ["NotificationDO"]
 
 [triggers]
 crons = ["0 * * * *"]
+
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "lojinha_cache_kv"

@@ -197,15 +197,15 @@ export async function createOrder(client: Database, data: OrderCreateData) {
 }
 
 export async function updateStock(client: Database, productIds: number[], quantities: number[]) {
-  const { rowCount } = await client.query(
+  const { rows } = await client.query(
     `UPDATE products AS p
      SET quantity = p.quantity - u.qty, updated_at = NOW()
      FROM unnest($1::int[], $2::int[]) AS u(id, qty)
      WHERE p.id = u.id AND p.quantity >= u.qty
-     RETURNING p.id`,
+     RETURNING p.id, p.name, p.quantity`,
     [productIds, quantities]
   );
-  return rowCount;
+  return rows;
 }
 
 export async function logInventory(client: Database, productIds: number[], names: string[], quantities: number[], reason: string) {

@@ -1,4 +1,5 @@
 import { Database } from '../core/types';
+import { logger } from '../core/utils/logger';
 
 export interface Migration {
   id: string;
@@ -50,17 +51,17 @@ export async function runMigrations(db: Database): Promise<void> {
         continue;
       }
 
-      console.log(`Aplicando migração: ${migration.id}`);
+      logger.info(`Aplicando migração: ${migration.id}`);
       await client.query('BEGIN');
 
       try {
         await migration.up(client);
         await client.query('INSERT INTO schema_migrations (id) VALUES ($1)', [migration.id]);
         await client.query('COMMIT');
-        console.log(`✅ Migração ${migration.id} aplicada com sucesso.`);
+        logger.info(`✅ Migração ${migration.id} aplicada com sucesso.`);
       } catch (error) {
         await client.query('ROLLBACK');
-        console.error(`❌ Erro na migração ${migration.id}:`, error);
+        logger.error(`❌ Erro na migração ${migration.id}:`, error);
         throw error;
       }
     }

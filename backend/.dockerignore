@@ -1,0 +1,7 @@
+# .dockerignore
+node_modules
+npm-debug.log
+dist
+.wrangler
+.env
+.dev.vars

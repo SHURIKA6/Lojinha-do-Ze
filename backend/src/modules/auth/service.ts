@@ -256,7 +256,7 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
   const session = buildResolvedSession(createdSession, resolvedUser);
 
   // PERF: Alimenta o cache imediatamente para acelerar a próxima requisição
-  cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS);
+  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV);
 
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions(c));
   setCookie(c, CSRF_COOKIE_NAME, csrfToken, sessionCookieOptions(c, SESSION_TTL_SECONDS, false));
@@ -276,7 +276,7 @@ export async function destroySession(c: Context<AppEnv>, client: Database) {
   if (sessionToken) {
     const tokenHash = await sha256Hex(sessionToken);
     await deleteSessionByTokenHash(client, tokenHash);
-    cacheService.deleteSession(tokenHash);
+    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV);
   }
 
   clearSessionCookies(c);
@@ -304,7 +304,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const tokenHash = await sha256Hex(sessionToken);
 
   // PERF: Tenta obter do cache antes de consultar o banco
-  const fromCache = cacheService.getSession(tokenHash);
+  const fromCache = await cacheService.getSession(tokenHash, c.env.CACHE_KV);
   if (fromCache) {
     const session = normalizeResolvedSession(fromCache);
     if (session) {
@@ -315,7 +315,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
     logger.warn('Entrada inválida no cache de sessão ignorada; consultando banco', {
       tokenHashPrefix: tokenHash.slice(0, 8),
     });
-    cacheService.deleteSession(tokenHash);
+    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV);
   }
 
   const row = await findSessionByTokenHash(client, tokenHash);
@@ -328,7 +328,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const session = buildResolvedSession(row);
 
   // Alimenta o cache para as próximas chamadas
-  cacheService.setSession(tokenHash, session);
+  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV);
 
   storeResolvedSession(c, session);
 

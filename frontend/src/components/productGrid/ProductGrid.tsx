@@ -3,6 +3,7 @@
 import React from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 import ProductCard from '@/components/productCard/ProductCard';
+import { ProductGridSkeleton } from './ProductSkeleton';
 import styles from './ProductGrid.module.css';
 import { Product } from '@/types';
 
@@ -27,13 +28,8 @@ export default function ProductGrid({
   openProductModal,
   search,
 }: ProductGridProps) {
-  if (loading) {
-    return (
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>Carregando catálogo...</p>
-      </div>
-    );
+  if (loading && filteredProducts.length === 0) {
+    return <ProductGridSkeleton count={8} />;
   }
 
   return (

@@ -8,6 +8,7 @@ import { jsonError, setNoStore, validationError } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../core/domain/constants';
 import { Bindings, Variables } from '../../core/types';
+import { customerActionLimiter } from '../../core/middleware/rateLimit';
 import { CustomerService } from './service';
 import {
   buildAvatar,
@@ -120,6 +121,7 @@ router.get('/:id/orders', async (c) => {
 
 router.post(
   '/',
+  customerActionLimiter,
   zValidator('json', customerCreateSchema, validationError),
   async (c) => {
     const service = new CustomerService(c.get('db'));
@@ -142,6 +144,7 @@ router.post(
 
 router.put(
   '/:id',
+  customerActionLimiter,
   zValidator('json', customerUpdateSchema, validationError),
   async (c) => {
     try {

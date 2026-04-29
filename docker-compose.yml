@@ -1,26 +1,26 @@
 version: '3.8'
 
 services:
-  # 🐘 Banco de Dados PostgreSQL
+  # 🐘 Banco de Dados PostgreSQL 16
   postgres:
-    image: postgres:15-alpine
-    container_name: lojinha-postgres
+    image: postgres:16-alpine
+    container_name: lojinha-db
     restart: always
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: rootpassword
-      POSTGRES_DB: lojinha
+      POSTGRES_USER: ze_user
+      POSTGRES_PASSWORD: ze_password
+      POSTGRES_DB: lojinha_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -d lojinha"]
+      test: ["CMD-SHELL", "pg_isready -U ze_user -d lojinha_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # 🔍 Adminer (Interface para o Banco)
+  # 🔍 Adminer (Interface para o Banco) - Acesse em localhost:8080
   adminer:
     image: adminer:latest
     container_name: lojinha-adminer
@@ -32,38 +32,39 @@ services:
 
   # ⚙️ Backend (Workers)
   backend:
-    image: node:20-alpine
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: lojinha-backend
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /app/node_modules
+    restart: always
     ports:
       - "8787:8787"
     environment:
-      - DATABASE_URL=postgresql://root:rootpassword@postgres:5432/lojinha
-    command: sh -c "npm install && npm run dev --workspace=backend -- --ip 0.0.0.0"
+      - DATABASE_URL=postgresql://ze_user:ze_password@postgres:5432/lojinha_db?sslmode=disable
+      - ENVIRONMENT=development
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
 
   # 🌐 Frontend (Next.js)
   frontend:
-    image: node:20-alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: lojinha-frontend
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/frontend/.next
+    restart: always
     ports:
       - "3000:3000"
     environment:
-      - BACKEND_URL=http://backend:8787
-      - NEXT_PUBLIC_API_URL=http://localhost:8787
-    command: sh -c "npm install && npm run dev --workspace=frontend -- -H 0.0.0.0"
+      - NEXT_PUBLIC_API_URL=http://localhost:8787/api
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   postgres_data:

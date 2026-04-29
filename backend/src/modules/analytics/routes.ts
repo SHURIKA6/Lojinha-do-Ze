@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { adminOnly, authMiddleware } from '../../core/middleware/auth';
-import { jsonError, setNoStore } from '../../core/utils/http';
+import { jsonError, jsonSuccess, setNoStore } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import BusinessIntelligenceService from './biService';
 import DemandForecastService from './forecastService';
@@ -66,3 +66,86 @@ router.get('/bi/sentiment', async (c) => {
 });
 
 export default router;
+
+/**
+ * GET /api/analytics/summary
+ * Resumo geral de faturamento e pedidos
+ */
+router.get('/summary', async (c) => {
+  const db = c.get('db');
+  
+  try {
+    const [revenueRes, totalOrdersRes] = await Promise.all([
+      db.query("SELECT SUM(value) as total FROM transactions WHERE type = 'receita'"),
+      db.query("SELECT COUNT(*) as count, SUM(total) as total_value FROM orders WHERE status != 'cancelado'")
+    ]);
+
+    const totalRevenue = parseFloat(revenueRes.rows[0]?.total || '0');
+    const totalOrdersCount = parseInt(totalOrdersRes.rows[0]?.count || '0');
+    const avgTicket = totalOrdersCount > 0 ? (totalRevenue / totalOrdersCount) : 0;
+
+    setNoStore(c as any);
+    return jsonSuccess(c, {
+      totalRevenue,
+      avgTicket,
+      totalOrders: totalOrdersCount
+    });
+  } catch (error) {
+    logger.error('Erro no Analytics / Summary', error as Error);
+    return jsonError(c, 500, 'Erro ao carregar resumo analítico');
+  }
+});
+
+/**
+ * GET /api/analytics/revenue-chart
+ * Dados de faturamento diário para gráfico
+ */
+router.get('/revenue-chart', async (c) => {
+  const db = c.get('db');
+  
+  try {
+    const { rows } = await db.query(`
+      SELECT 
+        TO_CHAR(date, 'YYYY-MM-DD') as day,
+        SUM(value) as revenue
+      FROM transactions 
+      WHERE type = 'receita' 
+        AND date >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY day
+      ORDER BY day ASC
+    `);
+
+    setNoStore(c as any);
+    return jsonSuccess(c, rows);
+  } catch (error) {
+    logger.error('Erro no Analytics / Revenue Chart', error as Error);
+    return jsonError(c, 500, 'Erro ao carregar dados do gráfico');
+  }
+});
+
+/**
+ * GET /api/analytics/best-sellers
+ * Top 5 produtos mais vendidos
+ */
+router.get('/best-sellers', async (c) => {
+  const db = c.get('db');
+  
+  try {
+    const { rows } = await db.query(`
+      SELECT 
+        product_name as name,
+        SUM(quantity) as total_sold
+      FROM inventory_log
+      WHERE type = 'saida' AND reason LIKE 'Pedido%'
+      GROUP BY name
+      ORDER BY total_sold DESC
+      LIMIT 5
+    `);
+
+    setNoStore(c as any);
+    return jsonSuccess(c, rows);
+  } catch (error) {
+    logger.error('Erro no Analytics / Best Sellers', error as Error);
+    return jsonError(c, 500, 'Erro ao carregar produtos mais vendidos');
+  }
+});

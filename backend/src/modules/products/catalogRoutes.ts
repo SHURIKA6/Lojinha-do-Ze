@@ -40,7 +40,8 @@ router.get('/', async (c) => {
       sortBy,
       limit,
       offset,
-    });
+      env: c.env,
+    } as any);
 
     setNoStore(c as any);
     return c.json(response);

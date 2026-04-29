@@ -1,93 +1,83 @@
-import { useEffect, useState, useRef } from 'react';
-import { useAuth } from '@/core/contexts/AuthContext';
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
+import { useAuth } from '@/core/contexts/AuthContext';
 
-export interface AppNotification {
+export interface NotificationPayload {
   id: string;
   type: 'order' | 'stock' | 'payment' | 'system';
   title: string;
   message: string;
-  createdAt: string;
-  read: boolean;
+  timestamp: string;
+  [key: string]: any;
 }
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const { isAdmin } = useAuth();
   const toast = useToast();
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const ws = useRef<WebSocket | null>(null);
+  const [notifications, setNotifications] = useState<NotificationPayload[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Apenas conectar se for admin
-    if (!user || user.role !== 'admin') {
-      return;
-    }
+    // Apenas administradores precisam de notificações em tempo real por enquanto
+    if (!isAdmin) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
-    // Substituir http por ws 
-    const wsUrl = apiUrl.replace(/^http/, 'ws') + '/api/notifications/ws';
+    const connect = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = process.env.NEXT_PUBLIC_API_URL 
+        ? process.env.NEXT_PUBLIC_API_URL.replace(/^http(s?):\/\//, '') 
+        : window.location.host;
+      
+      const wsUrl = `${protocol}//${host}/api/notifications/ws`;
 
-    console.log(`Connecting to WebSocket at ${wsUrl}`);
-    const socket = new WebSocket(wsUrl);
-    ws.current = socket;
+      console.log('Connecting to notifications websocket...', wsUrl);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    socket.onopen = () => {
-      console.log('Notification WebSocket connected');
+      ws.onmessage = (event) => {
+        try {
+          const payload: NotificationPayload = JSON.parse(event.data);
+          setNotifications((prev) => [payload, ...prev].slice(0, 50));
+          
+          // Mostrar toast para notificações importantes
+          if (payload.type === 'order' || payload.type === 'payment') {
+            toast.info(payload.message, payload.title);
+            
+            // Tocar um som sutil se possível
+            try {
+              const audio = new Audio('/notification.mp3');
+              audio.play().catch(() => {}); // Ignora se o browser bloquear auto-play
+            } catch (e) {}
+          }
+        } catch (err) {
+          console.error('Error parsing notification:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.warn('Notifications websocket closed. Reconnecting...');
+        wsRef.current = null;
+        reconnectTimeoutRef.current = setTimeout(connect, 5000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('Notifications websocket error:', err);
+        ws.close();
+      };
     };
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const newNotif: AppNotification = {
-          id: data.id || Math.random().toString(36).substring(7),
-          type: data.type || 'system',
-          title: data.title || 'Nova Notificação',
-          message: data.message || 'Você tem uma nova notificação',
-          createdAt: new Date().toISOString(),
-          read: false
-        };
-
-        setNotifications(prev => [newNotif, ...prev]);
-
-        // Mostrar um Toast para o admin
-        toast.showToast({
-          title: newNotif.title,
-          message: newNotif.message,
-          type: newNotif.type === 'payment' ? 'success' : 'info',
-        });
-      } catch (err) {
-        console.error('Invalid WS message payload', err);
-      }
-    };
-
-    socket.onclose = () => {
-      console.log('Notification WebSocket closed');
-    };
-
-    socket.onerror = (err) => {
-      console.error('Notification WebSocket error:', err);
-    };
+    connect();
 
     return () => {
-      socket.close();
-      ws.current = null;
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
-  }, [user, toast]);
+  }, [isAdmin, toast]);
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  return {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead
-  };
+  return { notifications, setNotifications };
 }

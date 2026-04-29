@@ -277,6 +277,7 @@ export type Bindings = {
   WHATSAPP_PHONE_ID?: string;
   WHATSAPP_ACCESS_TOKEN?: string;
   ZE_PHONE?: string;
+  CACHE_KV: any;
   [key: string]: any;
 };
 

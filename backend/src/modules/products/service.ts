@@ -29,7 +29,7 @@ export async function getCatalog(
   const { search, category, minPrice, maxPrice, sortBy, limit, offset } = options;
   const cacheKey = `${CACHE_PREFIXES.CATALOG}${limit}_${offset}_${search || ''}_${category || ''}_${minPrice || ''}_${maxPrice || ''}_${sortBy || ''}`;
 
-  const cached = cacheService.get(cacheKey);
+  const cached = await cacheService.get(cacheKey, (options as any).env?.CACHE_KV);
   if (cached) {
     return cached;
   }
@@ -54,7 +54,7 @@ export async function getCatalog(
     offset,
   };
 
-  cacheService.set(cacheKey, response, CATALOG_CACHE_TTL_SECONDS);
+  await cacheService.set(cacheKey, response, CATALOG_CACHE_TTL_SECONDS, (options as any).env?.CACHE_KV);
   return response;
 }
 
@@ -94,7 +94,7 @@ export async function createProduct(db: Database, payload: any) {
     }
 
     await client.query('COMMIT');
-    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG);
+    await cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, (payload as any).env?.CACHE_KV);
     return product;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -150,7 +150,7 @@ export async function updateProduct(db: Database, id: string, payload: any) {
     }
 
     await client.query('COMMIT');
-    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG);
+    await cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, (payload as any).env?.CACHE_KV);
     return updatedProduct;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -165,10 +165,10 @@ export async function updateProduct(db: Database, id: string, payload: any) {
   }
 }
 
-export async function deleteProduct(db: Database, id: string) {
+export async function deleteProduct(db: Database, id: string, env?: any) {
   const success = await productRepo.deleteProduct(db, id);
   if (success) {
-    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG);
+    await cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, env?.CACHE_KV);
   }
   return success;
 }

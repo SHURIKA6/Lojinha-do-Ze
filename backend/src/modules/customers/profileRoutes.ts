@@ -11,13 +11,14 @@ import {
 } from '../../core/utils/normalize';
 import { jsonError, validationError } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
+import { profileLimiter } from '../../core/middleware/rateLimit';
 import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 router.use('*', authMiddleware);
 
-router.put('/', csrfMiddleware, zValidator('json', profileUpdateSchema, validationError), async (c) => {
+router.put('/', profileLimiter, csrfMiddleware, zValidator('json', profileUpdateSchema, validationError), async (c) => {
   try {
     const db = c.get('db');
     const payload = c.req.valid('json') as any;

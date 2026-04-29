@@ -8,6 +8,7 @@ import { logger } from '../../core/utils/logger';
 import { orderLimiter } from '../../core/middleware/rateLimit';
 import { normalizePhoneDigits } from '../../core/utils/normalize';
 import { Bindings, Variables } from '../../core/types';
+import * as orderService from '../orders/service';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -233,43 +234,33 @@ router.post('/webhook', async (c) => {
         );
 
         if (payment.status === 'approved') {
-          const client = await db.connect();
-          try {
-            await client.query('BEGIN');
-
-            const { rows } = await client.query(
-              'SELECT total, status, customer_name FROM orders WHERE id = $1 FOR UPDATE',
-              [orderId]
-            );
-
-            if (rows.length && rows[0].status === 'novo') {
-              const order = rows[0];
-
-              await client.query('UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1', [
-                orderId,
-                'recebido',
-              ]);
-
-              await client.query(
+          // Atualiza o status do pedido de forma completa (incluindo WhatsApp e Log de estoque se necessário)
+          await orderService.updateOrderStatus(db, orderId, 'pago', c.env);
+          
+          // Nota: updateOrderStatus já cria a transação de receita se o status for 'concluido'.
+          // Para status 'pago', podemos querer criar a transação aqui se não for criada lá.
+          // Atualmente updateOrderStatus só cria transação no status 'concluido'.
+          
+          // Verificamos se já existe transação para evitar duplicidade
+          const { rows: txCheck } = await db.query('SELECT id FROM transactions WHERE order_id = $1', [orderId]);
+          if (!txCheck.length) {
+            const { rows: orderData } = await db.query('SELECT total, customer_name FROM orders WHERE id = $1', [orderId]);
+            if (orderData.length) {
+              await db.query(
                 `INSERT INTO transactions (type, category, description, value, date, order_id)
                  VALUES ($1, $2, $3, $4, NOW(), $5)`,
                 [
                   'receita',
                   'Venda de produtos (PIX)',
-                  `Pedido #${orderId} - ${order.customer_name}`,
-                  order.total,
+                  `Pedido #${orderId} - ${orderData[0].customer_name}`,
+                  orderData[0].total,
                   orderId,
                 ]
               );
             }
-
-            await client.query('COMMIT');
-          } catch (e) {
-            await client.query('ROLLBACK');
-            throw e;
-          } finally {
-            if (client.release) client.release();
           }
+        } else if (payment.status === 'cancelled' || payment.status === 'rejected') {
+          await orderService.updateOrderStatus(db, orderId, 'cancelado', c.env);
         }
       }
     } catch (error) {

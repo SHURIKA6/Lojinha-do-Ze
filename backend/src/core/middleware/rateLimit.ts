@@ -106,4 +106,6 @@ export function createRateLimiter(namespace: string, limit: number, windowMs: nu
 export const loginLimiter = createRateLimiter('login', 5, 15 * 60 * 1000); // 5 tentativas a cada 15 minutos
 export const setupPasswordLimiter = createRateLimiter('setup', 5, 15 * 60 * 1000); // 5 tentativas de configuração a cada 15 minutos
 export const orderLimiter = createRateLimiter('order', 10, 60 * 60 * 1000); // 10 pedidos por 1 hora
+export const profileLimiter = createRateLimiter('profile', 10, 5 * 60 * 1000); // 10 atualizações de perfil por 5 minutos
+export const customerActionLimiter = createRateLimiter('customer_action', 30, 60 * 1000); // 30 ações em clientes por minuto (admin)
 export const apiLimiter = createRateLimiter('api', 60, 60 * 1000); // 60 requisições por minuto

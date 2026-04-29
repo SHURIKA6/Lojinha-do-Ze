@@ -46,7 +46,7 @@ router.post(
     const db = c.get('db');
     try {
       const payload = c.req.valid('json');
-      const product = await productService.createProduct(db, payload);
+      const product = await productService.createProduct(db, { ...payload, env: c.env } as any);
       return c.json(product, 201);
     } catch (error: any) {
       if (error.type === 'UNIQUE_VIOLATION') {
@@ -67,7 +67,7 @@ router.put(
 
     try {
       const payload = c.req.valid('json');
-      const updatedProduct = await productService.updateProduct(db, id, payload);
+      const updatedProduct = await productService.updateProduct(db, id, { ...payload, env: c.env } as any);
       return c.json(updatedProduct);
     } catch (error: any) {
       if (error.type === 'UNIQUE_VIOLATION') {
@@ -87,7 +87,7 @@ router.delete('/:id', async (c) => {
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
   try {
-    const success = await productService.deleteProduct(db, id);
+    const success = await productService.deleteProduct(db, id, c.env);
     if (!success) {
       return jsonError(c, 404, 'Produto não encontrado');
     }

@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Product } from '@/types';
+import { useCartStore, CartItem } from '@/core/store/useCartStore';
 
-export interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
+export type { CartItem };
 
 export function useCart(allProducts: Product[]) {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, setCart, addToCart: storeAddToCart, updateCartItem: storeUpdateCartItem, removeFromCart } = useCartStore();
   const toast = useToast();
 
   const stockByProductId = useMemo(() => {
@@ -18,66 +14,53 @@ export function useCart(allProducts: Product[]) {
     return Object.fromEntries(products.map((p) => [p.id, Number(p.quantity || p.stock) || 0]));
   }, [allProducts]);
 
+  // Sincroniza quantidades com o estoque atual (ex: se o estoque diminuiu)
   useEffect(() => {
-    setCart((prev) =>
-      prev
-        .map((item) => ({
-          ...item,
-          quantity: Math.min(item.quantity, stockByProductId[item.productId] ?? 0),
-        }))
-        .filter((item) => item.quantity > 0)
-    );
-  }, [stockByProductId]);
+    if (Object.keys(stockByProductId).length === 0) return;
+
+    const nextCart = cart
+      .map((item) => {
+        const stock = stockByProductId[item.productId];
+        // Se o produto não está na lista atual de produtos, mantemos (pode ser uma busca parcial)
+        // Mas se está e a quantidade é maior que o estoque, reduzimos
+        if (stock !== undefined && item.quantity > stock) {
+          return { ...item, quantity: stock };
+        }
+        return item;
+      })
+      .filter((item) => (stockByProductId[item.productId] !== undefined ? item.quantity > 0 : true));
+
+    // Só atualiza se houver mudança real para evitar loops
+    if (JSON.stringify(nextCart) !== JSON.stringify(cart)) {
+      setCart(nextCart);
+    }
+  }, [stockByProductId, cart, setCart]);
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const getAvailableStock = (productId: string) => stockByProductId[productId] ?? 0;
+  const getAvailableStock = (productId: string) => stockByProductId[productId] ?? 999; // Fallback alto se não soubermos o estoque no momento
 
   const addToCart = (product: Product, qty = 1) => {
-    const stock = getAvailableStock(product.id);
+    const stock = stockByProductId[product.id] ?? product.quantity ?? product.stock ?? 0;
     if (stock <= 0) {
       toast.info('Este produto está sem estoque no momento.');
       return;
     }
 
-    setCart((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
-      if (existing) {
-        const nextQty = Math.min(stock, existing.quantity + qty);
-        return prev.map((item) =>
-          item.productId === product.id ? { ...item, quantity: nextQty } : item
-        );
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          name: product.name,
-          price: parseFloat(String(product.sale_price || product.price || 0)),
-          quantity: Math.min(stock, qty),
-        },
-      ];
-    });
+    const item: CartItem = {
+      productId: product.id,
+      name: product.name,
+      price: parseFloat(String(product.sale_price || product.price || 0)),
+      quantity: qty,
+    };
+
+    storeAddToCart(item, stock);
   };
 
   const updateCartItem = (productId: string, qty: number) => {
-    const stock = getAvailableStock(productId);
-    if (qty <= 0 || stock <= 0) {
-      setCart((prev) => prev.filter((item) => item.productId !== productId));
-      return;
-    }
-    setCart((prev) =>
-      prev.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: Math.min(qty, stock) }
-          : item
-      )
-    );
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
+    const stock = stockByProductId[productId] ?? 999;
+    storeUpdateCartItem(productId, qty, stock);
   };
 
   return {

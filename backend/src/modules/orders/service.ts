@@ -5,6 +5,7 @@ import { MercadoPagoService } from '../payments/service';
 import * as orderRepository from './repository';
 import { normalizePhoneDigits, cleanOptionalString } from '../../core/utils/normalize';
 import { sendWhatsAppMessage } from '../notifications/whatsapp';
+import { broadcastNotification } from '../notifications/notifier';
 
 
 interface CreateOrderPayload {
@@ -105,9 +106,21 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
       const quantities = enrichedItems.map((i) => i.quantity);
       const names = enrichedItems.map((i) => i.name);
 
-      const rowCount = await orderRepository.updateStock(client, pIds, quantities);
-      if (rowCount !== enrichedItems.length) {
+      const updatedProducts = await orderRepository.updateStock(client, pIds, quantities);
+      if (updatedProducts.length !== enrichedItems.length) {
         throw new Error('Estoque insuficiente ou concorrente para um dos itens do pedido');
+      }
+
+      // Check for low stock alerts
+      const lowStockAlerts = updatedProducts.filter((p: any) => p.quantity <= 5);
+      for (const p of lowStockAlerts) {
+        broadcastNotification(env, {
+          type: 'stock',
+          title: 'Estoque Baixo!',
+          message: `O produto "${p.name}" está com apenas ${p.quantity} unidades restantes.`,
+          productId: p.id,
+          quantity: p.quantity
+        }).catch(err => logger.error('Low stock notification error', err));
       }
 
       await orderRepository.logInventory(client, pIds, names, quantities, `Pedido #${order.id}`);
@@ -137,6 +150,19 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
     } else {
       // Background execution for other environments
       Promise.all(notifyPromises).catch(err => logger.error('Order creation WhatsApp error', err));
+    }
+
+    // Real-time notification for admin
+    const rtNotification = broadcastNotification(env, {
+      type: 'order',
+      title: 'Novo Pedido!',
+      message: `O cliente ${payload.customer_name} acabou de fazer o pedido #${order.id}.`,
+      orderId: order.id,
+      total: total
+    });
+
+    if (env.executionCtx?.waitUntil) {
+      env.executionCtx.waitUntil(rtNotification);
     }
 
     return order;
@@ -228,11 +254,30 @@ export async function updateOrderStatus(
       msg += `\nCódigo de rastreio: ${trackingCode}`;
     }
 
-    const notifyPromise = sendWhatsAppMessage(env, currentOrder.customer_phone, msg);
+    const notifyPromises = [sendWhatsAppMessage(env, currentOrder.customer_phone, msg)];
+    
+    if (env.ZE_PHONE && (status === 'pago' || status === 'cancelado' || status === 'concluido')) {
+      const zeUpdateMsg = `Status do pedido #${id} atualizado para: ${status}.\nCliente: ${currentOrder.customer_name}`;
+      notifyPromises.push(sendWhatsAppMessage(env, env.ZE_PHONE, zeUpdateMsg));
+    }
+
     if (env.executionCtx?.waitUntil) {
-      env.executionCtx.waitUntil(notifyPromise);
+      env.executionCtx.waitUntil(Promise.all(notifyPromises));
     } else {
-      notifyPromise.catch(err => logger.error('Order status update WhatsApp error', err));
+      Promise.all(notifyPromises).catch(err => logger.error('Order status update WhatsApp error', err));
+    }
+
+    // Real-time notification for status change
+    const rtNotification = broadcastNotification(env, {
+      type: 'payment',
+      title: 'Status de Pedido Atualizado',
+      message: `O pedido #${id} mudou para: ${status}.`,
+      orderId: id,
+      status: status
+    });
+
+    if (env.executionCtx?.waitUntil) {
+      env.executionCtx.waitUntil(rtNotification);
     }
 
     if (paymentIdToCancel) {
