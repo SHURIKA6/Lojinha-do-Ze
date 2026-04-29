@@ -31,6 +31,7 @@ async function sendViaEvolution(env: Bindings, to: string, message: string) {
   }
 
   const endpoint = `${url.replace(/\/$/, '')}/message/sendText/${instance}`;
+  logger.info(`Chamando Evolution API: ${endpoint}`);
   
   const response = await fetch(endpoint, {
     method: 'POST',
