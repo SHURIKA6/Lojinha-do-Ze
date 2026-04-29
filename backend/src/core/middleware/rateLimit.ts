@@ -79,7 +79,7 @@ const fallbackStore = createInMemoryStore();
 
 export function createRateLimiter(namespace: string, limit: number, windowMs: number) {
   return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
-    const kvBinding = c.env?.RATE_LIMIT_KV as KVNamespace | undefined;
+    const kvBinding = c.env?.CACHE_KV as KVNamespace | undefined;
     const store = kvBinding ? createKvStore(kvBinding) : fallbackStore;
 
     // Confia apenas no IP do cliente fornecido pela plataforma.

@@ -35,4 +35,4 @@ crons = ["0 * * * *"]
 
 [[kv_namespaces]]
 binding = "CACHE_KV"
-id = "lojinha_cache_kv"
+id = "a7ec24ab1399417d819b1df96d90c51d"
