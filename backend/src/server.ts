@@ -148,6 +148,7 @@ app.onError((error, c) => {
 });
 
 import notificationRoutes from './modules/notifications/routes';
+import webhookRoutes from './modules/notifications/webhookRoutes';
 import { NotificationDO } from './modules/notifications/durableObject';
 
 app.route('/api/auth', authRoutes as any);
@@ -168,6 +169,7 @@ app.route('/api/ai', aiRoutes as any);
 app.route('/api/admin', aiRoutes as any);
 app.route('/api/analytics', analyticsRoutes as any);
 app.route('/api/notifications', notificationRoutes as any);
+app.route('/api/webhooks/whatsapp', webhookRoutes as any);
 
 export { NotificationDO };
 
