@@ -29,11 +29,12 @@ webhookRoutes.post('/evolution', async (c) => {
 
     const phone = remoteJid.split('@')[0];
     
-    // Lista de administradores via variável de ambiente (separada por vírgula)
-    const envAdminPhones = (env.ADMIN_PHONES || '').split(',').map(p => p.trim());
-    const zePhone = env.ZE_PHONE ? env.ZE_PHONE.toString() : '';
-    
-    const isAdmin = envAdminPhones.includes(phone) || phone === zePhone;
+    // Verificação de administradores específicos
+    const isAdmin = [
+      env.ZE_PHONE_1,
+      env.ZE_PHONE_2,
+      env.SHURA_PHONE
+    ].filter(Boolean).includes(phone);
 
     // 2. Processar com a IA do Seu Zé
     const aiResponse = await processWhatsAppWithAI(db, env, phone, text, isAdmin);
