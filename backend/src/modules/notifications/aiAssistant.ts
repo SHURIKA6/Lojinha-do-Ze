@@ -61,8 +61,9 @@ export async function processWhatsAppWithAI(
     `;
 
     // 3. Chamar Gemini API
+    const cleanApiKey = apiKey.trim();
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanApiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,16 +76,7 @@ export async function processWhatsAppWithAI(
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorDetail;
-      try {
-        errorDetail = JSON.parse(errorText);
-      } catch {
-        errorDetail = errorText;
-      }
-      logger.error('Gemini API Error Detail:', { 
-        status: response.status, 
-        detail: errorDetail 
-      });
+      logger.error(`Gemini API Error [${response.status}]: ${errorText}`);
       throw new Error(`Gemini API Error: ${response.status}`);
     }
 
