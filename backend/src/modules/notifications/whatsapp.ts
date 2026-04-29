@@ -42,7 +42,8 @@ async function sendViaEvolution(env: Bindings, to: string, message: string) {
     body: JSON.stringify({
       number: to,
       text: message,
-      linkPreview: false
+      delay: 1200,
+      linkPreview: true
     })
   });
 
