@@ -60,16 +60,16 @@ export async function processWhatsAppWithAI(
       Resposta do Seu Zé:
     `;
 
-    // 3. Chamar Gemini API (tentando v1 estável)
+    // 3. Chamar Gemini API (usando gemini-pro que é o mais estável)
     const cleanApiKey = apiKey.trim();
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${cleanApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${cleanApiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 250, temperature: 0.7 }
+          generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
         }),
       }
     );
