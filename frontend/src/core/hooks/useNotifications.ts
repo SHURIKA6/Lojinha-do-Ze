@@ -28,11 +28,20 @@ export function useNotifications() {
       let pathPrefix = '/api';
 
       if (process.env.NEXT_PUBLIC_API_URL) {
-        const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL);
-        host = apiUrl.host;
-        // Se a URL da API já termina com /api, removemos do prefixo para não duplicar
-        if (apiUrl.pathname.endsWith('/api') || apiUrl.pathname.endsWith('/api/')) {
-          pathPrefix = '';
+        try {
+          // Apenas tenta tratar como URL absoluta se começar com http
+          if (process.env.NEXT_PUBLIC_API_URL.startsWith('http')) {
+            const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL);
+            host = apiUrl.host;
+            if (apiUrl.pathname.endsWith('/api') || apiUrl.pathname.endsWith('/api/')) {
+              pathPrefix = '';
+            }
+          } else if (process.env.NEXT_PUBLIC_API_URL.startsWith('/api')) {
+            // Se for um path relativo que já inclui /api, limpamos o prefixo
+            pathPrefix = '';
+          }
+        } catch (e) {
+          console.warn('Erro ao processar NEXT_PUBLIC_API_URL, usando fallback:', e);
         }
       }
       

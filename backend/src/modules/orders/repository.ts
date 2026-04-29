@@ -66,10 +66,10 @@ export async function findOrders(
       );
       return rows.map((row: any) => ({
         ...row,
-        subtotal: parseFloat(row.subtotal),
-        delivery_fee: parseFloat(row.delivery_fee),
-        discount: parseFloat(row.discount),
-        total: parseFloat(row.total),
+        subtotal: parseFloat(row.subtotal) || 0,
+        delivery_fee: parseFloat(row.delivery_fee) || 0,
+        discount: parseFloat(row.discount) || 0,
+        total: parseFloat(row.total) || 0,
       }));
     } catch (error) {
       logger.error('Erro na query findOrders (user)', error as Error, { userId, limit, offset });
@@ -92,10 +92,10 @@ export async function findOrders(
     const { rows } = await client.query(query, [...params, limit, offset]);
     return rows.map((row: any) => ({
       ...row,
-      subtotal: parseFloat(row.subtotal),
-      delivery_fee: parseFloat(row.delivery_fee),
-      discount: parseFloat(row.discount),
-      total: parseFloat(row.total),
+      subtotal: parseFloat(row.subtotal) || 0,
+      delivery_fee: parseFloat(row.delivery_fee) || 0,
+      discount: parseFloat(row.discount) || 0,
+      total: parseFloat(row.total) || 0,
     }));
   } catch (error) {
     logger.error('Erro na query findOrders', error as Error, { query, params: [...params, limit, offset] });
