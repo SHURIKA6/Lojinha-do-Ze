@@ -7,6 +7,13 @@ import { sendWhatsAppMessage } from './whatsapp';
 const webhookRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
+ * Rota de teste para verificação via navegador (GET)
+ */
+webhookRoutes.get('/evolution', (c) => {
+  return c.text('Opa! O webhook do Zé está online e esperando mensagens via POST da Evolution API. 🌿');
+});
+
+/**
  * Webhook para Evolution API
  * Recebe mensagens do WhatsApp e responde usando IA
  */
