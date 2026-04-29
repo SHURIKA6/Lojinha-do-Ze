@@ -6,6 +6,8 @@ export interface DashboardData {
   profit: number;
   activeOrders: number;
   totalSales: number;
+  uniqueVisitors: number;
+  conversionRate: number;
   lowStock: Array<{
     id: string | number;
     name: string;
@@ -28,30 +30,34 @@ export interface DashboardData {
     name: string;
     value: number;
   }>;
+  monthlyRevenue: Array<{
+    month: string;
+    total: number;
+  }>;
 }
 
 export async function getDashboard(): Promise<DashboardData | null> {
-  const res = await request<any>('/panel-data');
+  const res = await request<any>('/dashboard');
   
-  // O backend retorna os dados diretamente (c.json({ monthRevenue, ... }))
-  // Ou pode retornar no formato ApiResponse { success, data }
   const data = res?.data || res;
   
   if (!data || typeof data !== 'object') {
     return null;
   }
 
-  // Sanitização básica para garantir que campos numéricos existam
   return {
     monthRevenue: Number(data.monthRevenue || 0),
     monthExpenses: Number(data.monthExpenses || 0),
     profit: Number(data.profit || 0),
     activeOrders: Number(data.activeOrders || 0),
     totalSales: Number(data.totalSales || 0),
+    uniqueVisitors: Number(data.uniqueVisitors || 0),
+    conversionRate: Number(data.conversionRate || 0),
     lowStock: Array.isArray(data.lowStock) ? data.lowStock : [],
     recentOrders: Array.isArray(data.recentOrders) ? data.recentOrders : [],
     chartData: Array.isArray(data.chartData) ? data.chartData : [],
-    categoryChart: Array.isArray(data.categoryChart) ? data.categoryChart : []
+    categoryChart: Array.isArray(data.categoryChart) ? data.categoryChart : [],
+    monthlyRevenue: Array.isArray(data.monthlyRevenue) ? data.monthlyRevenue : []
   };
 }
 

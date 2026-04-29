@@ -12,6 +12,36 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const biService = new BusinessIntelligenceService();
 const forecastService = new DemandForecastService();
 
+// Rota pública para rastreamento de analytics (visitantes)
+router.post('/track', async (c) => {
+  try {
+    const db = c.get('db');
+    const body = await c.req.json() as any;
+    const { eventType, sessionId, pageUrl, metadata } = body;
+    const user = c.get('user') as any;
+
+    await db.query(
+      `INSERT INTO analytics_events (event_type, session_id, user_id, page_url, metadata, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        eventType || 'page_view',
+        sessionId || 'unknown',
+        user?.id || null,
+        pageUrl || '',
+        JSON.stringify(metadata || {}),
+        c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '',
+        c.req.header('user-agent') || ''
+      ]
+    );
+
+    return jsonSuccess(c, { tracked: true });
+  } catch (error) {
+    logger.error('Erro ao rastrear evento', error as Error);
+    // Não paramos a navegação por erro de analytics, retornamos sucesso silencioso
+    return jsonSuccess(c, { tracked: false });
+  }
+});
+
 router.use('*', authMiddleware, adminOnly);
 
 // Rota para Previsão de Demanda (Estoque)

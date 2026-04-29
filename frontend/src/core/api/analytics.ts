@@ -30,3 +30,21 @@ export async function getDemandForecast(): Promise<ForecastResponse> {
 export async function getReviewSentiment(): Promise<SentimentResponse> {
   return request<SentimentResponse>('/panel-metrics/bi/sentiment');
 }
+
+export interface TrackEventData {
+  eventType: string;
+  sessionId: string;
+  pageUrl: string;
+  metadata?: Record<string, any>;
+}
+
+export async function trackEvent(data: TrackEventData): Promise<void> {
+  try {
+    await request('/analytics/track', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  } catch (error) {
+    console.error('Failed to track event', error);
+  }
+}

@@ -12,6 +12,8 @@ import AccessibilityStyles from '@/components/common/AccessibilityStyles';
 import SkipLink from '@/components/common/SkipLink';
 import { Metadata, Viewport } from 'next';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import AnalyticsTracker from '@/components/common/AnalyticsTracker';
+import { Suspense } from 'react';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -122,6 +124,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ConfirmDialogProvider>
               <AuthProvider>
                 <ServiceWorkerRegistration />
+                <Suspense fallback={null}>
+                  <AnalyticsTracker />
+                </Suspense>
                 <A11yAnnouncer />
                 <SkipLink />
                 <main id="main-content">

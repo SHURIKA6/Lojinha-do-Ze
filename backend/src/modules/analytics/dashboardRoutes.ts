@@ -37,7 +37,7 @@ router.get('/', async (c) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    // Merge all 8 queries into a single statement to minimize round-trips
+    // Merge all 9 queries into a single statement to minimize round-trips
     const dashboardQuery = `
       WITH revenue AS (
         SELECT COALESCE(SUM(value), 0) AS total FROM transactions 
@@ -78,6 +78,18 @@ router.get('/', async (c) => {
         SELECT COALESCE(json_agg(t), '[]'::json) as data FROM (
           SELECT category AS name, COUNT(*) AS value FROM products GROUP BY category
         ) t
+      ),
+      visitors AS (
+        SELECT COUNT(DISTINCT session_id) AS count FROM analytics_events
+        WHERE created_at BETWEEN $1 AND $2
+      ),
+      monthly_revenue_list AS (
+        SELECT COALESCE(json_agg(t), '[]'::json) as data FROM (
+          SELECT TO_CHAR(date, 'YYYY-MM') AS month, SUM(value) AS total 
+          FROM transactions 
+          WHERE type = 'receita' AND date >= CURRENT_DATE - INTERVAL '6 months'
+          GROUP BY TO_CHAR(date, 'YYYY-MM') ORDER BY month ASC
+        ) t
       )
       SELECT 
         (SELECT total FROM revenue) as month_revenue,
@@ -87,7 +99,9 @@ router.get('/', async (c) => {
         (SELECT data FROM low_stock_list) as low_stock,
         (SELECT data FROM recent_orders_list) as recent_orders,
         (SELECT data FROM daily_tx_list) as daily_tx,
-        (SELECT data FROM category_list) as category_chart;
+        (SELECT data FROM category_list) as category_chart,
+        (SELECT count FROM visitors) as unique_visitors,
+        (SELECT data FROM monthly_revenue_list) as monthly_revenue;
     `;
 
     const res = await db.query(dashboardQuery, [monthStart, monthEnd]);
@@ -129,6 +143,11 @@ router.get('/', async (c) => {
       recentOrders,
       chartData: Object.values(chartData),
       categoryChart,
+      uniqueVisitors: toNumber(row.unique_visitors),
+      conversionRate: toNumber(row.unique_visitors) > 0 
+        ? (toNumber(row.total_sales_count) / toNumber(row.unique_visitors)) * 100 
+        : 0,
+      monthlyRevenue: toObjectArray<any>(row.monthly_revenue)
     });
   } catch (error) {
     logger.error('Erro no Dashboard', error as Error);

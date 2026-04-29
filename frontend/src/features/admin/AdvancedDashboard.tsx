@@ -116,6 +116,8 @@ export default function AdvancedDashboard() {
     const profit = data.profit || 0;
     const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
     const avgOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
+    const conversionRate = data.conversionRate || 0;
+    const uniqueVisitors = data.uniqueVisitors || 0;
 
     return {
       totalRevenue,
@@ -124,8 +126,9 @@ export default function AdvancedDashboard() {
       profit,
       profitMargin,
       avgOrderValue,
-      conversionRate: 85.5, // Simulado
-      customerSatisfaction: 92.3, // Simulado
+      conversionRate,
+      uniqueVisitors,
+      customerSatisfaction: 94.8, // Ainda simulado até termos sistema de reviews
     };
   }, [data]);
 
@@ -306,6 +309,21 @@ export default function AdvancedDashboard() {
             </span>
             <span className="metric-card__change metric-card__change--positive">
               <FiArrowUp /> +5.8%
+            </span>
+          </div>
+        </div>
+
+        <div className="metric-card" style={{ '--metric-color': 'var(--secondary-500)' } as React.CSSProperties}>
+          <div className="metric-card__icon">
+            <FiUsers />
+          </div>
+          <div className="metric-card__content">
+            <span className="metric-card__label">Visitantes Únicos</span>
+            <span className="metric-card__value">
+              {metrics?.uniqueVisitors || 0}
+            </span>
+            <span className="metric-card__change metric-card__change--positive">
+              <FiActivity /> Tempo real
             </span>
           </div>
         </div>
@@ -506,6 +524,54 @@ export default function AdvancedDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gráfico de comparativo mensal */}
+      <div className="admin-dashboard__charts">
+        <div className="dashboard-card">
+          <div className="dashboard-card__header">
+            <h3 className="dashboard-card__title">
+              <FiBarChart2 className="dashboard-card__title-icon" style={{ color: 'var(--primary-500)' }} />
+              Faturamento Mensal (6 Meses)
+            </h3>
+          </div>
+          <div className="dashboard-card__body--padded" style={{ height: '300px' }}>
+            {data?.monthlyRevenue && data.monthlyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={data.monthlyRevenue}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
+                    tickFormatter={(value) => `R$ ${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: 'none', 
+                      boxShadow: 'var(--shadow-md)',
+                      backgroundColor: 'var(--bg-primary)'
+                    }}
+                    formatter={(value: any) => [formatCurrency(value), 'Faturamento']}
+                  />
+                  <Bar dataKey="total" fill="var(--primary-500)" radius={[4, 4, 0, 0]} barSize={40} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="dashboard-empty dashboard-empty--centered">
+                <FiBarChart2 className="dashboard-empty__icon" />
+                <p>Sem histórico suficiente para o comparativo.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
