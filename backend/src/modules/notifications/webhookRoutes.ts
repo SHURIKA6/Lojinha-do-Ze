@@ -56,11 +56,10 @@ webhookRoutes.post('/evolution', async (c) => {
     const phone = rawPhone.split('@')[0].replace(/[^0-9]/g, '');
 
     // Verificação de administradores específicos
-    const isAdmin = [
-      env.ZE_PHONE_1,
-      env.ZE_PHONE_2,
-      env.SHURA_PHONE
-    ].filter(Boolean).includes(phone);
+    const adminPhones = [env.ZE_PHONE_1, env.ZE_PHONE_2, env.SHURA_PHONE].filter(Boolean);
+    const isAdmin = adminPhones.includes(phone);
+
+    logger.info('Verificação de Admin:', { phone, isAdmin, adminList: adminPhones });
 
     // 2. Processar com a IA do Seu Zé
     const aiResponse = await processWhatsAppWithAI(db, env, phone, text, isAdmin);
