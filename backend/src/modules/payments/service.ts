@@ -69,10 +69,21 @@ export class MercadoPagoService {
         date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString()
       };
 
+      logger.info('Creating PIX payment', {
+        amount: transaction_amount,
+        external_reference,
+        email: email.substring(0, 3) + '***',
+      });
+
       const requestOptions = idempotencyKey ? { idempotencyKey } : {};
       const result = await this.payment.create({ body, ...requestOptions });
       
       const transactionData = (result as any).point_of_interaction?.transaction_data;
+
+      logger.info('PIX payment created successfully', {
+        paymentId: result.id,
+        status: result.status,
+      });
 
       return {
         id: result.id,
@@ -84,11 +95,26 @@ export class MercadoPagoService {
         external_reference: result.external_reference
       };
     } catch (error: any) {
-      logger.error('Detailed Mercado Pago Error', null as any, {
+      // Capturar detalhes completos do erro do SDK
+      const errorDetails: Record<string, any> = {
         message: error.message,
         stack: error.stack,
-        cause: error.cause
-      });
+        cause: error.cause,
+      };
+
+      // SDK do Mercado Pago pode retornar status e response body
+      if (error.status) errorDetails.status = error.status;
+      if (error.statusCode) errorDetails.statusCode = error.statusCode;
+      if (error.response) {
+        try {
+          errorDetails.response = typeof error.response === 'string' ? error.response : JSON.stringify(error.response);
+        } catch {
+          errorDetails.response = '[non-serializable]';
+        }
+      }
+      if (error.cause?.message) errorDetails.causeMessage = error.cause.message;
+
+      logger.error('Detailed Mercado Pago Error', null as any, errorDetails);
       throw new Error(error.message || 'Erro ao criar pagamento no Mercado Pago', { cause: error });
     }
   }

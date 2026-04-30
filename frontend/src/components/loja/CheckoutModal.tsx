@@ -142,14 +142,14 @@ export default function CheckoutModal({
           <div className={styles.confirmationIcon}>
             <FiCheckCircle style={isPix && !pixConfirmed ? { color: 'var(--info-500)' } : {}} />
           </div>
-          <h2>Pedido #{orderResult.order.id}</h2>
+          <h2>Pedido #{orderResult.id}</h2>
           
           <div className={styles.confirmationCard}>
             <div className={styles.confirmationMeta}>
               <div>
                 <span>Total</span>
                 <div className={styles.confirmationAmount}>
-                  {formatCurrency(orderResult.order.total)}
+                  {formatCurrency(orderResult.total)}
                 </div>
               </div>
 
@@ -226,8 +226,8 @@ export default function CheckoutModal({
                   try {
                     const { getPixPaymentStatus } = await import('@/core/api');
                     const status = await getPixPaymentStatus(orderResult.pix.id, {
-                      orderId: orderResult.order.id,
-                      phone: orderResult.order.customer_phone,
+                      orderId: orderResult.id,
+                      phone: orderResult.customer_phone,
                     });
                     if (status.status === 'approved') {
                       setPixConfirmed(true);

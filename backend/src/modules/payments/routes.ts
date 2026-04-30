@@ -114,9 +114,12 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
     return c.json(payment, 201);
   } catch (error: any) {
     const errorId = crypto.randomUUID().split('-')[0];
+    const isConfigError = error.message?.includes('não definido');
+    
     logger.error(`Erro ao processar pagamento Pix [${errorId}]`, error, { 
       orderId: payload.orderId,
-      email: payload.email
+      email: payload.email,
+      isConfigError,
     });
 
     await logSystemEvent(db, c.env, 'error', `Falha no Pagamento Pix [${errorId}]: ${error.message}`, {
@@ -124,6 +127,10 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
       email: payload.email,
       errorId
     }, error).catch(err => logger.error('Falha ao logar erro de pagamento no banco', err));
+
+    if (isConfigError) {
+      return jsonError(c, 503, 'Serviço de pagamento não configurado. Entre em contato com o administrador.', { errorId });
+    }
 
     return jsonError(c, 500, 'Erro ao criar pagamento no Mercado Pago', { errorId });
   }

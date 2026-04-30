@@ -73,7 +73,7 @@ export default function AddressPicker({
       const L = (await import('leaflet')).default;
       await import('leaflet/dist/leaflet.css');
 
-      (L.Icon.Default.prototype as any)._getIconUrl = undefined;
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
         iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -140,9 +140,21 @@ export default function AddressPicker({
 
     return () => {
       mounted = false;
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      try {
+        if (markerRef.current) {
+          markerRef.current.remove();
+          markerRef.current = null;
+        }
+      } catch {
+        // Marker may not have fully initialized
+      }
+      try {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+      } catch {
+        // Map may not have fully initialized
       }
       setMapReady(false);
     };

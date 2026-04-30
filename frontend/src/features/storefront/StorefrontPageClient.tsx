@@ -349,7 +349,7 @@ export default function StorefrontPageClient({ initialCatalog = null }: Storefro
         setPointsToRedeem={setPointsToRedeem}
         usePoints={usePoints}
         setUsePoints={setUsePoints}
-        onSendWhatsApp={() => sendWhatsAppReceipt(orderResult.order, orderResult.order.items, orderResult._paymentMethod)}
+        onSendWhatsApp={() => sendWhatsAppReceipt(orderResult, orderResult.items || [], orderResult._paymentMethod)}
       />
     </div>
   );
