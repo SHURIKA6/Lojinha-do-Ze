@@ -48,7 +48,7 @@ export default function OfflinePage() {
         </div>
       </div>
       
-      <style jsx>{`
+      <style>{`
         .offline-page {
           min-height: 100vh;
           display: flex;
@@ -172,3 +172,4 @@ export default function OfflinePage() {
     </div>
   );
 }
+
