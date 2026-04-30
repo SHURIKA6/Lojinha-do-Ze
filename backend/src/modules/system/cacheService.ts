@@ -296,6 +296,20 @@ export const cacheService = {
     reportCache.clear();
   },
 
+  resetMetrics: () => {
+    metrics.hits = 0;
+    metrics.misses = 0;
+    metrics.sets = 0;
+    metrics.invalidations = 0;
+    metrics.sessionHits = 0;
+    metrics.sessionMisses = 0;
+    metrics.queryHits = 0;
+    metrics.queryMisses = 0;
+    metrics.reportHits = 0;
+    metrics.reportMisses = 0;
+    metrics.evictions = 0;
+  },
+
   getDetailedStats: () => ({
     mainCache: { size: cache.size, hitRate: metrics.hits + metrics.misses > 0 ? (metrics.hits / (metrics.hits + metrics.misses) * 100).toFixed(1) + '%' : 'N/A' },
     sessionCache: { size: sessionCache.size, hitRate: metrics.sessionHits + metrics.sessionMisses > 0 ? (metrics.sessionHits / (metrics.sessionHits + metrics.sessionMisses) * 100).toFixed(1) + '%' : 'N/A' },
