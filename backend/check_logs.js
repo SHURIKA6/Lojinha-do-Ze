@@ -2,7 +2,12 @@
 import { neon } from '@neondatabase/serverless';
 import 'dotenv/config';
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_0lKf2oLxpyUB@ep-blue-bar-ajrpgupt-pooler.c-3.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('ERRO: A variável de ambiente DATABASE_URL não está definida.');
+  process.exit(1);
+}
 
 async function main() {
   const sql = neon(DATABASE_URL, { fullResults: true });

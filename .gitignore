@@ -72,3 +72,4 @@ backend/scripts/deploy-safe.cjs
 *.db
 *.db-journal
 roadmap.md
+backend/scratch/
