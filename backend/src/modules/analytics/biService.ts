@@ -5,7 +5,7 @@
 
 import { logger } from '../../core/utils/logger';
 import { cacheService } from '../system/cacheService';
-import { PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../../core/types';
+import { Database, Bindings, ExecutionContext, PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../../core/types';
 
 /**
  * Tipos de recomendação
@@ -74,16 +74,18 @@ export class BusinessIntelligenceService {
   private productFeatures = new Map<number, RecommendationProduct>();
   private interactions: Record<string, unknown>[] = [];
   private recommendations = new Map<string | number, ProductRecommendation[]>();
+  private historicalData = new Map<number, HistoricalSalesData>();
 
   constructor() {}
 
   /**
    * Gera recomendações personalizadas para um usuário
    */
-  async generatePersonalizedRecommendations(db: any, userId: string | number, options: RecommendationOptions = {}) {
+  async generatePersonalizedRecommendations(db: Database, userId: string | number, options: RecommendationOptions & { env?: Bindings, ctx?: ExecutionContext } = {}) {
+    const { env, ctx } = options;
     try {
       const cacheKey = `recommendations:${userId}`;
-      let recommendations = await cacheService.get(cacheKey);
+      let recommendations = await cacheService.get(cacheKey, env?.CACHE_KV, ctx);
       
       if (!recommendations) {
         // Carrega perfil do usuário
@@ -100,7 +102,7 @@ export class BusinessIntelligenceService {
         );
         
         // Cache por 1 hora
-        cacheService.set(cacheKey, recommendations, 3600);
+        await cacheService.set(cacheKey, recommendations, 3600, env?.CACHE_KV, ctx);
       }
       
       return { success: true, recommendations };
@@ -108,6 +110,26 @@ export class BusinessIntelligenceService {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       logger.error('Erro ao gerar recomendações personalizadas', error);
       return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Gera recomendações em lote para múltiplos usuários
+   */
+  async generateBatchRecommendations(db: Database, userIds: (string | number)[], options: RecommendationOptions & { env?: Bindings, ctx?: ExecutionContext } = {}) {
+    const { env, ctx } = options;
+    try {
+      const results = [];
+      for (const userId of userIds) {
+        const result = await this.generatePersonalizedRecommendations(db, userId, options);
+        if (result.success) {
+          results.push({ userId, recommendations: result.recommendations });
+        }
+      }
+      return { success: true, results };
+    } catch (error) {
+      logger.error('Erro ao gerar recomendações em lote', error as Error);
+      return { success: false, error: (error as Error).message };
     }
   }
 
@@ -449,9 +471,20 @@ export class BusinessIntelligenceService {
   /**
    * Prevê demanda de estoque
    */
-  async predictStockDemand(productId: number, daysAhead = 30) {
+  /**
+   * Prevê demanda de estoque (Integrado com o serviço de previsão)
+   */
+  async generateForecast(db: any, productId: number, daysAhead = 30, algorithm = 'moving_average', env?: any, ctx?: any) {
     try {
-      const historicalData = await this.getHistoricalSalesData(productId);
+      // Carrega dados históricos se necessário
+      if (!this.historicalData.has(productId)) {
+        await this.loadHistoricalData(db, productId, 90, env, ctx);
+      }
+      
+      const historicalData = this.historicalData.get(productId);
+      if (!historicalData) {
+        throw new Error(`Falha ao carregar dados históricos para o produto ${productId}`);
+      }
       const prediction = await this.calculateDemandPrediction(historicalData, daysAhead);
 
       return {
@@ -470,6 +503,41 @@ export class BusinessIntelligenceService {
       logger.error('Erro na previsão de estoque', error);
       return { success: false, error: errorMessage };
     }
+  }
+
+  /**
+   * Carrega dados históricos de vendas do banco de dados
+   */
+  async loadHistoricalData(db: any, productId: number, days: number, _env?: any, _ctx?: any) {
+    const { rows } = await db.query(`
+      SELECT 
+        created_at::date as date, 
+        SUM(CASE 
+          WHEN (item->>'quantity') ~ '^[0-9]+$' THEN (item->>'quantity')::int 
+          ELSE 0 
+        END) as quantity
+      FROM orders, jsonb_array_elements(CASE WHEN jsonb_typeof(items) = 'array' THEN items ELSE '[]'::jsonb END) as item
+      WHERE (item->>'productId')::int = $1 
+        AND status = 'concluido'
+        AND created_at >= NOW() - INTERVAL '1 day' * $2
+      GROUP BY created_at::date
+      ORDER BY date ASC
+    `, [productId, days]);
+
+    const sales = rows.map((r: any) => ({
+      date: new Date(r.date).toISOString(),
+      quantity: Number(r.quantity)
+    }));
+
+    const totalSales = sales.reduce((sum: number, s: any) => sum + s.quantity, 0);
+    const averageDailySales = sales.length > 0 ? totalSales / sales.length : 0;
+
+    this.historicalData.set(productId, {
+      productId,
+      sales,
+      averageDailySales,
+      trend: 'stable'
+    });
   }
 
   /**
@@ -542,7 +610,9 @@ export class BusinessIntelligenceService {
       
       const summary = {
         totalReviews: reviews.length,
-        averageSentiment: analyses.reduce((sum, a) => sum + a.sentiment, 0) / analyses.length,
+        averageSentiment: reviews.length > 0 
+          ? analyses.reduce((sum, a) => sum + a.sentiment, 0) / analyses.length 
+          : 0.5,
         positiveCount: analyses.filter(a => a.sentiment > 0.6).length,
         negativeCount: analyses.filter(a => a.sentiment < 0.4).length,
         neutralCount: analyses.filter(a => a.sentiment >= 0.4 && a.sentiment <= 0.6).length,

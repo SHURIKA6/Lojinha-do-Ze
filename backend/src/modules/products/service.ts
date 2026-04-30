@@ -1,4 +1,4 @@
-import { Database } from '../../core/types';
+import { Database, Bindings, ExecutionContext } from '../../core/types';
 import { cacheService } from '../system/cacheService';
 import { notificationService, NOTIFICATION_TYPES } from '../system/notificationService';
 import { CACHE_PREFIXES } from '../../core/domain/cacheKeys';
@@ -11,7 +11,7 @@ import {
 } from '../../core/utils/normalize';
 import { logger } from '../../core/utils/logger';
 
-export async function getProducts(db: Database, limit: number, offset: number) {
+export async function getProducts(db: Database, limit: number, offset: number, env?: Bindings, ctx?: ExecutionContext) {
   return productRepo.listProducts(db, limit, offset);
 }
 
@@ -25,12 +25,14 @@ export async function getCatalog(
     sortBy?: string;
     limit: number; 
     offset: number;
+    env?: any;
+    ctx?: any;
   }
 ) {
   const { search, category, minPrice, maxPrice, sortBy, limit, offset } = options;
   const cacheKey = `${CACHE_PREFIXES.CATALOG}${limit}_${offset}_${search || ''}_${category || ''}_${minPrice || ''}_${maxPrice || ''}_${sortBy || ''}`;
 
-  const cached = await cacheService.get(cacheKey, (options as any).env?.CACHE_KV);
+  const cached = await cacheService.get(cacheKey, options.env?.CACHE_KV, options.ctx);
   if (cached) {
     return cached;
   }
@@ -55,15 +57,16 @@ export async function getCatalog(
     offset,
   };
 
-  await cacheService.set(cacheKey, response, CATALOG_CACHE_TTL_SECONDS, (options as any).env?.CACHE_KV);
+  // Não bloqueia a resposta esperando o cache ser escrito no KV
+  cacheService.set(cacheKey, response, CATALOG_CACHE_TTL_SECONDS, options.env?.CACHE_KV, options.ctx);
   return response;
 }
 
-export async function getProduct(db: Database, id: string) {
+export async function getProduct(db: Database, id: string, env?: Bindings, ctx?: ExecutionContext) {
   return productRepo.getProductById(db, id);
 }
 
-export async function createProduct(db: Database, payload: any) {
+export async function createProduct(db: Database, payload: any, env?: Bindings, ctx?: ExecutionContext) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -95,7 +98,8 @@ export async function createProduct(db: Database, payload: any) {
     }
 
     await client.query('COMMIT');
-    await cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, (payload as any).env?.CACHE_KV);
+    // Invalidação de cache em background
+    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, env?.CACHE_KV, ctx);
     return product;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -109,7 +113,7 @@ export async function createProduct(db: Database, payload: any) {
   }
 }
 
-export async function updateProduct(db: Database, id: string, payload: any) {
+export async function updateProduct(db: Database, id: string, payload: any, env?: Bindings, ctx?: ExecutionContext) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -141,7 +145,7 @@ export async function updateProduct(db: Database, id: string, payload: any) {
         productName: updatedProduct.name,
         quantity: updatedProduct.quantity,
         productId: updatedProduct.id
-      }, (payload as any).env).catch(err => logger.error('Low stock notification error (manual update)', err));
+      }, env, {}, ctx).catch(err => logger.error('Low stock notification error (manual update)', err));
     }
 
     if (payload.quantity !== undefined && payload.quantity > oldProduct.quantity) {
@@ -160,7 +164,8 @@ export async function updateProduct(db: Database, id: string, payload: any) {
     }
 
     await client.query('COMMIT');
-    await cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, (payload as any).env?.CACHE_KV);
+    // Invalidação de cache em background
+    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, env?.CACHE_KV, ctx);
     return updatedProduct;
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
@@ -175,10 +180,11 @@ export async function updateProduct(db: Database, id: string, payload: any) {
   }
 }
 
-export async function deleteProduct(db: Database, id: string, env?: any) {
+export async function deleteProduct(db: Database, id: string, env?: Bindings, ctx?: ExecutionContext) {
   const success = await productRepo.deleteProduct(db, id);
   if (success) {
-    await cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, env?.CACHE_KV);
+    // Invalidação de cache em background
+    cacheService.invalidateByPrefix(CACHE_PREFIXES.CATALOG, env?.CACHE_KV, ctx);
   }
   return success;
 }

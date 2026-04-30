@@ -42,3 +42,8 @@ export async function changePassword(payload: any): Promise<any> {
   });
   return res?.data !== undefined ? res.data : res;
 }
+
+export async function refreshToken(): Promise<any> {
+  const res = await request<any>('/auth/refresh', { method: 'POST' });
+  return res?.data !== undefined ? res.data : res;
+}

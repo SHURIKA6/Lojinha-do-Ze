@@ -2,6 +2,8 @@
 // Types Index - Lojinha do Zé
 // ============================================
 
+import { QueryResult, QueryResultRow } from '@neondatabase/serverless';
+
 // User & Auth Types
 export interface User {
   id: string;
@@ -251,7 +253,7 @@ export interface RequestWithUser {
 
 // Database Types
 export interface Database {
-  query<T = any>(text: string, params?: any[]): Promise<any>;
+  query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
   connect(): Promise<any>;
   close(): Promise<void>;
 }
@@ -279,7 +281,8 @@ export type Bindings = {
   ZE_PHONE_1?: string;
   ZE_PHONE_2?: string;
   SHURA_PHONE?: string;
-  CACHE_KV: any;
+  CACHE_KV: KVNamespace; // Cloudflare KVNamespace
+  ANALYTICS_KV?: KVNamespace;
   [key: string]: any;
 };
 
@@ -291,9 +294,11 @@ export type Variables = {
   [key: string]: any;
 };
 
-export interface HonoCloudflareContext {
-  executionCtx: {
-    waitUntil: (promise: Promise<any>) => void;
-  };
+export interface ExecutionContext {
+  waitUntil(promise: Promise<any>): void;
+  passThroughOnException(): void;
 }
 
+export interface HonoCloudflareContext {
+  executionCtx: ExecutionContext;
+}

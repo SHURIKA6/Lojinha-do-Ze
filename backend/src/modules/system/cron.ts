@@ -2,6 +2,8 @@ import { Bindings, Database } from '../../core/types';
 import { createDb } from '../../core/db';
 import { sendWhatsAppMessage } from '../notifications/whatsapp';
 import { logger } from '../../core/utils/logger';
+import { getRefreshTokenService } from '../auth/service';
+import { deleteExpiredSessions } from '../auth/repository';
 
 export async function handleScheduledTasks(env: Bindings) {
   logger.info('Starting scheduled tasks');
@@ -10,6 +12,7 @@ export async function handleScheduledTasks(env: Bindings) {
   
   try {
     await sendPaymentReminders(db, env);
+    await cleanupAuthTokens(db, env);
   } catch (error) {
     logger.error('Scheduled tasks failed', error as Error);
   } finally {
@@ -37,5 +40,27 @@ async function sendPaymentReminders(db: Database, env: Bindings) {
     
     await sendWhatsAppMessage(env, order.customer_phone, msg);
     logger.info(`Payment reminder sent for order #${order.id}`);
+  }
+}
+
+async function cleanupAuthTokens(db: Database, env: Bindings) {
+  logger.info('Cleaning up expired auth tokens and sessions');
+  
+  try {
+    // 1. Limpa sessões expiradas no banco (short-lived)
+    const sessionCount = await deleteExpiredSessions(db);
+    if (sessionCount > 0) {
+      logger.info(`Cleaned up ${sessionCount} expired sessions`);
+    }
+
+    // 2. Limpa refresh tokens expirados (long-lived)
+    const refreshService = getRefreshTokenService(db);
+    const refreshCount = await refreshService.cleanupExpiredTokens(env);
+    
+    if (refreshCount > 0) {
+      logger.info(`Cleaned up ${refreshCount} expired/revoked refresh tokens`);
+    }
+  } catch (error) {
+    logger.error('Failed to cleanup auth tokens', error as Error);
   }
 }

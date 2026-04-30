@@ -145,7 +145,7 @@ export class NotificationService {
   /**
    * Envia notificação para os canais apropriados
    */
-  async send(type: NotificationType, data: any, env: any, options: NotificationOptions = {}) {
+  async send(type: NotificationType, data: any, env: any, options: NotificationOptions = {}, ctx?: any) {
     try {
       const template = NOTIFICATION_TEMPLATES[type];
       if (!template) {
@@ -167,22 +167,29 @@ export class NotificationService {
       };
 
       this.pendingNotifications.set(notification.id, notification);
-      const results = await this.processChannels(notification, env);
       
-      notification.status = results.every(r => r.success) ? 'sent' : 'partial';
-      notification.sentAt = new Date();
-      notification.results = results;
+      const sendTask = (async () => {
+        const results = await this.processChannels(notification, env, ctx);
+        notification.status = results.every(r => r.success) ? 'sent' : 'partial';
+        notification.sentAt = new Date();
+        notification.results = results;
+        this.moveToHistory(notification);
 
-      this.moveToHistory(notification);
+        logger.info('Notificação enviada', {
+          id: notification.id,
+          type,
+          channels: notification.channels,
+          status: notification.status
+        });
+      })();
 
-      logger.info('Notificação enviada', {
-        id: notification.id,
-        type,
-        channels: notification.channels,
-        status: notification.status
-      });
-
-      return { success: true, notificationId: notification.id, results };
+      if (ctx?.waitUntil) {
+        ctx.waitUntil(sendTask);
+        return { success: true, notificationId: notification.id, status: 'processing' };
+      } else {
+        await sendTask;
+        return { success: true, notificationId: notification.id, results: notification.results };
+      }
     } catch (error: any) {
       logger.error('Erro ao enviar notificação', error, { type, data });
       return { success: false, error: error.message };
@@ -192,12 +199,12 @@ export class NotificationService {
   /**
    * Processa envio para cada canal
    */
-  async processChannels(notification: Notification, env: any) {
+  async processChannels(notification: Notification, env: any, ctx?: any) {
     const results: NotificationResult[] = [];
 
     for (const channel of notification.channels) {
       try {
-        const result = await this.sendToChannel(channel, notification, env);
+        const result = await this.sendToChannel(channel, notification, env, ctx);
         results.push({ channel, success: true, result });
       } catch (error: any) {
         logger.error(`Erro ao enviar notificação via ${channel}`, error);
@@ -211,7 +218,7 @@ export class NotificationService {
   /**
    * Envia para canal específico
    */
-  async sendToChannel(channel: NotificationChannel, notification: Notification, env: any) {
+  async sendToChannel(channel: NotificationChannel, notification: Notification, env: any, ctx?: any) {
     switch (channel) {
       case NOTIFICATION_CHANNELS.EMAIL:
         return await this.sendEmail(notification);
@@ -224,7 +231,7 @@ export class NotificationService {
       case NOTIFICATION_CHANNELS.WEBHOOK:
         return await this.sendWebhook(notification);
       case NOTIFICATION_CHANNELS.IN_APP:
-        return await this.sendInApp(notification);
+        return await this.sendInApp(notification, env, ctx);
       default:
         throw new Error(`Canal não suportado: ${channel}`);
     }
@@ -310,14 +317,14 @@ export class NotificationService {
   /**
    * Envia notificação in-app
    */
-  async sendInApp(notification: Notification) {
+  async sendInApp(notification: Notification, env?: any, ctx?: any) {
     const userId = notification.data.userId;
     if (!userId) {
       throw new Error('UserId não fornecido para notificação in-app');
     }
 
     const cacheKey = `notifications:${userId}`;
-    const existing = (await cacheService.get(cacheKey)) || [];
+    const existing = (await cacheService.get(cacheKey, env?.CACHE_KV, ctx)) || [];
     
     const inAppNotification: InAppNotification = {
       id: notification.id,
@@ -335,7 +342,7 @@ export class NotificationService {
       existing.splice(50);
     }
 
-    cacheService.set(cacheKey, existing, 86400); // 24 horas
+    await cacheService.set(cacheKey, existing, 86400, env?.CACHE_KV, ctx);
     
     return { success: true, channel: 'in_app', notificationId: notification.id };
   }

@@ -20,6 +20,10 @@ const MAX_QUERY_CACHE_SIZE = 200;
 const MAX_REPORT_CACHE_SIZE = 50;
 
 import { logger } from '../../core/utils/logger';
+import { Bindings, HonoCloudflareContext } from '../../core/types';
+
+type KVNamespace = Bindings['CACHE_KV'];
+type ExecutionContext = HonoCloudflareContext['executionCtx'];
 
 // Métricas de cache expandidas
 const metrics = { 
@@ -37,7 +41,7 @@ const metrics = {
 };
 
 export const cacheService = {
-  get: async (key: string, kv?: any) => {
+  get: async (key: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     const entry = cache.get(key);
     if (entry) {
       if (Date.now() > entry.expiry) {
@@ -67,7 +71,7 @@ export const cacheService = {
     return null;
   },
 
-  set: async (key: string, value: any, ttlSeconds = 60, kv?: any) => {
+  set: async (key: string, value: any, ttlSeconds = 60, kv?: KVNamespace, ctx?: ExecutionContext) => {
     if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
       const now = Date.now();
       for (const [k, v] of cache.entries()) {
@@ -87,22 +91,43 @@ export const cacheService = {
     });
 
     if (kv) {
-      try {
-        await kv.put(key, JSON.stringify(value), { expirationTtl: ttlSeconds });
-      } catch (e) {
-        logger.error(`Erro ao escrever no KV: ${key}`, e as Error);
+      const putOp = async () => {
+        try {
+          await kv.put(key, JSON.stringify(value), { expirationTtl: ttlSeconds });
+        } catch (e) {
+          logger.error(`Erro ao escrever no KV: ${key}`, e as Error);
+        }
+      };
+
+      // Se tivermos acesso ao executionCtx, usamos waitUntil para garantir a escrita sem bloquear
+      if (ctx?.waitUntil) {
+        ctx.waitUntil(putOp());
+      } else {
+        putOp().catch(err => logger.error(`Erro assíncrono no KV set: ${key}`, err));
       }
     }
   },
 
-  delete: async (key: string, kv?: any) => {
+  delete: async (key: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     cache.delete(key);
     if (kv) {
-      await kv.delete(key).catch(() => {});
+      const delOp = async () => {
+        try {
+          await kv.delete(key);
+        } catch (e) {
+          logger.error(`Erro ao deletar do KV: ${key}`, e as Error);
+        }
+      };
+
+      if (ctx?.waitUntil) {
+        ctx.waitUntil(delOp());
+      } else {
+        delOp().catch(err => logger.error(`Erro assíncrono no KV delete: ${key}`, err));
+      }
     }
   },
 
-  invalidateByPrefix: async (prefix: string, kv?: any) => {
+  invalidateByPrefix: async (prefix: string, _kv?: KVNamespace, _ctx?: ExecutionContext) => {
     let count = 0;
     for (const key of cache.keys()) {
       if (key.startsWith(prefix)) {
@@ -132,7 +157,7 @@ export const cacheService = {
   }),
 
   // Cache de Sessão (Também async para consistência)
-  getSession: async (sessionId: string, kv?: any) => {
+  getSession: async (sessionId: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     const entry = sessionCache.get(sessionId);
     if (entry) {
       if (Date.now() > entry.expiry) {
@@ -157,7 +182,7 @@ export const cacheService = {
     return null;
   },
 
-  setSession: async (sessionId: string, sessionData: any, ttlSeconds = 3600, kv?: any) => {
+  setSession: async (sessionId: string, sessionData: any, ttlSeconds = 3600, kv?: KVNamespace, ctx?: ExecutionContext) => {
     if (sessionCache.size >= MAX_SESSION_CACHE_SIZE && !sessionCache.has(sessionId)) {
       const now = Date.now();
       for (const [k, v] of sessionCache.entries()) {
@@ -176,14 +201,37 @@ export const cacheService = {
     });
 
     if (kv) {
-      await kv.put(`session:${sessionId}`, JSON.stringify(sessionData), { expirationTtl: ttlSeconds });
+      const putOp = async () => {
+        try {
+          await kv.put(`session:${sessionId}`, JSON.stringify(sessionData), { expirationTtl: ttlSeconds });
+        } catch (e) {
+          logger.error(`Erro ao escrever sessão no KV: ${sessionId}`, e as Error);
+        }
+      };
+      if (ctx?.waitUntil) {
+        ctx.waitUntil(putOp());
+      } else {
+        putOp().catch(err => logger.error(`Erro assíncrono no KV setSession: ${sessionId}`, err));
+      }
     }
   },
 
-  deleteSession: async (sessionId: string, kv?: any) => {
+  deleteSession: async (sessionId: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     sessionCache.delete(sessionId);
     if (kv) {
-      await kv.delete(`session:${sessionId}`).catch(() => {});
+      const delOp = async () => {
+        try {
+          await kv.delete(`session:${sessionId}`);
+        } catch (e) {
+          logger.error(`Erro ao deletar sessão do KV: ${sessionId}`, e as Error);
+        }
+      };
+
+      if (ctx?.waitUntil) {
+        ctx.waitUntil(delOp());
+      } else {
+        delOp().catch(err => logger.error(`Erro assíncrono no KV deleteSession: ${sessionId}`, err));
+      }
     }
   },
 

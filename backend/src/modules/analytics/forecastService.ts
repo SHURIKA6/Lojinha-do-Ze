@@ -5,6 +5,7 @@
 
 import { logger } from '../../core/utils/logger';
 import { cacheService } from '../system/cacheService';
+import { Database, Bindings, ExecutionContext } from '../../core/types';
 
 /**
  * Algoritmos de previsão disponíveis
@@ -54,10 +55,10 @@ export class DemandForecastService {
   /**
    * Carrega dados históricos reais para um produto do banco de dados
    */
-  async loadHistoricalData(db: any, productId: number, days = 90) {
+  async loadHistoricalData(db: Database, productId: number, days = 90, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const cacheKey = `historical:${productId}:${days}`;
-      let data = await cacheService.get(cacheKey);
+      let data = await cacheService.get(cacheKey, env?.CACHE_KV, ctx);
       
       if (!data) {
         // Query real data from inventory_log
@@ -86,7 +87,7 @@ export class DemandForecastService {
           data = this.generateMockHistoricalData(productId, days);
         }
         
-        cacheService.set(cacheKey, data, 3600); // 1 hora
+        cacheService.set(cacheKey, data, 3600, env?.CACHE_KV, ctx); // 1 hora
       }
       
       this.historicalData.set(productId, data);
@@ -203,7 +204,12 @@ export class DemandForecastService {
       sumXX += i * i;
     }
     
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const denominator = (n * sumXX - sumX * sumX);
+    if (Math.abs(denominator) < 1e-10) {
+      return { error: 'Variação insuficiente nos dados para regressão linear' };
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
     const intercept = (sumY - slope * sumX) / n;
     
     const prediction = slope * (n + forecastSteps - 1) + intercept;
@@ -253,18 +259,18 @@ export class DemandForecastService {
       hasSeasonality,
       period: hasSeasonality ? 'weekly' : null,
       pattern: hasSeasonality ? weeklyPattern : null,
-      strength: hasSeasonality ? stdDev / avgSales : 0
+      strength: (hasSeasonality && avgSales > 0) ? stdDev / avgSales : 0
     };
   }
 
   /**
    * Gera previsão de demanda
    */
-  async generateForecast(db: any, productId: number, daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average') {
+  async generateForecast(db: Database, productId: number, daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average', env?: Bindings, ctx?: ExecutionContext) {
     try {
       // Carrega dados históricos se necessário
       if (!this.historicalData.has(productId)) {
-        await this.loadHistoricalData(db, productId);
+        await this.loadHistoricalData(db, productId, 90, env, ctx);
       }
       
       const data = this.historicalData.get(productId);
@@ -327,7 +333,7 @@ export class DemandForecastService {
       
       // Cache da previsão
       const cacheKey = `forecast:${productId}:${daysAhead}:${algorithm}`;
-      cacheService.set(cacheKey, forecast, 1800); // 30 minutos
+      cacheService.set(cacheKey, forecast, 1800, env?.CACHE_KV, ctx); // 30 minutos
       
       this.predictions.set(productId, forecast);
       
@@ -347,12 +353,12 @@ export class DemandForecastService {
   /**
    * Gera previsões para múltiplos produtos
    */
-  async generateBatchForecasts(db: any, productIds: number[], daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average') {
+  async generateBatchForecasts(db: any, productIds: number[], daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average', env?: any, ctx?: any) {
     try {
       const forecasts: ForecastResult[] = [];
       
       for (const productId of productIds) {
-        const result = await this.generateForecast(db, productId, daysAhead, algorithm);
+        const result = await this.generateForecast(db, productId, daysAhead, algorithm, env, ctx);
         if (result.success && result.forecast) {
           forecasts.push(result.forecast);
         }
@@ -368,9 +374,9 @@ export class DemandForecastService {
   /**
    * Obtém previsão de estoque recomendado
    */
-  async getStockRecommendation(db: any, productId: number, currentStock: number, leadTimeDays = 7) {
+  async getStockRecommendation(db: any, productId: number, currentStock: number, leadTimeDays = 7, env?: any, ctx?: any) {
     try {
-      const forecast = await this.generateForecast(db, productId, leadTimeDays);
+      const forecast = await this.generateForecast(db, productId, leadTimeDays, 'moving_average', env, ctx);
       
       if (!forecast.success || !forecast.forecast) {
         return { success: false, error: forecast.error };

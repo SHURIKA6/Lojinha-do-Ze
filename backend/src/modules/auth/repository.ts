@@ -72,5 +72,6 @@ export async function deleteSessionById(client: Database, sessionId: string) {
 }
 
 export async function deleteExpiredSessions(client: Database) {
-  await client.query('DELETE FROM auth_sessions WHERE expires_at <= NOW()');
+  const result = await client.query('DELETE FROM auth_sessions WHERE expires_at <= NOW()');
+  return result.rowCount || 0;
 }

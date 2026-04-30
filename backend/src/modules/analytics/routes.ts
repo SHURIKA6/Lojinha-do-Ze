@@ -55,17 +55,30 @@ router.get('/forecast', async (c) => {
     
     // Gerar relatórios de previsão para produtos (usando Regressão Linear ou Média Móvel)
     const forecastsPromises = products.map(async (p: { id: string; name: string; quantity: number; min_stock: number }) => {
-      const productId = Number(p.id);
-      const forecast = await forecastService.generateForecast(db, productId);
-      
-      return {
-        id: p.id,
-        name: p.name,
-        currentStock: p.quantity,
-        movingAverage: forecast.success ? forecast.forecast?.prediction : 0,
-        regression: forecast.success ? forecast.forecast?.prediction : 0, // Simplificado
-        seasonality: forecast.success ? forecast.forecast?.seasonality : null
-      };
+      try {
+        const productId = Number(p.id);
+        const forecast = await forecastService.generateForecast(db, productId, 30, 'moving_average', c.env, c.executionCtx);
+        
+        return {
+          id: p.id,
+          name: p.name,
+          currentStock: p.quantity,
+          movingAverage: forecast.success ? forecast.forecast?.prediction : 0,
+          regression: forecast.success ? forecast.forecast?.prediction : 0, 
+          seasonality: forecast.success ? forecast.forecast?.seasonality : null
+        };
+      } catch (err) {
+        logger.error(`Erro ao gerar previsão para produto ${p.id}`, err as Error);
+        return {
+          id: p.id,
+          name: p.name,
+          currentStock: p.quantity,
+          movingAverage: 0,
+          regression: 0,
+          seasonality: null,
+          error: true
+        };
+      }
     });
 
     const forecasts = await Promise.all(forecastsPromises);
@@ -104,7 +117,10 @@ router.get('/bi/recommendations', async (c) => {
     const db = c.get('db');
     const user = c.get('user') as any;
     
-    const result = await biService.generatePersonalizedRecommendations(db, user?.id || 1);
+    const result = await biService.generatePersonalizedRecommendations(db, user?.id || 1, { 
+      env: c.env, 
+      ctx: c.executionCtx 
+    });
     setNoStore(c as any);
     return c.json(result);
   } catch (error) {
@@ -128,8 +144,8 @@ router.get('/summary', async (c) => {
       db.query("SELECT COUNT(*) as count, SUM(total) as total_value FROM orders WHERE status != 'cancelado'")
     ]);
 
-    const totalRevenue = parseFloat(revenueRes.rows[0]?.total || '0');
-    const totalOrdersCount = parseInt(totalOrdersRes.rows[0]?.count || '0');
+    const totalRevenue = Number(revenueRes.rows[0]?.total || 0);
+    const totalOrdersCount = Number(totalOrdersRes.rows[0]?.count || 0);
     const avgTicket = totalOrdersCount > 0 ? (totalRevenue / totalOrdersCount) : 0;
 
     setNoStore(c as any);

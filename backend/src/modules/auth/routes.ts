@@ -9,6 +9,8 @@ import { loginLimiter } from '../../core/middleware/rateLimit';
 import { loginSchema } from '../../core/domain/schemas';
 import { Bindings, Variables } from '../../core/types';
 import { logSystemEvent } from '../system/logService';
+import { REFRESH_TOKEN_COOKIE_NAME } from '../../core/domain/constants';
+import { getCookie } from 'hono/cookie';
 
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -61,11 +63,11 @@ router.post(
       });
 
       // Persiste no banco para auditoria
-      await logSystemEvent(db, c.env, 'error', `Falha no Login [${errorId}]: ${message}`, {
+      logSystemEvent(db, c.env, 'error', `Falha no Login [${errorId}]: ${message}`, {
         loginId,
         errorId,
         path: c.req.path
-      }, error).catch(err => logger.error('Falha ao logar erro de login no banco', err));
+      }, error, c.executionCtx);
       
       return jsonError(c, 500, 'Erro interno ao processar login', { errorId });
     }
@@ -78,6 +80,19 @@ router.post(
  */
 router.post('/logout', async (c) => {
   const db = c.get('db');
+  
+  // Revoga o refresh token se existir
+  const refreshToken = getCookie(c, REFRESH_TOKEN_COOKIE_NAME);
+  if (refreshToken) {
+    const refreshService = authService.getRefreshTokenService(db);
+    // Não precisamos aguardar a revogação (background)
+    if (c.executionCtx) {
+      c.executionCtx.waitUntil(refreshService.revokeRefreshToken(refreshToken, c.env, c.executionCtx));
+    } else {
+      await refreshService.revokeRefreshToken(refreshToken, c.env, c.executionCtx);
+    }
+  }
+
   await authService.destroySession(c, db);
   return jsonSuccess(c, { message: 'Logout realizado com sucesso' });
 });
@@ -110,11 +125,11 @@ router.post('/setup-password', async (c) => {
     const errorId = crypto.randomUUID().split('-')[0];
     logger.error(`Erro no setup-password [${errorId}]`, error);
     
-    await logSystemEvent(db, c.env, 'error', `Erro no Setup Password [${errorId}]: ${error.message}`, {
+    logSystemEvent(db, c.env, 'error', `Erro no Setup Password [${errorId}]: ${error.message}`, {
       token,
       code,
       errorId
-    }, error).catch(err => logger.error('Falha ao logar erro de setup-password no banco', err));
+    }, error, c.executionCtx);
 
     return jsonError(c, 500, 'Não foi possível ativar sua conta no momento.', { errorId });
   }
@@ -141,6 +156,44 @@ router.get('/me', async (c) => {
 router.post('/refresh-csrf', authMiddleware, async (c) => {
   const session = c.get('session');
   return jsonSuccess(c, { csrfToken: session.csrfToken });
+});
+
+/**
+ * POST /api/auth/refresh
+ * Usa o Refresh Token para gerar uma nova sessão (Access Token)
+ */
+router.post('/refresh', async (c) => {
+  const db = c.get('db');
+  const refreshToken = getCookie(c, REFRESH_TOKEN_COOKIE_NAME);
+
+  if (!refreshToken) {
+    return jsonError(c, 401, 'Refresh token ausente');
+  }
+
+  try {
+    const refreshService = authService.getRefreshTokenService(db);
+    const ipAddress = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || '0.0.0.0';
+    const userAgent = c.req.header('user-agent') || 'unknown';
+
+    const result = await refreshService.refreshAccessToken(refreshToken, ipAddress, userAgent, c.env, c.executionCtx);
+
+    if (!result.valid || !result.user) {
+      authService.clearSessionCookies(c);
+      return jsonError(c, 401, result.error || 'Refresh token inválido');
+    }
+
+    // Emite uma nova sessão e um novo refresh token (rotação)
+    const { csrfToken } = await authService.issueSession(c, db, result.user);
+
+    return jsonSuccess(c, {
+      user: { id: result.user.id, role: result.user.role },
+      csrfToken,
+    });
+  } catch (error: any) {
+    logger.error('[REFRESH] Erro ao processar renovação', error);
+    authService.clearSessionCookies(c);
+    return jsonError(c, 500, 'Erro ao processar renovação de sessão');
+  }
 });
 
 export default router;

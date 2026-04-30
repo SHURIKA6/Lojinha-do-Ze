@@ -11,37 +11,46 @@ export async function logSystemEvent(
   level: 'info' | 'warn' | 'error',
   message: string,
   context?: any,
-  error?: Error
+  error?: Error,
+  ctx?: any
 ) {
-  try {
-    // Persistência no banco de dados
-    const query = `
-      INSERT INTO system_logs (level, message, context, error_stack)
-      VALUES ($1, $2, $3, $4)
-    `;
-    
-    await db.query(query, [
-      level,
-      message,
-      context ? JSON.stringify(context) : null,
-      error?.stack || null
-    ]);
-
-    // Se for um erro crítico, alerta o Zé via WhatsApp (se configurado)
-    if (level === 'error' && env.ZE_PHONE) {
-      const alertMessage = `⚠️ *ALERTA DE SISTEMA (Lojinha do Zé)*\n\n*Mensagem:* ${message}\n*Erro:* ${error?.message || 'Desconhecido'}\n*Ambiente:* ${env.ENVIRONMENT || 'dev'}\n*Timestamp:* ${new Date().toLocaleString('pt-BR')}`;
+  const logTask = (async () => {
+    try {
+      // Persistência no banco de dados
+      const query = `
+        INSERT INTO system_logs (level, message, context, error_stack)
+        VALUES ($1, $2, $3, $4)
+      `;
       
-      // Envio assíncrono para não travar o fluxo principal
-      sendWhatsAppMessage(env, env.ZE_PHONE, alertMessage).catch(err => {
-         logger.error('Falha ao enviar alerta WhatsApp de erro crítico', err);
+      await db.query(query, [
+        level,
+        message,
+        context ? JSON.stringify(context) : null,
+        error?.stack || null
+      ]);
+
+      // Se for um erro crítico, alerta o Zé via WhatsApp (se configurado)
+      if (level === 'error' && (env.ZE_PHONE || env.ZE_PHONE_1)) {
+        const phone = env.ZE_PHONE || env.ZE_PHONE_1;
+        const alertMessage = `⚠️ *ALERTA DE SISTEMA (Lojinha do Zé)*\n\n*Mensagem:* ${message}\n*Erro:* ${error?.message || 'Desconhecido'}\n*Ambiente:* ${env.ENVIRONMENT || 'dev'}\n*Timestamp:* ${new Date().toLocaleString('pt-BR')}`;
+        
+        await sendWhatsAppMessage(env, phone!, alertMessage).catch(err => {
+           logger.error('Falha ao enviar alerta WhatsApp de erro crítico', err);
+        });
+      }
+    } catch (err) {
+      // Fail-safe: se o log no banco falhar, garantimos que apareça no log do console/Cloudflare
+      logger.error('Falha catastrófica ao persistir log do sistema no banco', err, {
+        originalMessage: message,
+        originalLevel: level
       });
     }
-  } catch (err) {
-    // Fail-safe: se o log no banco falhar, garantimos que apareça no log do console/Cloudflare
-    logger.error('Falha catastrófica ao persistir log do sistema no banco', err, {
-      originalMessage: message,
-      originalLevel: level
-    });
+  })();
+
+  if (ctx?.waitUntil) {
+    ctx.waitUntil(logTask);
+  } else {
+    await logTask;
   }
 }
 

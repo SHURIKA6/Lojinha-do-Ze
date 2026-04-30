@@ -20,7 +20,7 @@ router.get('/', async (c) => {
   const limit = Math.min(parseInt(limitQuery || '') || 50, 100);
   const offset = Math.max(parseInt(offsetQuery || '') || 0, 0);
 
-  const products = await productService.getProducts(db, limit, offset);
+  const products = await productService.getProducts(db, limit, offset, c.env, c.executionCtx);
 
   setNoStore(c as any);
   return c.json(products);
@@ -31,7 +31,7 @@ router.get('/:id', async (c) => {
   const id = c.req.param('id');
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-  const product = await productService.getProduct(db, id);
+  const product = await productService.getProduct(db, id, c.env, c.executionCtx);
 
   if (!product) {
     return jsonError(c, 404, 'Produto não encontrado');
@@ -48,7 +48,7 @@ router.post(
     const db = c.get('db');
     try {
       const payload = c.req.valid('json');
-      const product = await productService.createProduct(db, { ...payload, env: c.env } as any);
+      const product = await productService.createProduct(db, payload, c.env, c.executionCtx);
       return c.json(product, 201);
     } catch (error: any) {
       if (error.type === 'UNIQUE_VIOLATION') {
@@ -57,10 +57,10 @@ router.post(
       const errorId = crypto.randomUUID().split('-')[0];
       logger.error(`Erro ao cadastrar produto [${errorId}]`, error);
       
-      await logSystemEvent(db, c.env, 'error', `Erro ao cadastrar produto [${errorId}]: ${error.message}`, {
+      logSystemEvent(db, c.env, 'error', `Erro ao cadastrar produto [${errorId}]: ${error.message}`, {
         payload: c.req.valid('json'),
         errorId
-      }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+      }, error, c.executionCtx);
 
       return jsonError(c, 500, 'Erro ao cadastrar o novo produto.', { errorId });
     }
@@ -77,7 +77,7 @@ router.put(
 
     try {
       const payload = c.req.valid('json');
-      const updatedProduct = await productService.updateProduct(db, id, { ...payload, env: c.env } as any);
+      const updatedProduct = await productService.updateProduct(db, id, payload, c.env, c.executionCtx);
       return c.json(updatedProduct);
     } catch (error: any) {
       if (error.type === 'UNIQUE_VIOLATION') {
@@ -89,11 +89,11 @@ router.put(
       const errorId = crypto.randomUUID().split('-')[0];
       logger.error(`Erro ao editar produto [${errorId}]`, error);
 
-      await logSystemEvent(db, c.env, 'error', `Erro ao editar produto [${errorId}]: ${error.message}`, {
+      logSystemEvent(db, c.env, 'error', `Erro ao editar produto [${errorId}]: ${error.message}`, {
         id,
         payload: c.req.valid('json'),
         errorId
-      }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+      }, error, c.executionCtx);
 
       return jsonError(c, 500, 'Erro ao salvar as edições do produto.', { errorId });
     }
@@ -106,7 +106,7 @@ router.delete('/:id', async (c) => {
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
   try {
-    const success = await productService.deleteProduct(db, id, c.env);
+    const success = await productService.deleteProduct(db, id, c.env, c.executionCtx);
     if (!success) {
       return jsonError(c, 404, 'Produto não encontrado');
     }
@@ -115,10 +115,10 @@ router.delete('/:id', async (c) => {
     const errorId = crypto.randomUUID().split('-')[0];
     logger.error(`Erro ao excluir produto [${errorId}]`, error);
     
-    await logSystemEvent(db, c.env, 'error', `Erro ao excluir produto [${errorId}]: ${error.message}`, {
+    logSystemEvent(db, c.env, 'error', `Erro ao excluir produto [${errorId}]: ${error.message}`, {
       id,
       errorId
-    }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+    }, error, c.executionCtx);
 
     return jsonError(c, 500, 'Erro ao excluir o produto.', { errorId });
   }

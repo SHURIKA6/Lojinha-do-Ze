@@ -3,8 +3,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 /**
- * ErrorBoundary component to catch rendering errors and show a fallback UI.
- * Now using inline styles to avoid styled-jsx issues in RootLayout.
+ * ErrorBoundary component to catch rendering errors and show a premium fallback UI.
+ * Redesigned with glassmorphism and vibrant gradients.
  */
 interface Props {
   children: ReactNode;
@@ -29,6 +29,11 @@ export default class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
+  private handleReset = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
   public render() {
     if (this.state.hasError) {
       return (
@@ -38,60 +43,105 @@ export default class ErrorBoundary extends Component<Props, State> {
           justifyContent: 'center',
           minHeight: '100vh',
           padding: '2rem',
-          background: '#f8fafc',
-          fontFamily: 'sans-serif'
+          background: 'radial-gradient(circle at top right, #667eea 0%, #764ba2 100%)',
+          fontFamily: 'var(--font-body), system-ui, -apple-system, sans-serif',
+          color: '#ffffff'
         }}>
           <div style={{
-            maxWidth: '480px',
+            maxWidth: '540px',
             width: '100%',
             textAlign: 'center',
-            padding: '2.5rem',
-            background: 'white',
-            borderRadius: '1rem',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+            padding: '3rem',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRadius: '2rem',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            animation: 'fadeIn 0.5s ease-out'
           }}>
+            <div style={{
+              fontSize: '4rem',
+              marginBottom: '1.5rem',
+              filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))'
+            }}>
+              🌿
+            </div>
             <h1 style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#1e293b',
-              marginBottom: '1rem'
-            }}>Oops! Algo deu errado.</h1>
+              fontSize: '2rem',
+              fontWeight: '800',
+              marginBottom: '1rem',
+              letterSpacing: '-0.025em',
+              lineHeight: '1.2'
+            }}>A conexão mística falhou</h1>
             <p style={{
-              color: '#64748b',
-              marginBottom: '2rem',
+              color: 'rgba(255, 255, 255, 0.8)',
+              marginBottom: '2.5rem',
+              fontSize: '1.125rem',
               lineHeight: '1.6'
             }}>
-              Ocorreu um erro inesperado. Por favor, tente atualizar a página ou volte mais tarde.
+              Parece que o "Guardião da Lojinha" tropeçou em um galho. O sistema está sendo restaurado agora mesmo.
             </p>
-            <button 
-              onClick={() => window.location.reload()}
-              style={{
-                background: '#2563eb',
-                color: 'white',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '0.5rem',
-                fontWeight: '600',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Recarregar Página
-            </button>
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                onClick={this.handleReset}
+                style={{
+                  background: 'white',
+                  color: '#764ba2',
+                  padding: '1rem 2rem',
+                  borderRadius: '1rem',
+                  fontWeight: '700',
+                  fontSize: '1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.shadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.shadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                Restaurar Energia
+              </button>
+            </div>
+
             {process.env.NODE_ENV === 'development' && (
-              <pre style={{
-                marginTop: '2rem',
-                padding: '1rem',
-                background: '#f1f5f9',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-                color: '#dc2626',
+              <div style={{
+                marginTop: '3rem',
+                padding: '1.5rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '1rem',
                 textAlign: 'left',
-                overflowX: 'auto'
+                border: '1px solid rgba(255, 255, 255, 0.1)'
               }}>
-                {this.state.error && this.state.error.toString()}
-              </pre>
+                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Detalhes Técnicos</p>
+                <code style={{
+                  fontSize: '0.875rem',
+                  color: '#fb7185',
+                  wordBreak: 'break-all',
+                  fontFamily: 'monospace'
+                }}>
+                  {this.state.error && this.state.error.toString()}
+                </code>
+              </div>
             )}
           </div>
+          
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(20px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}} />
         </div>
       );
     }

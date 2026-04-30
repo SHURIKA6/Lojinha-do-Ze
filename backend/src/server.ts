@@ -26,12 +26,15 @@ import { logSystemEvent } from './modules/system/logService';
 import { apiLimiter } from './core/middleware/rateLimit';
 import { auditMiddleware } from './core/middleware/audit';
 import { csrfMiddleware, optionalAuthMiddleware } from './core/middleware/auth';
+import { timeout } from 'hono/timeout';
 import { Bindings, Variables, Database } from './core/types';
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 const DBLESS_PATH_PREFIXES = ['/api/health', '/api/notifications/ws', '/api/notifications/broadcast'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
 
+// Timeout global de 15 segundos para evitar 504 Gateway Timeout do Cloudflare/Vercel
+app.use('/api/*', timeout(15000));
 app.use('/api/*', apiLimiter);
 app.use('/api/*', createCorsMiddleware());
 app.use('/api/*', securityHeadersMiddleware);
@@ -138,7 +141,8 @@ app.onError((error, c) => {
         userId: user?.id,
         requestId: errorId
       }, 
-      error as Error
+      error as Error,
+      c.executionCtx
     );
 
     if (c.executionCtx?.waitUntil) {

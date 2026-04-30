@@ -112,5 +112,44 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
     throw error;
   }
 
+  // Se receber 401 e não for uma rota que já é de autenticação (evitar loop infinito)
+  if (response.status === 401 && endpoint !== '/auth/refresh' && endpoint !== '/auth/login' && endpoint !== '/auth/logout') {
+    try {
+      // Tenta renovar a sessão
+      const refreshRes = await fetch(buildUrl('/auth/refresh'), {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+        credentials: 'include',
+      });
+
+      if (refreshRes.ok) {
+        // Se renovou com sucesso, repete a requisição original
+        // Importante: Recriamos as headers para pegar o novo CSRF token
+        const newHeaders = new Headers(options.headers || {});
+        if (!SAFE_METHODS.has(method)) {
+          const newCsrf = getCsrfToken();
+          if (newCsrf) newHeaders.set('X-CSRF-Token', newCsrf);
+        }
+        if (!isFormData && options.body !== undefined && !newHeaders.has('Content-Type')) {
+          newHeaders.set('Content-Type', 'application/json');
+        }
+
+        const retryResponse = await fetch(buildUrl(endpoint), {
+          ...options,
+          method,
+          headers: newHeaders,
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        return parseResponse(retryResponse, 'Erro na requisição (retry)');
+      }
+    } catch (refreshError) {
+      console.error('Erro ao tentar renovar sessão automaticamente', refreshError);
+    }
+    
+    // Se falhar o refresh ou der erro, o parseResponse original vai disparar o evento auth:expired
+  }
+
   return parseResponse(response, 'Erro na requisição');
 }

@@ -5,6 +5,7 @@
 
 import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
+import { Bindings, ExecutionContext } from '../../core/types';
 
 /**
  * Recursos do sistema
@@ -126,14 +127,14 @@ export class PermissionService {
   /**
    * Verifica se um usuário tem permissão para uma ação específica
    */
-  async hasPermission(userId: number, resource: Resource, action: Action) {
+  async hasPermission(userId: number, resource: Resource, action: Action, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const cacheKey = `permissions:${userId}`;
-      let permissions: ResourcePermissions | null = await cacheService.get(cacheKey);
+      let permissions: ResourcePermissions | null = await cacheService.get(cacheKey, env?.CACHE_KV, ctx);
       
       if (!permissions) {
-        permissions = await this.getUserPermissions(userId);
-        await cacheService.set(cacheKey, permissions, 3600); // 1 hora
+        permissions = await this.getUserPermissions(userId, env, ctx);
+        await cacheService.set(cacheKey, permissions, 3600, env?.CACHE_KV, ctx); // 1 hora
       }
       
       const resourcePermissions = permissions[resource];
@@ -151,16 +152,16 @@ export class PermissionService {
   /**
    * Obtém permissões de um usuário
    */
-  async getUserPermissions(userId: number): Promise<ResourcePermissions> {
+  async getUserPermissions(userId: number, env?: Bindings, ctx?: ExecutionContext): Promise<ResourcePermissions> {
     try {
       // Tenta cache primeiro
       const cacheKey = `user_permissions:${userId}`;
-      let permissions: ResourcePermissions | null = await cacheService.get(cacheKey);
+      let permissions: ResourcePermissions | null = await cacheService.get(cacheKey, env?.CACHE_KV, ctx);
       
       if (!permissions) {
         // Busca do banco de dados (simulado)
         permissions = await this.fetchUserPermissionsFromDB(userId);
-        await cacheService.set(cacheKey, permissions, 3600);
+        await cacheService.set(cacheKey, permissions, 3600, env?.CACHE_KV, ctx);
       }
       
       return permissions || {};
@@ -198,10 +199,10 @@ export class PermissionService {
   /**
    * Define permissões customizadas para um usuário
    */
-  async setUserPermissions(userId: number, permissions: ResourcePermissions) {
+  async setUserPermissions(userId: number, permissions: ResourcePermissions, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const cacheKey = `user_permissions:${userId}`;
-      await cacheService.set(cacheKey, permissions, 3600);
+      await cacheService.set(cacheKey, permissions, 3600, env?.CACHE_KV, ctx);
       
       // Salva no banco de dados (simulado)
       await this.saveUserPermissionsToDB(userId, permissions);
@@ -287,14 +288,14 @@ export class PermissionService {
   /**
    * Verifica múltiplas permissões de uma vez
    */
-  async checkMultiplePermissions(userId: number, checks: { resource: Resource; action: Action }[]) {
+  async checkMultiplePermissions(userId: number, checks: { resource: Resource; action: Action }[], env?: Bindings, ctx?: ExecutionContext) {
     try {
       const results: Record<string, boolean> = {};
       
       for (const check of checks) {
         const { resource, action } = check;
         const key = `${resource}:${action}`;
-        results[key] = await this.hasPermission(userId, resource, action);
+        results[key] = await this.hasPermission(userId, resource, action, env, ctx);
       }
       
       return { success: true, results };
@@ -307,7 +308,7 @@ export class PermissionService {
   /**
    * Obtém permissões efetivas de um usuário (incluindo roles customizados)
    */
-  async getEffectivePermissions(userId: number) {
+  async getEffectivePermissions(userId: number, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const user = await this.getUserById(userId);
       if (!user) {
@@ -317,7 +318,7 @@ export class PermissionService {
       let permissions: ResourcePermissions = DEFAULT_PERMISSIONS[user.role] || {};
       
       // Se o usuário tem permissões customizadas, mescla com as padrão
-      const customPermissions = await this.getUserPermissions(userId);
+      const customPermissions = await this.getUserPermissions(userId, env, ctx);
       if (customPermissions && Object.keys(customPermissions).length > 0) {
         permissions = this.mergePermissions(permissions, customPermissions);
       }
@@ -363,10 +364,10 @@ export class PermissionService {
   /**
    * Remove permissões de um usuário
    */
-  async removeUserPermissions(userId: number, resource: Resource, actions: Action[]) {
+  async removeUserPermissions(userId: number, resource: Resource, actions: Action[], env?: Bindings, ctx?: ExecutionContext) {
     try {
       const cacheKey = `user_permissions:${userId}`;
-      const permissions = await this.getUserPermissions(userId);
+      const permissions = await this.getUserPermissions(userId, env, ctx);
       
       if (permissions[resource]) {
         permissions[resource] = permissions[resource]?.filter(
@@ -378,7 +379,7 @@ export class PermissionService {
           delete permissions[resource];
         }
         
-        await cacheService.set(cacheKey, permissions, 3600);
+        await cacheService.set(cacheKey, permissions, 3600, env?.CACHE_KV, ctx);
         await this.saveUserPermissionsToDB(userId, permissions);
       }
       
@@ -393,12 +394,12 @@ export class PermissionService {
   /**
    * Limpa cache de permissões de um usuário
    */
-  async clearUserPermissionCache(userId: number) {
+  async clearUserPermissionCache(userId: number, env?: Bindings) {
     const cacheKey = `user_permissions:${userId}`;
-    await cacheService.delete(cacheKey);
+    await cacheService.delete(cacheKey, env?.CACHE_KV);
     
     const permissionsKey = `permissions:${userId}`;
-    await cacheService.delete(permissionsKey);
+    await cacheService.delete(permissionsKey, env?.CACHE_KV);
     
     logger.debug('Cache de permissões limpo', { userId });
   }

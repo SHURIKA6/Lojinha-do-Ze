@@ -42,6 +42,7 @@ router.get('/', async (c) => {
       limit,
       offset,
       env: c.env,
+      ctx: c.executionCtx,
     } as any);
 
     setNoStore(c as any);
@@ -50,14 +51,14 @@ router.get('/', async (c) => {
     const errorId = crypto.randomUUID().split('-')[0];
     logger.error(`Erro ao carregar catálogo [${errorId}]`, error);
     
-    await logSystemEvent(db, c.env, 'error', `Erro no Catálogo [${errorId}]: ${error.message}`, {
+    logSystemEvent(db, c.env, 'error', `Erro no Catálogo [${errorId}]: ${error.message}`, {
       search,
       category,
       sortBy,
       minPrice,
       maxPrice,
       errorId
-    }, error).catch(err => logger.error('Falha ao logar erro de catálogo no banco', err));
+    }, error, c.executionCtx);
 
     return jsonError(c, 500, 'Erro ao carregar o catálogo de produtos.', { errorId });
   }
@@ -73,7 +74,7 @@ router.post(
     const authUser = c.get('user');
 
     try {
-      const order = await orderService.createOrder(db, payload, authUser ?? null, c.env);
+      const order = await orderService.createOrder(db, payload, authUser ?? null, c.env, c.executionCtx);
       return c.json(
         {
           order,
@@ -91,11 +92,11 @@ router.post(
       
       logger.error(`Erro ao processar pedido no catálogo [${errorId}]`, error);
 
-      await logSystemEvent(db, c.env, 'error', `Falha no Pedido via Catálogo [${errorId}]: ${error.message}`, {
+      logSystemEvent(db, c.env, 'error', `Falha no Pedido via Catálogo [${errorId}]: ${error.message}`, {
         payload,
         userId: authUser?.id,
         errorId
-      }, error).catch(err => logger.error('Falha ao logar erro de pedido no banco', err));
+      }, error, c.executionCtx);
 
       return jsonError(c, 500, 'Erro ao processar o seu pedido. Tente novamente em instantes.', { errorId });
     }

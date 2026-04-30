@@ -13,7 +13,7 @@ interface RateLimitState {
 
 interface RateLimitStore {
   get(key: string): Promise<RateLimitState | null>;
-  put(key: string, value: RateLimitState, ttlMs: number): Promise<void>;
+  put(key: string, value: RateLimitState, ttlMs: number, waitUntil?: (p: Promise<any>) => void): Promise<void>;
 }
 
 // ---------- Fallback em memória (apenas para dev local) ----------
@@ -60,14 +60,23 @@ function createKvStore(kvNamespace: KVNamespace): RateLimitStore {
         return null;
       }
     },
-    async put(key: string, value: RateLimitState, ttlMs: number) {
-      try {
-        // expirationTtl é em segundos e mínimo 60s no KV
-        const ttlSeconds = Math.max(Math.ceil(ttlMs / 1000), 60);
-        await kvNamespace.put(key, JSON.stringify(value), { expirationTtl: ttlSeconds });
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
-        logger.warn('KV rate-limit put falhou', { key, error: errorMessage });
+    async put(key: string, value: RateLimitState, ttlMs: number, waitUntil?: (p: Promise<any>) => void) {
+      const putOp = async () => {
+        try {
+          // expirationTtl é em segundos e mínimo 60s no KV
+          const ttlSeconds = Math.max(Math.ceil(ttlMs / 1000), 60);
+          await kvNamespace.put(key, JSON.stringify(value), { expirationTtl: ttlSeconds });
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+          // Se for erro de quota (429), logamos apenas uma vez ou com menos frequência
+          logger.warn(`KV rate-limit put falhou: ${errorMessage}`, { key });
+        }
+      };
+
+      if (waitUntil) {
+        waitUntil(putOp());
+      } else {
+        await putOp();
       }
     },
   };
@@ -77,9 +86,10 @@ function createKvStore(kvNamespace: KVNamespace): RateLimitStore {
 
 const fallbackStore = createInMemoryStore();
 
-export function createRateLimiter(namespace: string, limit: number, windowMs: number) {
+export function createRateLimiter(namespace: string, limit: number, windowMs: number, options: { skipKV?: boolean } = {}) {
   return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
-    const kvBinding = c.env?.CACHE_KV as KVNamespace | undefined;
+    const skipKV = options.skipKV || false;
+    const kvBinding = !skipKV ? (c.env?.CACHE_KV as KVNamespace | undefined) : undefined;
     const store = kvBinding ? createKvStore(kvBinding) : fallbackStore;
 
     // Confia apenas no IP do cliente fornecido pela plataforma.
@@ -88,15 +98,18 @@ export function createRateLimiter(namespace: string, limit: number, windowMs: nu
     const now = Date.now();
 
     const state = await store.get(key);
+    const waitUntil = c.executionCtx?.waitUntil?.bind(c.executionCtx);
 
     if (!state) {
-      await store.put(key, { count: 1, resetAt: now + windowMs }, windowMs);
+      const newState = { count: 1, resetAt: now + windowMs };
+      await store.put(key, newState, windowMs, waitUntil);
     } else {
       state.count++;
       if (state.count > limit) {
+        logger.info(`Rate limit atingido: ${namespace} para ${ip}`);
         return c.json({ error: 'Muitas requisições. Tente novamente mais tarde.' }, 429);
       }
-      await store.put(key, state, state.resetAt - now);
+      await store.put(key, state, state.resetAt - now, waitUntil);
     }
 
     return await next();
@@ -108,4 +121,7 @@ export const setupPasswordLimiter = createRateLimiter('setup', 5, 15 * 60 * 1000
 export const orderLimiter = createRateLimiter('order', 10, 60 * 60 * 1000); // 10 pedidos por 1 hora
 export const profileLimiter = createRateLimiter('profile', 10, 5 * 60 * 1000); // 10 atualizações de perfil por 5 minutos
 export const customerActionLimiter = createRateLimiter('customer_action', 30, 60 * 1000); // 30 ações em clientes por minuto (admin)
-export const apiLimiter = createRateLimiter('api', 60, 60 * 1000); // 60 requisições por minuto
+
+// O apiLimiter é global e causava estouro do limite de KV (1000 PUTs/dia).
+// Agora ele é configurado para usar APENAS o storage em memória para economizar PUTs.
+export const apiLimiter = createRateLimiter('api', 100, 60 * 1000, { skipKV: true });

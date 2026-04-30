@@ -48,11 +48,15 @@ router.get('/', authMiddleware, async (c) => {
     });
     
     const db = c.get('db');
-    await logSystemEvent(db, c.env, 'error', `Erro ao buscar pedidos [${errorId}]: ${error.message}`, {
+    const logPromise = logSystemEvent(db, c.env, 'error', `Erro ao buscar pedidos [${errorId}]: ${error.message}`, {
       userId: user?.id,
       statusQuery,
       errorId
-    }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+    }, error, c.executionCtx).catch(err => logger.error('Falha ao logar erro no banco', err));
+
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(logPromise);
+    }
 
     return jsonError(c, 500, 'Erro ao carregar a lista de pedidos.', { errorId });
   }
@@ -71,7 +75,7 @@ router.patch(
     const db = c.get('db');
 
     try {
-      const result = await orderService.updateOrderStatus(db, id, status, c.env, tracking_code);
+      const result = await orderService.updateOrderStatus(db, id, status, c.env, c.executionCtx, tracking_code);
 
       if (result.error) {
         return jsonError(c, result.error.code, result.error.message);
@@ -83,10 +87,14 @@ router.patch(
       const db = c.get('db');
       logger.error(`Erro ao atualizar status do pedido [${errorId}]`, error, { id: c.req.param('id') });
 
-      await logSystemEvent(db, c.env, 'error', `Erro Status Pedido [${errorId}]: ${error.message}`, {
+      const logPromise = logSystemEvent(db, c.env, 'error', `Erro Status Pedido [${errorId}]: ${error.message}`, {
         orderId: c.req.param('id'),
         errorId
-      }, error).catch(err => logger.error('Falha ao logar erro de status do pedido no banco', err));
+      }, error, c.executionCtx).catch(err => logger.error('Falha ao logar erro de status do pedido no banco', err));
+
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(logPromise);
+      }
 
       return jsonError(c, 500, 'Erro ao atualizar o status do pedido.', { errorId });
     }
@@ -111,10 +119,14 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
     const db = c.get('db');
     logger.error(`Erro ao excluir pedido [${errorId}]`, error, { id: c.req.param('id') });
 
-    await logSystemEvent(db, c.env, 'error', `Erro Exclusão Pedido [${errorId}]: ${error.message}`, {
+    const logPromise = logSystemEvent(db, c.env, 'error', `Erro Exclusão Pedido [${errorId}]: ${error.message}`, {
       orderId: c.req.param('id'),
       errorId
-    }, error).catch(err => logger.error('Falha ao logar erro de exclusão de pedido no banco', err));
+    }, error, c.executionCtx).catch(err => logger.error('Falha ao logar erro de exclusão de pedido no banco', err));
+
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(logPromise);
+    }
 
     return jsonError(c, 500, 'Erro ao remover o pedido.', { errorId });
   }

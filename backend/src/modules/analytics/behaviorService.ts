@@ -4,6 +4,7 @@
  */
 
 import { logger } from '../../core/utils/logger';
+import { Bindings, ExecutionContext } from '../../core/types';
 
 /**
  * Tipos de comportamento
@@ -70,7 +71,7 @@ export class CustomerBehaviorService {
   /**
    * Rastreia comportamento do cliente
    */
-  async trackBehavior(customerId: number, behaviorType: BehaviorType, data: any = {}) {
+  async trackBehavior(customerId: number, behaviorType: BehaviorType, data: any = {}, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const behavior: BehaviorData = {
         id: this.generateBehaviorId(),
@@ -92,6 +93,25 @@ export class CustomerBehaviorService {
 
       // Verifica se precisa resegmentar
       await this.checkResegmentation(customerId);
+
+      // Persistência em KV se disponível
+      const kv = env?.ANALYTICS_KV;
+      if (kv) {
+        const kvKey = `behavior:${customerId}:${behavior.id}`;
+        const putOp = async () => {
+          try {
+            await kv.put(kvKey, JSON.stringify(behavior), { expirationTtl: 30 * 24 * 60 * 60 }); // 30 dias
+          } catch (e) {
+            logger.error(`Erro ao persistir comportamento no KV: ${kvKey}`, e as Error);
+          }
+        };
+
+        if (ctx?.waitUntil) {
+          ctx.waitUntil(putOp());
+        } else {
+          putOp().catch(err => logger.error(`Erro assíncrono no KV behavior: ${kvKey}`, err));
+        }
+      }
 
       logger.debug('Comportamento rastreado', { customerId, behaviorType });
 
@@ -280,7 +300,7 @@ export class CustomerBehaviorService {
   /**
    * Analisa padrões de comportamento
    */
-  async analyzeBehaviorPatterns(customerId: number, period = '30d') {
+  async analyzeBehaviorPatterns(customerId: number, period = '30d', env?: any, ctx?: any) {
     try {
       const behaviors = this.behaviorData.get(customerId) || [];
       const periodBehaviors = this.filterByPeriod(behaviors, period);

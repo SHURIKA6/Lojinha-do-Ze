@@ -5,6 +5,7 @@
 
 import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
+import { Bindings, ExecutionContext } from '../../core/types';
 
 /**
  * Status de fornecedores
@@ -73,7 +74,7 @@ export class SupplierService {
   /**
    * Cria um novo fornecedor
    */
-  async createSupplier(supplierData: Partial<Supplier> & { name: string; category: SupplierCategory }) {
+  async createSupplier(supplierData: Partial<Supplier> & { name: string; category: SupplierCategory }, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const supplier: Supplier = {
         id: this.generateSupplierId(),
@@ -96,7 +97,7 @@ export class SupplierService {
       this.suppliers.set(supplier.id, supplier);
       
       // Cache do fornecedor
-      await cacheService.set(`supplier:${supplier.id}`, supplier, 3600);
+      await cacheService.set(`supplier:${supplier.id}`, supplier, 3600, env?.CACHE_KV, ctx);
       
       logger.info('Fornecedor criado', { supplierId: supplier.id, name: supplier.name });
       
@@ -110,7 +111,7 @@ export class SupplierService {
   /**
    * Atualiza um fornecedor
    */
-  async updateSupplier(supplierId: string, updateData: Partial<Supplier>) {
+  async updateSupplier(supplierId: string, updateData: Partial<Supplier>, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const supplier = this.suppliers.get(supplierId);
       if (!supplier) {
@@ -126,7 +127,7 @@ export class SupplierService {
       this.suppliers.set(supplierId, updatedSupplier);
       
       // Atualiza cache
-      await cacheService.set(`supplier:${supplierId}`, updatedSupplier, 3600);
+      await cacheService.set(`supplier:${supplierId}`, updatedSupplier, 3600, env?.CACHE_KV, ctx);
       
       logger.info('Fornecedor atualizado', { supplierId });
       
@@ -140,15 +141,15 @@ export class SupplierService {
   /**
    * Obtém fornecedor por ID
    */
-  async getSupplier(supplierId: string) {
+  async getSupplier(supplierId: string, env?: Bindings, ctx?: ExecutionContext) {
     try {
       // Tenta cache primeiro
-      let supplier: Supplier | null = await cacheService.get(`supplier:${supplierId}`);
+      let supplier: Supplier | null = await cacheService.get(`supplier:${supplierId}`, env?.CACHE_KV, ctx);
       
       if (!supplier) {
         supplier = this.suppliers.get(supplierId) || null;
         if (supplier) {
-          await cacheService.set(`supplier:${supplierId}`, supplier, 3600);
+          await cacheService.set(`supplier:${supplierId}`, supplier, 3600, env?.CACHE_KV, ctx);
         }
       }
       
@@ -218,7 +219,7 @@ export class SupplierService {
   /**
    * Registra entrega de fornecedor
    */
-  async recordDelivery(supplierId: string, deliveryData: Partial<Delivery> & { onTime: boolean }) {
+  async recordDelivery(supplierId: string, deliveryData: Partial<Delivery> & { onTime: boolean }, env?: Bindings, ctx?: ExecutionContext) {
     try {
       const supplier = this.suppliers.get(supplierId);
       if (!supplier) {
@@ -235,10 +236,10 @@ export class SupplierService {
       };
 
       // Atualiza métricas de performance
-      await this.updateSupplierPerformance(supplierId, delivery);
+      await this.updateSupplierPerformance(supplierId, delivery, env, ctx);
       
       // Cache da entrega
-      await cacheService.set(`delivery:${delivery.id}`, delivery, 86400);
+      await cacheService.set(`delivery:${delivery.id}`, delivery, 86400, env?.CACHE_KV, ctx);
       
       logger.info('Entrega registrada', { 
         supplierId, 
@@ -256,7 +257,7 @@ export class SupplierService {
   /**
    * Atualiza métricas de performance do fornecedor
    */
-  async updateSupplierPerformance(supplierId: string, delivery: Delivery) {
+  async updateSupplierPerformance(supplierId: string, delivery: Delivery, env?: Bindings, ctx?: ExecutionContext) {
     const supplier = this.suppliers.get(supplierId);
     if (!supplier) return;
 
@@ -290,7 +291,7 @@ export class SupplierService {
     supplier.updatedAt = new Date();
     
     this.suppliers.set(supplierId, supplier);
-    await cacheService.set(`supplier:${supplierId}`, supplier, 3600);
+    await cacheService.set(`supplier:${supplierId}`, supplier, 3600, env?.CACHE_KV, ctx);
   }
 
   /**

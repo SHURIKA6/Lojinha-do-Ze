@@ -6,6 +6,8 @@ import {
   PASSWORD_SETUP_TTL_HOURS,
   SESSION_COOKIE_NAME,
   SESSION_TTL_SECONDS,
+  REFRESH_TOKEN_COOKIE_NAME,
+  REFRESH_TOKEN_TTL_SECONDS,
 } from '../../core/domain/constants';
 import { randomCode, randomToken, sha256Hex, verifyPassword } from '../../core/utils/crypto';
 
@@ -28,6 +30,7 @@ import {
   revokeOpenSetupTokensForUser,
 } from './passwordSetupRepository';
 import { Bindings, User, Variables, Database, UserDB } from '../../core/types';
+import { RefreshTokenService } from './refreshTokenService';
 
 type AppEnv = { Bindings: Bindings; Variables: Variables };
 
@@ -94,11 +97,8 @@ function buildResolvedSession(row: Record<string, any>, user?: User): ResolvedSe
 }
 
 function storeResolvedSession(c: Context<AppEnv>, session: ResolvedSession | null) {
-  // @ts-ignore
   c.set('resolvedSession', session);
-  // @ts-ignore
   c.set('session', session);
-  // @ts-ignore
   c.set('user', session?.user ?? null);
 }
 
@@ -256,12 +256,28 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
   const session = buildResolvedSession(createdSession, resolvedUser);
 
   // PERF: Alimenta o cache imediatamente para acelerar a próxima requisição
-  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV);
+  // Não precisamos de await aqui se o ctx for fornecido, pois o setSession usará waitUntil internamente
+  cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV, c.executionCtx);
+
+  // SEC: Refresh Token para renovação de sessão
+  const refreshTokenService = getRefreshTokenService(client);
+  const ipAddress = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || '0.0.0.0';
+  const userAgent = c.req.header('user-agent') || 'unknown';
+  
+  const refreshToken = await refreshTokenService.createRefreshToken(
+    parseInt(resolvedUser.id), 
+    session.id, 
+    ipAddress, 
+    userAgent,
+    c.env,
+    c.executionCtx
+  );
 
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions(c));
   setCookie(c, CSRF_COOKIE_NAME, csrfToken, sessionCookieOptions(c, SESSION_TTL_SECONDS, false));
+  setCookie(c, REFRESH_TOKEN_COOKIE_NAME, refreshToken, sessionCookieOptions(c, REFRESH_TOKEN_TTL_SECONDS));
 
-  logger.info('Sessão emitida com sucesso', { userId: resolvedUser.id, sessionId: createdSession.id });
+  logger.info('Sessão e Refresh Token emitidos com sucesso', { userId: resolvedUser.id, sessionId: createdSession.id });
 
   return { csrfToken };
 }
@@ -269,6 +285,7 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
 export function clearSessionCookies(c: Context) {
   deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' });
   deleteCookie(c, CSRF_COOKIE_NAME, { path: '/' });
+  deleteCookie(c, REFRESH_TOKEN_COOKIE_NAME, { path: '/' });
 }
 
 export async function destroySession(c: Context<AppEnv>, client: Database) {
@@ -276,27 +293,28 @@ export async function destroySession(c: Context<AppEnv>, client: Database) {
   if (sessionToken) {
     const tokenHash = await sha256Hex(sessionToken);
     await deleteSessionByTokenHash(client, tokenHash);
-    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV);
+    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV, c.executionCtx);
   }
 
   clearSessionCookies(c);
 }
 
 export async function resolveSession(c: Context<AppEnv>, client: Database) {
-  // @ts-ignore - resolveSession behavior with Hono Context
   const cached = c.get('resolvedSession');
   if (cached !== undefined) {
     return cached;
   }
 
-  // PERF-05: Limpeza probabilística — executa apenas ~1% das vezes
+  // PERF-05: Limpeza probabilística — executa apenas ~1% das vezes em background
   if (Math.random() < 0.01) {
-    await deleteExpiredSessions(client);
+    const cleanupTask = deleteExpiredSessions(client).catch(err => logger.error('Erro na limpeza de sessões expiradas', err));
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(cleanupTask);
+    }
   }
 
   const sessionToken = getCookie(c, SESSION_COOKIE_NAME);
   if (!sessionToken) {
-    // @ts-ignore
     c.set('resolvedSession', null);
     return null;
   }
@@ -304,7 +322,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const tokenHash = await sha256Hex(sessionToken);
 
   // PERF: Tenta obter do cache antes de consultar o banco
-  const fromCache = await cacheService.getSession(tokenHash, c.env.CACHE_KV);
+  const fromCache = await cacheService.getSession(tokenHash, c.env.CACHE_KV, c.executionCtx);
   if (fromCache) {
     const session = normalizeResolvedSession(fromCache);
     if (session) {
@@ -315,7 +333,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
     logger.warn('Entrada inválida no cache de sessão ignorada; consultando banco', {
       tokenHashPrefix: tokenHash.slice(0, 8),
     });
-    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV);
+    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV, c.executionCtx);
   }
 
   const row = await findSessionByTokenHash(client, tokenHash);
@@ -328,21 +346,25 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const session = buildResolvedSession(row);
 
   // Alimenta o cache para as próximas chamadas
-  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV);
+  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV, c.executionCtx);
 
   storeResolvedSession(c, session);
 
   try {
-    await touchSession(client, session.id);
+    const touchTask = touchSession(client, session.id).catch(err => logger.error('Erro ao atualizar sessão (touch)', err));
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(touchTask);
+    } else {
+      await touchTask;
+    }
   } catch (error) {
-    logger.error('Erro ao atualizar sessão (touch)', error);
+    logger.error('Erro inesperado ao disparar touch de sessão', error);
   }
 
   return session;
 }
 
 export async function invalidateResolvedSession(c: Context<AppEnv>, client: Database) {
-  // @ts-ignore
   const session = c.get('session');
   if (session?.id) {
     await deleteSessionById(client, session.id);
@@ -398,4 +420,14 @@ export async function consumePasswordSetupInvite(client: Database, lookup: { tok
     inviteId: invite.setup_token_id,
     user: serializeUser(invite),
   };
+}
+
+// O serviço global é inicializado com null e deve ser usado via getRefreshTokenService(db)
+export const refreshTokenService = new RefreshTokenService(null as any as Database, cacheService);
+
+/**
+ * Vincula o banco de dados dinamicamente ao serviço de refresh token
+ */
+export function getRefreshTokenService(db: Database) {
+  return new RefreshTokenService(db, cacheService);
 }

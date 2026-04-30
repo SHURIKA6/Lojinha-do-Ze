@@ -5,8 +5,11 @@
 
 import { randomToken, sha256Hex } from '../../core/utils/crypto';
 import { logger } from '../../core/utils/logger';
+import { REFRESH_TOKEN_TTL_SECONDS } from '../../core/domain/constants';
+import { Database, Bindings, HonoCloudflareContext } from '../../core/types';
 
-const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 dias
+type ExecutionContext = HonoCloudflareContext['executionCtx'];
+
 const REFRESH_TOKEN_PREFIX = 'refresh_token_';
 
 export interface TokenData {
@@ -22,10 +25,10 @@ export interface TokenData {
 }
 
 export class RefreshTokenService {
-  private db: any;
+  private db: Database;
   private cache: any;
 
-  constructor(db: any, cacheService: any) {
+  constructor(db: Database, cacheService: any) {
     this.db = db;
     this.cache = cacheService;
   }
@@ -33,23 +36,33 @@ export class RefreshTokenService {
   /**
    * Cria um novo refresh token para o usuário
    */
-  async createRefreshToken(userId: number, sessionId: string, ipAddress: string, userAgent: string): Promise<string> {
+  async createRefreshToken(userId: number, sessionId: string, ipAddress: string, userAgent: string, env?: Bindings, ctx?: ExecutionContext): Promise<string> {
     const tokenId = randomToken(32);
     const tokenHash = await sha256Hex(tokenId);
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
 
-    // Armazena no banco de dados
-    await this.db.query(
+    // Armazena no banco de dados (background task se ctx disponível)
+    const dbTask = this.db.query(
       `INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, ip_address, user_agent, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [tokenId, userId, sessionId, tokenHash, ipAddress, userAgent, expiresAt]
-    );
+    ).catch((err: any) => {
+      logger.error('Erro ao persistir refresh token no banco', err, { userId, tokenId });
+    });
+
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(dbTask);
+    } else {
+      await dbTask;
+    }
 
     // Armazena no cache para verificação rápida
     this.cache.set(
       `${REFRESH_TOKEN_PREFIX}${tokenHash}`,
       { userId, sessionId, expiresAt },
-      REFRESH_TOKEN_TTL_SECONDS
+      REFRESH_TOKEN_TTL_SECONDS,
+      env?.CACHE_KV,
+      ctx
     );
 
     logger.info('Refresh token criado', { userId, sessionId, tokenId });
@@ -59,11 +72,11 @@ export class RefreshTokenService {
   /**
    * Valida e usa um refresh token para gerar novos tokens
    */
-  async refreshAccessToken(refreshToken: string, ipAddress: string, _userAgent: string): Promise<{ valid: boolean; error?: string; user?: any; sessionId?: string }> {
+  async refreshAccessToken(refreshToken: string, ipAddress: string, _userAgent: string, env?: Bindings, ctx?: ExecutionContext): Promise<{ valid: boolean; error?: string; user?: any; sessionId?: string }> {
     const tokenHash = await sha256Hex(refreshToken);
 
     // Verifica no cache primeiro (mais rápido)
-    let tokenData: TokenData | null = this.cache.get(`${REFRESH_TOKEN_PREFIX}${tokenHash}`);
+    let tokenData: TokenData | null = await this.cache.get(`${REFRESH_TOKEN_PREFIX}${tokenHash}`, env?.CACHE_KV, ctx);
 
     if (!tokenData) {
       // Se não estiver no cache, busca no banco
@@ -98,7 +111,7 @@ export class RefreshTokenService {
     }
 
     // Revoga o token usado (one-time use)
-    await this.revokeRefreshToken(refreshToken);
+    await this.revokeRefreshToken(refreshToken, env, ctx);
 
     // Verifica se o IP/User-Agent mudou significativamente (opcional)
     if (tokenData.ipAddress && tokenData.ipAddress !== ipAddress) {
@@ -125,23 +138,31 @@ export class RefreshTokenService {
   /**
    * Revoga um refresh token específico
    */
-  async revokeRefreshToken(refreshToken: string): Promise<void> {
+  async revokeRefreshToken(refreshToken: string, env?: Bindings, ctx?: ExecutionContext): Promise<void> {
     const tokenHash = await sha256Hex(refreshToken);
 
     // Remove do cache
-    this.cache.delete(`${REFRESH_TOKEN_PREFIX}${tokenHash}`);
+    this.cache.delete(`${REFRESH_TOKEN_PREFIX}${tokenHash}`, env?.CACHE_KV, ctx);
 
     // Marca como revogado no banco (soft delete)
-    await this.db.query(
+    const dbTask = this.db.query(
       'UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1',
       [tokenHash]
-    );
+    ).catch((err: any) => {
+      logger.error('Erro ao revogar refresh token no banco', err, { tokenHash });
+    });
+
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(dbTask);
+    } else {
+      await dbTask;
+    }
   }
 
   /**
    * Revoga todos os refresh tokens de um usuário
    */
-  async revokeAllUserTokens(userId: number): Promise<void> {
+  async revokeAllUserTokens(userId: number, env?: Bindings, ctx?: ExecutionContext): Promise<void> {
     // Remove todos do cache
     const { rows } = await this.db.query(
       'SELECT token_hash FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL',
@@ -149,14 +170,22 @@ export class RefreshTokenService {
     );
 
     for (const row of rows) {
-      this.cache.delete(`${REFRESH_TOKEN_PREFIX}${row.token_hash}`);
+      this.cache.delete(`${REFRESH_TOKEN_PREFIX}${row.token_hash}`, env?.CACHE_KV, ctx);
     }
 
     // Revoga todos no banco
-    await this.db.query(
+    const dbTask = this.db.query(
       'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
       [userId]
-    );
+    ).catch((err: any) => {
+      logger.error('Erro ao revogar todos os tokens do usuário no banco', err, { userId });
+    });
+
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(dbTask);
+    } else {
+      await dbTask;
+    }
 
     logger.info('Todos os refresh tokens revogados', { userId });
   }
@@ -164,7 +193,7 @@ export class RefreshTokenService {
   /**
    * Limpa tokens expirados (executar periodicamente)
    */
-  async cleanupExpiredTokens(): Promise<number> {
+  async cleanupExpiredTokens(_env?: Bindings, _ctx?: ExecutionContext): Promise<number> {
     const result = await this.db.query(
       'DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked_at IS NOT NULL'
     );
@@ -181,7 +210,7 @@ export class RefreshTokenService {
   /**
    * Obtém estatísticas de tokens
    */
-  async getTokenStats(): Promise<any> {
+  async getTokenStats(_env?: Bindings, _ctx?: ExecutionContext): Promise<any> {
     const { rows } = await this.db.query(`
       SELECT 
         COUNT(*) as total_tokens,

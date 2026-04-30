@@ -1,5 +1,4 @@
-import { Context } from 'hono';
-import { Database } from '../../core/types';
+import { Database, Bindings, ExecutionContext } from '../../core/types';
 import * as customerRepo from './repository';
 import {
   buildAvatar,
@@ -12,7 +11,7 @@ import {
 import { generatePasswordSetupInvite } from '../auth/service';
 
 export class CustomerService {
-  constructor(private db: Database) {}
+  constructor(private db: Database, private env?: Bindings, private ctx?: ExecutionContext) {}
 
   async getAllCustomers(limit: number, offset: number) {
     return customerRepo.findAllCustomers(this.db, limit, offset);
@@ -40,7 +39,10 @@ export class CustomerService {
     return customerRepo.findOrdersByCustomer(this.db, id, normalizedPhone);
   }
 
-  async createCustomer(c: Context, payload: any) {
+  async createCustomer(payload: any, env?: Bindings, ctx?: ExecutionContext) {
+    const activeEnv = env || this.env;
+    const activeCtx = ctx || this.ctx;
+
     if (payload.cpf && !isValidCpf(payload.cpf)) {
       throw new Error('CPF_INVALID');
     }
@@ -66,7 +68,8 @@ export class CustomerService {
         avatar: avatar,
       });
 
-      const invite = await generatePasswordSetupInvite(c, client, createdCustomer as any);
+      const invite = await generatePasswordSetupInvite({ env: activeEnv, req: { url: activeEnv?.FRONTEND_URL || '' } } as any, client, createdCustomer as any);
+
       await client.query('COMMIT');
       return { ...createdCustomer, invite };
     } catch (error) {
@@ -116,13 +119,15 @@ export class CustomerService {
     return customerRepo.getUserPassword(this.db, id);
   }
 
-  async inviteCustomer(c: Context, id: string) {
+  async inviteCustomer(id: string, env?: Bindings, ctx?: ExecutionContext) {
+    const activeEnv = env || this.env;
+    const activeCtx = ctx || this.ctx;
     const customer = await customerRepo.findCustomerById(this.db, id);
     if (!customer || (customer as any).role === 'guest') return null;
 
     const client = await this.db.connect();
     try {
-      const invite = await generatePasswordSetupInvite(c, client, customer as any);
+      const invite = await generatePasswordSetupInvite({ env: activeEnv, req: { url: activeEnv?.FRONTEND_URL || '' } } as any, client, customer as any);
       return { ...customer, invite };
     } finally {
       if (client.release) client.release();

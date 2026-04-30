@@ -40,7 +40,20 @@ function mergeOrderItems(items: orderRepository.OrderItem[]): orderRepository.Or
   }));
 }
 
-export async function createOrder(db: Database, payload: CreateOrderPayload, authUser: OrderServiceUser | null, env: any) {
+function parseItems(items: any): orderRepository.EnrichedOrderItem[] {
+  if (Array.isArray(items)) return items;
+  if (typeof items === 'string') {
+    try {
+      return JSON.parse(items);
+    } catch (e) {
+      logger.error('Erro ao fazer parse de items (string)', e as Error, { items });
+      return [];
+    }
+  }
+  return [];
+}
+
+export async function createOrder(db: Database, payload: CreateOrderPayload, authUser: OrderServiceUser | null, env: any, ctx?: any) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -134,7 +147,7 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
           productName: p.name,
           quantity: p.quantity,
           productId: p.id
-        }, env).catch(err => logger.error('Low stock notification error', err));
+        }, env, {}, ctx).catch(err => logger.error('Low stock notification error', err));
       }
 
       await orderRepository.logInventory(client, pIds, names, quantities, `Pedido #${order.id}`);
@@ -159,7 +172,9 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
       notifyPromises.push(sendWhatsAppMessage(env, env.ZE_PHONE, zeMsg));
     }
 
-    if (env.executionCtx?.waitUntil) {
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(Promise.all(notifyPromises));
+    } else if (env.executionCtx?.waitUntil) {
       env.executionCtx.waitUntil(Promise.all(notifyPromises));
     } else {
       // Background execution for other environments
@@ -203,6 +218,7 @@ export async function updateOrderStatus(
   id: string,
   status: string,
   env: any,
+  ctx?: any,
   trackingCode?: string
 ) {
   const client = await db.connect();
@@ -221,7 +237,7 @@ export async function updateOrderStatus(
       currentOrder.status !== 'cancelado' &&
       currentOrder.status !== 'concluido'
     ) {
-      const items = (Array.isArray(currentOrder.items) ? currentOrder.items : JSON.parse(currentOrder.items || '[]')) as orderRepository.EnrichedOrderItem[];
+      const items = parseItems(currentOrder.items);
       if (items.length > 0) {
         await orderRepository.restoreProductStockBulk(
           client,
@@ -279,7 +295,9 @@ export async function updateOrderStatus(
       notifyPromises.push(sendWhatsAppMessage(env, env.ZE_PHONE, zeUpdateMsg));
     }
 
-    if (env.executionCtx?.waitUntil) {
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(Promise.all(notifyPromises));
+    } else if (env.executionCtx?.waitUntil) {
       env.executionCtx.waitUntil(Promise.all(notifyPromises));
     } else {
       Promise.all(notifyPromises).catch(err => logger.error('Order status update WhatsApp error', err));
@@ -334,7 +352,7 @@ export async function deleteOrder(db: Database, id: string) {
     }
 
     if (order.status !== 'cancelado' && order.status !== 'concluido') {
-      const items = (Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]')) as orderRepository.EnrichedOrderItem[];
+      const items = parseItems(order.items);
       if (items.length > 0) {
         await orderRepository.restoreProductStockBulk(
           client,
