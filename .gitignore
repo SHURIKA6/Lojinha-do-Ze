@@ -65,6 +65,7 @@ backend/scripts/deploy-safe.cjs
 .idea/
 *.swp
 *.swo
+.kilo
 
 # Local databases
 *.sqlite
@@ -73,3 +74,17 @@ backend/scripts/deploy-safe.cjs
 *.db-journal
 roadmap.md
 backend/scratch/
+# IDEs / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+roadmap.md
+backend/scratch/
+

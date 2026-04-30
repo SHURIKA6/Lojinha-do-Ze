@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -7,6 +7,20 @@ import { FiArrowRight, FiKey, FiLock } from 'react-icons/fi';
 import { setupPassword } from '@/core/api';
 import { useAuth } from '@/core/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const setupPasswordSchema = z.object({
+  code: z.string().optional(),
+  password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
+  confirmPassword: z.string().min(1, 'Confirmação obrigatória'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'As senhas não coincidem',
+  path: ['confirmPassword'],
+});
+
+type SetupPasswordForm = z.infer<typeof setupPasswordSchema>;
 
 export default function SetupPasswordPageClient() {
   const searchParams = useSearchParams();
@@ -14,25 +28,38 @@ export default function SetupPasswordPageClient() {
   const { refreshUser } = useAuth();
   const toast = useToast();
 
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
+  
   const token = searchParams.get('token') || '';
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+  } = useForm<SetupPasswordForm>({
+    resolver: zodResolver(setupPasswordSchema),
+    defaultValues: {
+      code: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
+
+  const onSubmit = async (data: SetupPasswordForm) => {
     setError('');
-    setLoading(true);
+
+    if (!token && !data.code) {
+      setError('O código do convite é obrigatório se o link não possuir token.');
+      return;
+    }
 
     try {
       await setupPassword({
         token: token || undefined,
-        code: token ? undefined : code,
-        password,
-        confirmPassword,
+        code: token ? undefined : data.code,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
       });
 
       const user = await refreshUser().catch(() => null);
@@ -40,8 +67,6 @@ export default function SetupPasswordPageClient() {
       router.push(user?.role === 'admin' ? '/admin/dashboard' : '/conta');
     } catch (submitError: any) {
       setError(submitError.message || 'Não foi possível ativar sua conta.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -59,7 +84,7 @@ export default function SetupPasswordPageClient() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="login-card__form">
+          <form onSubmit={handleSubmit(onSubmit)} className="login-card__form">
             {error ? (
               <div className="login-card__error" role="alert" aria-live="assertive">
                 {error}
@@ -75,10 +100,12 @@ export default function SetupPasswordPageClient() {
                 <input
                   id="setup-code"
                   className="form-input"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value.toUpperCase())}
+                  {...register('code', {
+                    onChange: (e) => {
+                      setValue('code', e.target.value.toUpperCase());
+                    }
+                  })}
                   placeholder="Ex.: ABCD1234"
-                  required
                 />
               </div>
             )}
@@ -92,12 +119,13 @@ export default function SetupPasswordPageClient() {
                 id="setup-password"
                 className="form-input"
                 type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                {...register('password')}
                 placeholder="Mínimo de 8 caracteres"
-                required
                 autoComplete="new-password"
               />
+              {errors.password && (
+                <span className="form-error" style={{ color: 'red', fontSize: '0.875rem', marginTop: '4px', display: 'block' }}>{errors.password.message}</span>
+              )}
             </div>
 
             <div className="form-group">
@@ -109,16 +137,17 @@ export default function SetupPasswordPageClient() {
                 id="setup-confirm-password"
                 className="form-input"
                 type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
+                {...register('confirmPassword')}
                 placeholder="Repita sua senha"
-                required
                 autoComplete="new-password"
               />
+              {errors.confirmPassword && (
+                <span className="form-error" style={{ color: 'red', fontSize: '0.875rem', marginTop: '4px', display: 'block' }}>{errors.confirmPassword.message}</span>
+              )}
             </div>
 
-            <button className="btn btn--primary btn--full btn--lg" type="submit" disabled={loading}>
-              {loading ? (
+            <button className="btn btn--primary btn--full btn--lg" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
                 'Ativando...'
               ) : (
                 <>

@@ -1,17 +1,36 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/core/contexts/AuthContext';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const loginSchema = z.object({
+  identifier: z.string().min(1, 'E-mail ou telefone é obrigatório'),
+  password: z.string().min(1, 'Senha é obrigatória'),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPageClient() {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const { user, loading, isAdmin, login } = useAuth();
   const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      identifier: '',
+      password: '',
+    },
+  });
 
   useEffect(() => {
     if (loading) {
@@ -23,14 +42,11 @@ export default function LoginPageClient() {
     }
   }, [user, loading, isAdmin, router]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async (data: LoginForm) => {
     setError('');
-    setSubmitting(true);
 
     try {
-      const result = await login(identifier, password);
-      setSubmitting(false);
+      const result = await login(data.identifier, data.password);
 
       if (result?.success) {
         router.push(result.user?.role === 'admin' ? '/admin/dashboard' : '/conta');
@@ -38,8 +54,7 @@ export default function LoginPageClient() {
       }
 
       setError(result?.error || 'Erro ao fazer login. Verifique seus dados.');
-    } catch (error) {
-      setSubmitting(false);
+    } catch (err) {
       setError('Ocorreu um erro inesperado. Tente novamente mais tarde.');
     }
   };
@@ -56,7 +71,7 @@ export default function LoginPageClient() {
             <p className="login-card__subtitle">Acesse sua conta com e-mail ou telefone</p>
           </header>
 
-          <form onSubmit={handleSubmit} className="login-card__form">
+          <form onSubmit={handleSubmit(onSubmit)} className="login-card__form">
             {error ? (
               <div className="login-card__error" role="alert" aria-live="assertive">
                 {error}
@@ -71,12 +86,13 @@ export default function LoginPageClient() {
                 id="login-identifier"
                 className="form-input"
                 type="text"
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
+                {...register('identifier')}
                 placeholder="seu@email.com ou (11) 99999-9999"
-                required
                 autoComplete="username"
               />
+              {errors.identifier && (
+                <span className="form-error" style={{ color: 'red', fontSize: '0.875rem', marginTop: '4px', display: 'block' }}>{errors.identifier.message}</span>
+              )}
             </div>
 
             <div className="form-group">
@@ -87,20 +103,21 @@ export default function LoginPageClient() {
                 id="login-password"
                 className="form-input"
                 type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                {...register('password')}
                 placeholder="••••••••"
-                required
                 autoComplete="current-password"
               />
+              {errors.password && (
+                <span className="form-error" style={{ color: 'red', fontSize: '0.875rem', marginTop: '4px', display: 'block' }}>{errors.password.message}</span>
+              )}
             </div>
 
             <button
               className="btn btn--primary btn--full btn--lg"
               type="submit"
-              disabled={submitting}
+              disabled={isSubmitting}
             >
-              {submitting ? 'Entrando...' : 'Acessar conta'}
+              {isSubmitting ? 'Entrando...' : 'Acessar conta'}
             </button>
           </form>
 
