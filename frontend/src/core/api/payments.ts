@@ -11,15 +11,19 @@ export interface PixPaymentData {
 }
 
 export interface PixPaymentResponse {
-  paymentId: string;
-  qrCode: string;
-  qrCodeBase64: string;
-  expiresIn: number;
+  id: string;
+  status: string;
+  status_detail: string;
+  qr_code: string;
+  qr_code_base64: string;
+  ticket_url: string;
+  external_reference: string;
 }
 
 export interface PixStatusResponse {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  orderId: string;
+  id: string;
+  external_reference: string;
 }
 
 /**
@@ -30,7 +34,7 @@ export async function createPixPayment(data: PixPaymentData): Promise<PixPayment
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (res && res.paymentId) return res;
+  if (res && res.id) return res;
   if (res?.data) return res.data;
   throw new Error(res?.message || 'Erro ao gerar Pix');
 }

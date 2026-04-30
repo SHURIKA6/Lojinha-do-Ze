@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/core/contexts/AuthContext';
 import {
@@ -9,13 +8,15 @@ import {
   getStatusLabel,
   getStatusVariant,
 } from '@/core/api';
-import { FiCheckCircle, FiClock, FiPackage, FiTruck } from 'react-icons/fi';
+import { FiCheckCircle, FiClock, FiPackage, FiTruck, FiMap } from 'react-icons/fi';
 import { Order } from '@/types';
+import DeliveryMap from '@/components/delivery/DeliveryMap';
 
 export default function ClienteDashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -114,7 +115,7 @@ export default function ClienteDashboard() {
 
               try {
                 const items = typeof order.items === 'string' ? JSON.parse(order.items || '[]') : (order.items || []);
-                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => `${item.quantity}x ${item.name}`).join(', ');
+                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => ${item.quantity}x ).join(', ');
               } catch (error) {
                 console.error(error);
               }
@@ -141,7 +142,7 @@ export default function ClienteDashboard() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{formatCurrency(Number(order.total))}</div>
-                      <span className={`badge badge--${getStatusVariant(order.status || '')}`} style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+                      <span className={adge badge--} style={{ marginTop: '0.5rem', display: 'inline-block' }}>
                         {getStatusLabel(order.status || '')}
                       </span>
                     </div>
@@ -153,14 +154,12 @@ export default function ClienteDashboard() {
 
                   {order.status !== 'cancelado' ? (
                     <div className="order-timeline" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
-                      {/* Linha de fundo */}
                       <div style={{ position: 'absolute', top: '12px', left: '10%', right: '10%', height: '2px', background: 'var(--gray-200)', zIndex: 0 }} />
                       
-                      {/* Linha de progresso */}
                       {currentStepIndex > 0 && (
                         <div style={{ 
                           position: 'absolute', top: '12px', left: '10%', 
-                          width: `${(currentStepIndex / (steps.length - 1)) * 80}%`, 
+                          width: ${(currentStepIndex / (steps.length - 1)) * 80}%, 
                           height: '2px', background: 'var(--primary-500)', zIndex: 1,
                           transition: 'width 0.3s ease'
                         }} />
@@ -192,6 +191,24 @@ export default function ClienteDashboard() {
                   ) : (
                     <div style={{ padding: '1rem', background: 'var(--danger-50)', color: 'var(--danger-600)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
                       Este pedido foi cancelado.
+                    </div>
+                  )}
+
+                  {order.status === 'saiu_entrega' && order.delivery_type === 'entrega' && (
+                    <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                      <button 
+                        className={tn }
+                        onClick={() => setTrackingOrderId(trackingOrderId === String(order.id) ? null : String(order.id))}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 auto' }}
+                      >
+                        <FiMap />
+                        {trackingOrderId === String(order.id) ? 'Fechar Mapa' : 'Localizar Entregador'}
+                      </button>
+                      {trackingOrderId === String(order.id) && (
+                        <div style={{ marginTop: '1rem' }}>
+                          <DeliveryMap orderId={String(order.id)} />
+                        </div>
+                      )}
                     </div>
                   )}
 

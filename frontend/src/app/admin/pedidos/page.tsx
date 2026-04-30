@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
 import { useToast } from '@/components/ui/ToastProvider';
 import {
@@ -21,7 +21,7 @@ import {
   FiTrash2,
   FiTruck,
   FiUser,
-} from 'react-icons/fi';
+  FiMap
 import { Order } from '@/types';
 
 const orderStatuses = ['novo', 'recebido', 'em_preparo', 'saiu_entrega', 'concluido', 'cancelado'];
@@ -50,6 +50,8 @@ export default function PedidosPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
+  const [sharingLocation, setSharingLocation] = useState<Record<string, number | null>>({});
+  const watchIds = useRef<Record<string, number>>({});
   const confirm = useConfirm();
   const toast = useToast();
 
@@ -142,6 +144,55 @@ export default function PedidosPage() {
 
   const updateTrackingCode = (id: string, code: string) => {
     setTrackingCodes(prev => ({ ...prev, [id]: code }));
+  };
+
+  const toggleLocationSharing = async (id: string) => {
+    if (sharingLocation[id]) {
+      // Stop sharing
+      if (watchIds.current[id]) {
+        navigator.geolocation.clearWatch(watchIds.current[id]);
+        delete watchIds.current[id];
+      }
+      setSharingLocation(prev => ({ ...prev, [id]: null }));
+      toast.info('Compartilhamento de localização pausado.');
+      return;
+    }
+
+    // Start sharing
+    if (!navigator.geolocation) {
+      toast.error('Geolocalização não suportada pelo navegador.');
+      return;
+    }
+
+    try {
+      const watchId = navigator.geolocation.watchPosition(
+        async (pos) => {
+          try {
+            await fetch(`/api/delivery/${id}/update`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+              }),
+            });
+          } catch (err) {
+            console.error('Erro ao atualizar localização:', err);
+          }
+        },
+        (err) => {
+          console.error('Erro de geolocalização:', err);
+          toast.error('Erro ao obter localização.');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+
+      watchIds.current[id] = watchId;
+      setSharingLocation(prev => ({ ...prev, [id]: watchId }));
+      toast.success('Compartilhando localização com o cliente!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao iniciar compartilhamento.');
+    }
   };
 
   const getActionLabel = (status: string, deliveryType: string) => {
@@ -290,49 +341,46 @@ export default function PedidosPage() {
                   </div>
                 </div>
 
-                {order.delivery_type === 'entrega' && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <div className="ops-order-card__label">Rastreio (Opcional)</div>
-                    <input
-                      type="text"
-                      className="form-input form-input--sm"
-                      placeholder="Código de rastreio (Correios/Transportadora)"
-                      value={trackingCodes[String(order.id)] || ''}
-                      onChange={(e) => updateTrackingCode(String(order.id), e.target.value)}
-                    />
-                  </div>
-                )}
+                 {order.notes && <div className="ops-order-card__note">{order.notes}</div>}
+               </div>
+                 <div className="ops-order-card__footer" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                   <select
+                     className="form-select"
+                     value={order.status}
+                     onChange={(e) => handleStatusChange(order.id, e.target.value, trackingCodes[String(order.id)])}
+                   >
+                     {orderStatuses.map((status) => (
+                       <option key={status} value={status}>
+                         {statusLabels[status]}
+                       </option>
+                     ))}
+                   </select>
 
-                {order.notes && <div className="ops-order-card__note">{order.notes}</div>}
-              </div>
+                   {order.status === 'saiu_entrega' && (
+                     <button 
+                       className={`btn ${sharingLocation[String(order.id)] ? 'btn--danger' : 'btn--neutral'}`}
+                       onClick={() => toggleLocationSharing(String(order.id))}
+                       style={{ fontSize: '0.8rem', padding: '0.5rem 0.8rem' }}
+                     >
+                       <FiMap />
+                       {sharingLocation[String(order.id)] ? 'Parar Localização' : 'Compartilhar Local'}
+                     </button>
+                   )}
 
-              <div className="ops-order-card__footer">
-                <select
-                  className="form-select"
-                  value={order.status}
-                  onChange={(e) => handleStatusChange(order.id, e.target.value, trackingCodes[String(order.id)])}
-                >
-                  {orderStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {statusLabels[status]}
-                    </option>
-                  ))}
-                </select>
-
-                {actionLabel ? (
-                  <button
-                    className="btn btn--primary"
-                    onClick={() => advanceStatus(order.id, order.status || '', order.delivery_type || '')}
-                  >
-                    {actionLabel}
-                  </button>
-                ) : (
-                  <button className="btn btn--danger" onClick={() => handleDelete(order.id)}>
-                    <FiTrash2 />
-                    Excluir
-                  </button>
-                )}
-              </div>
+                   {actionLabel ? (
+                     <button
+                       className="btn btn--primary"
+                       onClick={() => advanceStatus(order.id, order.status || '', order.delivery_type || '')}
+                     >
+                       {actionLabel}
+                     </button>
+                   ) : (
+                     <button className="btn btn--danger" onClick={() => handleDelete(order.id)}>
+                       <FiTrash2 />
+                       Excluir
+                     </button>
+                   )}
+                 </div>
             </article>
           );
         })}

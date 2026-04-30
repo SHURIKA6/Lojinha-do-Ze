@@ -21,7 +21,7 @@ import shippingRoutes from './modules/shipping/routes';
 import reviewRoutes from './modules/products/reviewRoutes';
 import { handleScheduledTasks } from './modules/system/cron';
 import { logSystemEvent } from './modules/system/logService';
-
+import deliveryRoutes from './modules/delivery/routes';
 
 import { apiLimiter } from './core/middleware/rateLimit';
 import { auditMiddleware } from './core/middleware/audit';
@@ -30,7 +30,7 @@ import { timeout } from 'hono/timeout';
 import { Bindings, Variables, Database } from './core/types';
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
-const DBLESS_PATH_PREFIXES = ['/api/health', '/api/notifications/ws', '/api/notifications/broadcast'];
+const DBLESS_PATH_PREFIXES = ['/api/health', '/api/notifications/ws', '/api/notifications/broadcast', '/api/delivery'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
 
 // Timeout global de 15 segundos para evitar 504 Gateway Timeout do Cloudflare/Vercel
@@ -78,7 +78,7 @@ app.get('/api/health', async (c) => {
 
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
-  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(${prefix}/))) {
     return await next();
   }
 
@@ -122,7 +122,7 @@ app.onError((error, c) => {
   const db = c.get('db');
   const user = c.get('user') as any;
 
-  logger.error(`Unhandled Global Error [${errorId}]`, error, {
+  logger.error(Unhandled Global Error [], error, {
     path: c.req.path,
     method: c.req.method,
     userId: user?.id,
@@ -134,7 +134,7 @@ app.onError((error, c) => {
       db, 
       c.env, 
       'error', 
-      `Erro Global [${errorId}]: ${error.message}`, 
+      Erro Global []: , 
       {
         path: c.req.path,
         method: c.req.method,
@@ -177,9 +177,10 @@ app.route('/api/analytics', analyticsRoutes as any);
 app.route('/api/shipping', shippingRoutes as any);
 app.route('/api/reviews', reviewRoutes as any);
 app.route('/api/notifications', notificationRoutes as any);
+app.route('/api/delivery', deliveryRoutes as any);
 app.route('/api/webhooks/whatsapp', webhookRoutes as any);
 
-export { NotificationDO };
+export { NotificationDO, DeliveryLocationDO };
 
 export default {
   fetch: app.fetch,
@@ -187,4 +188,3 @@ export default {
     ctx.waitUntil(handleScheduledTasks(env));
   },
 };
-

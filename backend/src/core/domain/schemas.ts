@@ -7,7 +7,10 @@ import {
 } from './constants';
 
 function emptyToUndefined(value: unknown): unknown {
-  if (typeof value !== 'string') return value;
+  if (typeof value !== 'string') {
+    if (value === null || value === undefined) return undefined;
+    return String(value).trim();
+  }
   const trimmed = value.trim();
   return trimmed === '' ? undefined : trimmed;
 }
