@@ -9,6 +9,7 @@ import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../../core/domain/constants';
 import { Bindings, Variables } from '../../core/types';
 import * as orderService from '../orders/service';
 import * as productService from './service';
+import { logSystemEvent } from '../system/logService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -45,9 +46,20 @@ router.get('/', async (c) => {
 
     setNoStore(c as any);
     return c.json(response);
-  } catch (error) {
-    logger.error('Erro ao carregar catálogo', error as Error);
-    return jsonError(c, 500, 'Erro ao carregar o catálogo de produtos.');
+  } catch (error: any) {
+    const errorId = crypto.randomUUID().split('-')[0];
+    logger.error(`Erro ao carregar catálogo [${errorId}]`, error);
+    
+    await logSystemEvent(db, c.env, 'error', `Erro no Catálogo [${errorId}]: ${error.message}`, {
+      search,
+      category,
+      sortBy,
+      minPrice,
+      maxPrice,
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro de catálogo no banco', err));
+
+    return jsonError(c, 500, 'Erro ao carregar o catálogo de produtos.', { errorId });
   }
 });
 
@@ -70,13 +82,22 @@ router.post(
         201
       );
     } catch (error: any) {
+      const errorId = crypto.randomUUID().split('-')[0];
       if (error.message.includes('não encontrado') ||
           error.message.includes('insuficiente') ||
           error.message.includes('não corresponde')) {
         return jsonError(c, 400, error.message);
       }
-      logger.error('Erro ao processar pedido no catálogo (POST)', error as Error);
-      return jsonError(c, 500, 'Erro ao processar o seu pedido. Tente novamente em instantes.');
+      
+      logger.error(`Erro ao processar pedido no catálogo [${errorId}]`, error);
+
+      await logSystemEvent(db, c.env, 'error', `Falha no Pedido via Catálogo [${errorId}]: ${error.message}`, {
+        payload,
+        userId: authUser?.id,
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro de pedido no banco', err));
+
+      return jsonError(c, 500, 'Erro ao processar o seu pedido. Tente novamente em instantes.', { errorId });
     }
   }
 );

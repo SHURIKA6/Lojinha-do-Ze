@@ -21,6 +21,7 @@ import {
   normalizePhoneDigits,
   uniqueFieldLabel,
 } from '../../core/utils/normalize';
+import { logSystemEvent } from '../system/logService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -111,11 +112,20 @@ router.get('/:id/orders', async (c) => {
 
     setNoStore(c as any);
     return c.json(orders);
-  } catch (error) {
-    logger.error('Erro ao buscar pedidos do cliente (GET /:id/orders)', error as Error, {
+    return c.json(orders);
+  } catch (error: any) {
+    const errorId = crypto.randomUUID().split('-')[0];
+    const db = c.get('db');
+    logger.error(`Erro ao buscar pedidos do cliente [${errorId}]`, error, {
       id: c.req.param('id'),
     });
-    return jsonError(c, 500, 'Erro ao carregar o histórico de pedidos do cliente.');
+
+    await logSystemEvent(db, c.env, 'error', `Erro Pedidos Cliente [${errorId}]: ${error.message}`, {
+      customerId: c.req.param('id'),
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro de pedidos do cliente no banco', err));
+
+    return jsonError(c, 500, 'Erro ao carregar o histórico de pedidos do cliente.', { errorId });
   }
 });
 
@@ -136,8 +146,17 @@ router.post(
       if (isUniqueViolation(error)) {
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
-      logger.error('Erro ao criar cliente (POST)', error as Error);
-      return jsonError(c, 500, 'Erro ao cadastrar o novo cliente.');
+      
+      const errorId = crypto.randomUUID().split('-')[0];
+      const db = c.get('db');
+      logger.error(`Erro ao criar cliente [${errorId}]`, error as Error);
+
+      await logSystemEvent(db, c.env, 'error', `Erro Criação Cliente [${errorId}]: ${error.message}`, {
+        errorId,
+        path: c.req.path
+      }, error).catch(err => logger.error('Falha ao logar erro de criação de cliente no banco', err));
+
+      return jsonError(c, 500, 'Erro ao cadastrar o novo cliente.', { errorId });
     }
   }
 );
@@ -166,8 +185,17 @@ router.put(
       if (isUniqueViolation(error)) {
         return jsonError(c, 409, `${uniqueFieldLabel(error)} já cadastrado`);
       }
-      logger.error('Erro ao atualizar cliente (PUT)', error as Error, { id: c.req.param('id') });
-      return jsonError(c, 500, 'Erro ao salvar as atualizações do cliente.');
+      
+      const errorId = crypto.randomUUID().split('-')[0];
+      const db = c.get('db');
+      logger.error(`Erro ao atualizar cliente [${errorId}]`, error as Error, { id: c.req.param('id') });
+
+      await logSystemEvent(db, c.env, 'error', `Erro Atualização Cliente [${errorId}]: ${error.message}`, {
+        customerId: c.req.param('id'),
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro de atualização de cliente no banco', err));
+
+      return jsonError(c, 500, 'Erro ao salvar as atualizações do cliente.', { errorId });
     }
   }
 );
@@ -221,11 +249,19 @@ router.patch(
       const updatedCustomer = await service.updateRole(id, role);
       if (!updatedCustomer) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para alteração de cargo.`);
       return c.json(updatedCustomer);
-    } catch (error) {
-      logger.error('Erro ao atualizar cargo do cliente (PATCH role)', error as Error, {
+    } catch (error: any) {
+      const errorId = crypto.randomUUID().split('-')[0];
+      const db = c.get('db');
+      logger.error(`Erro ao atualizar cargo do cliente [${errorId}]`, error as Error, {
         id: c.req.param('id'),
       });
-      return jsonError(c, 500, 'Erro ao alterar a permissão do usuário.');
+
+      await logSystemEvent(db, c.env, 'error', `Erro Cargo Cliente [${errorId}]: ${error.message}`, {
+        customerId: c.req.param('id'),
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro de cargo do cliente no banco', err));
+
+      return jsonError(c, 500, 'Erro ao alterar a permissão do usuário.', { errorId });
     }
   }
 );
@@ -261,9 +297,17 @@ router.delete(
       const deleted = await service.deleteCustomer(id);
       if (!deleted) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para exclusão.`);
       return c.json({ message: 'Usuário excluído' });
-    } catch (error) {
-      logger.error('Erro ao excluir cliente (DELETE)', error as Error, { id: c.req.param('id') });
-      return jsonError(c, 500, 'Erro ao remover o cliente.');
+    } catch (error: any) {
+      const errorId = crypto.randomUUID().split('-')[0];
+      const db = c.get('db');
+      logger.error(`Erro ao excluir cliente [${errorId}]`, error as Error, { id: c.req.param('id') });
+
+      await logSystemEvent(db, c.env, 'error', `Erro Exclusão Cliente [${errorId}]: ${error.message}`, {
+        customerId: c.req.param('id'),
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro de exclusão de cliente no banco', err));
+
+      return jsonError(c, 500, 'Erro ao remover o cliente.', { errorId });
     }
   }
 );

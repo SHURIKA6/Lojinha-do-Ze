@@ -3,6 +3,7 @@ import { jsonError, jsonSuccess } from '../../core/utils/http';
 import { logger } from '../../core/utils/logger';
 import { shippingService } from './shippingService';
 import { Bindings, Variables } from '../../core/types';
+import { logSystemEvent } from '../system/logService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -11,11 +12,16 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
  * Calcula opções de frete para um endereço/coordenadas
  */
 router.post('/calculate', async (c) => {
+  let coordinates: { lat: number; lng: number } | undefined;
+  let cartTotal: number | undefined;
+  
   try {
-    const { coordinates, cartTotal } = await c.req.json() as { 
+    const body = await c.req.json() as { 
       coordinates: { lat: number; lng: number }; 
       cartTotal: number;
     };
+    coordinates = body.coordinates;
+    cartTotal = body.cartTotal;
 
     if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') {
       return jsonError(c, 400, 'Coordenadas inválidas ou não fornecidas.');
@@ -30,9 +36,22 @@ router.post('/calculate', async (c) => {
         coordinates
       )
     });
-  } catch (error) {
-    logger.error('Erro na rota de cálculo de frete', error as Error);
-    return jsonError(c, 500, 'Erro ao calcular frete.');
+  } catch (error: any) {
+    const errorId = crypto.randomUUID().split('-')[0];
+    const db = c.get('db');
+    
+    logger.error(`Erro na rota de cálculo de frete [${errorId}]`, error, {
+      coordinates,
+      cartTotal
+    });
+
+    await logSystemEvent(db, c.env, 'error', `Erro Cálculo Frete [${errorId}]: ${error.message}`, {
+      coordinates,
+      cartTotal,
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro de frete no banco', err));
+
+    return jsonError(c, 500, 'Erro ao calcular frete.', { errorId });
   }
 });
 

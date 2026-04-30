@@ -8,6 +8,8 @@ import { hashPassword } from '../../core/utils/crypto';
 import { loginLimiter } from '../../core/middleware/rateLimit';
 import { loginSchema } from '../../core/domain/schemas';
 import { Bindings, Variables } from '../../core/types';
+import { logSystemEvent } from '../system/logService';
+
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -57,6 +59,13 @@ router.post(
         loginId: loginId,
         stack: error.stack
       });
+
+      // Persiste no banco para auditoria
+      await logSystemEvent(db, c.env, 'error', `Falha no Login [${errorId}]: ${message}`, {
+        loginId,
+        errorId,
+        path: c.req.path
+      }, error).catch(err => logger.error('Falha ao logar erro de login no banco', err));
       
       return jsonError(c, 500, 'Erro interno ao processar login', { errorId });
     }
@@ -98,8 +107,16 @@ router.post('/setup-password', async (c) => {
     const { csrfToken } = await authService.issueSession(c, db, result.user);
     return jsonSuccess(c, { user: result.user, csrfToken });
   } catch (error: any) {
-    logger.error('Erro no setup-password', error);
-    return jsonError(c, 500, 'Não foi possível ativar sua conta no momento.');
+    const errorId = crypto.randomUUID().split('-')[0];
+    logger.error(`Erro no setup-password [${errorId}]`, error);
+    
+    await logSystemEvent(db, c.env, 'error', `Erro no Setup Password [${errorId}]: ${error.message}`, {
+      token,
+      code,
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro de setup-password no banco', err));
+
+    return jsonError(c, 500, 'Não foi possível ativar sua conta no momento.', { errorId });
   }
 });
 

@@ -9,6 +9,7 @@ import { orderLimiter } from '../../core/middleware/rateLimit';
 import { normalizePhoneDigits } from '../../core/utils/normalize';
 import { Bindings, Variables } from '../../core/types';
 import * as orderService from '../orders/service';
+import { logSystemEvent } from '../system/logService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -111,9 +112,20 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
     );
 
     return c.json(payment, 201);
-  } catch (error) {
-    logger.error('Erro ao processar pagamento Pix', error as Error);
-    return jsonError(c, 500, 'Erro ao criar pagamento no Mercado Pago');
+  } catch (error: any) {
+    const errorId = crypto.randomUUID().split('-')[0];
+    logger.error(`Erro ao processar pagamento Pix [${errorId}]`, error, { 
+      orderId: payload.orderId,
+      email: payload.email
+    });
+
+    await logSystemEvent(db, c.env, 'error', `Falha no Pagamento Pix [${errorId}]: ${error.message}`, {
+      orderId: payload.orderId,
+      email: payload.email,
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro de pagamento no banco', err));
+
+    return jsonError(c, 500, 'Erro ao criar pagamento no Mercado Pago', { errorId });
   }
 });
 
@@ -167,8 +179,17 @@ router.get('/pix/:id', async (c) => {
       status_detail: payment.status_detail,
       external_reference: payment.external_reference,
     });
-  } catch {
-    return jsonError(c, 500, 'Erro ao buscar status do pagamento');
+  } catch (error: any) {
+    const errorId = crypto.randomUUID().split('-')[0];
+    logger.error(`Erro ao buscar status do pagamento [${errorId}]`, error, { paymentId, orderId });
+
+    await logSystemEvent(db, c.env, 'error', `Erro Consulta Pagamento [${errorId}]: ${error.message}`, {
+      paymentId,
+      orderId,
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro de consulta de pagamento no banco', err));
+
+    return jsonError(c, 500, 'Erro ao buscar status do pagamento', { errorId });
   }
 });
 
@@ -237,10 +258,6 @@ router.post('/webhook', async (c) => {
           // Atualiza o status do pedido de forma completa (incluindo WhatsApp e Log de estoque se necessário)
           await orderService.updateOrderStatus(db, orderId, 'pago', c.env);
           
-          // Nota: updateOrderStatus já cria a transação de receita se o status for 'concluido'.
-          // Para status 'pago', podemos querer criar a transação aqui se não for criada lá.
-          // Atualmente updateOrderStatus só cria transação no status 'concluido'.
-          
           // Verificamos se já existe transação para evitar duplicidade
           const { rows: txCheck } = await db.query('SELECT id FROM transactions WHERE order_id = $1', [orderId]);
           if (!txCheck.length) {
@@ -263,11 +280,18 @@ router.post('/webhook', async (c) => {
           await orderService.updateOrderStatus(db, orderId, 'cancelado', c.env);
         }
       }
-    } catch (error) {
-      logger.error('Erro ao processar webhook do Mercado Pago', error as Error, {
+    } catch (error: any) {
+      const errorId = crypto.randomUUID().split('-')[0];
+      logger.error(`Erro ao processar webhook do Mercado Pago [${errorId}]`, error, {
         topic,
         resource: String(resource),
       });
+
+      await logSystemEvent(db, c.env, 'error', `Erro Webhook Mercado Pago [${errorId}]: ${error.message}`, {
+        topic,
+        resource: String(resource),
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro de webhook no banco', err));
     }
   }
 

@@ -4,8 +4,10 @@ import { authMiddleware, adminOnly } from '../../core/middleware/auth';
 import { productCreateSchema, productUpdateSchema } from '../../core/domain/schemas';
 import { isValidId } from '../../core/utils/normalize';
 import { jsonError, setNoStore, validationError } from '../../core/utils/http';
+import { logger } from '../../core/utils/logger';
 import * as productService from './service';
 import { Bindings, Variables } from '../../core/types';
+import { logSystemEvent } from '../system/logService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -52,7 +54,15 @@ router.post(
       if (error.type === 'UNIQUE_VIOLATION') {
         return jsonError(c, 409, `${error.label} já cadastrado`);
       }
-      return jsonError(c, 500, 'Erro ao cadastrar o novo produto.');
+      const errorId = crypto.randomUUID().split('-')[0];
+      logger.error(`Erro ao cadastrar produto [${errorId}]`, error);
+      
+      await logSystemEvent(db, c.env, 'error', `Erro ao cadastrar produto [${errorId}]: ${error.message}`, {
+        payload: c.req.valid('json'),
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+
+      return jsonError(c, 500, 'Erro ao cadastrar o novo produto.', { errorId });
     }
   }
 );
@@ -76,7 +86,16 @@ router.put(
       if (error.type === 'NOT_FOUND') {
         return jsonError(c, 404, 'Produto não encontrado');
       }
-      return jsonError(c, 500, 'Erro ao salvar as edições do produto.');
+      const errorId = crypto.randomUUID().split('-')[0];
+      logger.error(`Erro ao editar produto [${errorId}]`, error);
+
+      await logSystemEvent(db, c.env, 'error', `Erro ao editar produto [${errorId}]: ${error.message}`, {
+        id,
+        payload: c.req.valid('json'),
+        errorId
+      }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+
+      return jsonError(c, 500, 'Erro ao salvar as edições do produto.', { errorId });
     }
   }
 );
@@ -92,8 +111,16 @@ router.delete('/:id', async (c) => {
       return jsonError(c, 404, 'Produto não encontrado');
     }
     return c.json({ message: 'Produto excluído' });
-  } catch (error) {
-    return jsonError(c, 500, 'Erro ao excluir o produto.');
+  } catch (error: any) {
+    const errorId = crypto.randomUUID().split('-')[0];
+    logger.error(`Erro ao excluir produto [${errorId}]`, error);
+    
+    await logSystemEvent(db, c.env, 'error', `Erro ao excluir produto [${errorId}]: ${error.message}`, {
+      id,
+      errorId
+    }, error).catch(err => logger.error('Falha ao logar erro no banco', err));
+
+    return jsonError(c, 500, 'Erro ao excluir o produto.', { errorId });
   }
 });
 
