@@ -37,8 +37,6 @@ export class LoyaltyService {
     if (pointsToAward <= 0) return;
 
     try {
-      await db.query('BEGIN');
-      
       // Atualiza saldo (upsert)
       await db.query(`
         INSERT INTO loyalty_points (user_id, balance)
@@ -54,10 +52,8 @@ export class LoyaltyService {
         VALUES ($1, $2, 'earn', $3, $4)
       `, [userId, orderId, pointsToAward, `Compra no pedido #${orderId}`]);
 
-      await db.query('COMMIT');
       logger.info(`Pontos creditados para usuário ${userId}`, { points: pointsToAward, orderId });
     } catch (error) {
-      await db.query('ROLLBACK');
       logger.error('Erro ao creditar pontos', error as Error);
       throw error;
     }
@@ -75,8 +71,6 @@ export class LoyaltyService {
     const discountValue = pointsToSpend * this.BRL_PER_POINT;
 
     try {
-      await db.query('BEGIN');
-      
       // Deduz do saldo
       await db.query(`
         UPDATE loyalty_points 
@@ -91,13 +85,40 @@ export class LoyaltyService {
         VALUES ($1, $2, 'spend', $3, $4)
       `, [userId, orderId, pointsToSpend, `Desconto no pedido #${orderId}`]);
 
-      await db.query('COMMIT');
       logger.info(`Pontos resgatados pelo usuário ${userId}`, { points: pointsToSpend, discountValue, orderId });
       
       return discountValue;
     } catch (error) {
-      await db.query('ROLLBACK');
       logger.error('Erro ao resgatar pontos', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reembolsa pontos de um pedido cancelado
+   */
+  async refundPoints(db: any, userId: number, orderId: number, pointsToRefund: number): Promise<void> {
+    if (pointsToRefund <= 0) return;
+
+    try {
+      // Atualiza saldo (upsert)
+      await db.query(`
+        INSERT INTO loyalty_points (user_id, balance)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id) DO UPDATE
+        SET balance = loyalty_points.balance + $2,
+            updated_at = NOW()
+      `, [userId, pointsToRefund]);
+
+      // Registra transação
+      await db.query(`
+        INSERT INTO loyalty_transactions (user_id, order_id, type, points, description)
+        VALUES ($1, $2, 'refund', $3, $4)
+      `, [userId, orderId, pointsToRefund, `Reembolso de pontos do pedido #${orderId}`]);
+
+      logger.info(`Pontos reembolsados para usuário ${userId}`, { points: pointsToRefund, orderId });
+    } catch (error) {
+      logger.error('Erro ao reembolsar pontos', error as Error);
       throw error;
     }
   }

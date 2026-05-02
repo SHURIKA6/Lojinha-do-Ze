@@ -253,6 +253,14 @@ export async function updateOrderStatus(
       if (currentOrder.payment_id) {
         paymentIdToCancel = currentOrder.payment_id;
       }
+
+      // Refund spent points if any
+      if (currentOrder.customer_id && currentOrder.discount > 0) {
+        const pointsToRefund = Math.round(currentOrder.discount / 0.05);
+        if (pointsToRefund > 0) {
+          await loyaltyService.refundPoints(client, parseInt(currentOrder.customer_id), parseInt(id), pointsToRefund);
+        }
+      }
     }
 
     if (status === 'concluido' && currentOrder.status !== 'concluido') {
@@ -361,6 +369,14 @@ export async function deleteOrder(db: Database, id: string) {
           items.map(i => i.name),
           `Cancelamento ou Exclusão do Pedido #${id}`
         );
+      }
+
+      // Refund spent points if any
+      if (order.customer_id && order.discount > 0) {
+        const pointsToRefund = Math.round(order.discount / 0.05);
+        if (pointsToRefund > 0) {
+          await loyaltyService.refundPoints(client, parseInt(order.customer_id), parseInt(id), pointsToRefund);
+        }
       }
     }
 

@@ -9,6 +9,11 @@ export interface NotificationPayload {
 
 export async function broadcastNotification(env: Bindings, payload: NotificationPayload): Promise<void> {
   try {
+    if (!env.NOTIFICATIONS_DO || typeof env.NOTIFICATIONS_DO.idFromName !== 'function') {
+      console.warn('NOTIFICATIONS_DO binding not found. Skipping real-time notification.');
+      return;
+    }
+
     const id = env.NOTIFICATIONS_DO.idFromName('GLOBAL_NOTIFICATIONS');
     const stub = env.NOTIFICATIONS_DO.get(id);
 

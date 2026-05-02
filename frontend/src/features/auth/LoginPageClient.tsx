@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 const loginSchema = z.object({
-  identifier: z.string().min(1, 'E-mail ou telefone é obrigatório'),
+  identifier: z.string().trim().min(1, 'E-mail ou telefone é obrigatório'),
   password: z.string().min(1, 'Senha é obrigatória'),
 });
 
