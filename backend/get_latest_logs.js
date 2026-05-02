@@ -1,3 +1,4 @@
+﻿/* eslint-disable no-console */
 import { neon } from '@neondatabase/serverless';
 import 'dotenv/config';
 
@@ -15,12 +16,13 @@ async function main() {
     
     const today = new Date().toISOString().split('T')[0];
     const logs = await sql.query(`
-      SELECT * FROM system_logs 
+      SELECT * FROM system_logs
+      WHERE DATE(created_at) = $1
       ORDER BY created_at DESC
       LIMIT 20
-    `);
+    `, [today]);
 
-    console.log(`Found ${logs.rows.length} logs for today.`);
+    console.log(`Found ${logs.rows.length} logs for today (${today}).`);
     console.log(JSON.stringify(logs.rows, null, 2));
 
   } catch (err) {
