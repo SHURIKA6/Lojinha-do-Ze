@@ -107,7 +107,7 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
 
   try {
     const db = c.get('db');
-    const result = await orderService.deleteOrder(db, id);
+    const result = await orderService.deleteOrder(db, id, c.env, c.executionCtx);
 
     if (result.error) {
       return jsonError(c, result.error.code, result.error.message);

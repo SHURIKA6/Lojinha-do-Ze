@@ -8,6 +8,7 @@ import { sendWhatsAppMessage } from '../notifications/whatsapp';
 import { broadcastNotification } from '../notifications/notifier';
 import { notificationService, NOTIFICATION_TYPES } from '../system/notificationService';
 import { loyaltyService } from '../customers/loyaltyService';
+import { logSystemEvent } from '../system/logService';
 
 
 interface CreateOrderPayload {
@@ -340,15 +341,27 @@ export async function updateOrderStatus(
 
     return { data: updatedOrder };
   } catch (error) {
+    // If transaction was already committed, we shouldn't return a 500 error
+    // because the primary action (updating the status) succeeded.
+    // However, we don't know for sure here if it committed without checking state.
+    // Better to catch specific errors in post-commit blocks (which we already do).
+    
     await client.query('ROLLBACK').catch(() => {});
     logger.error('Erro no updateOrderStatus', error as Error, { id });
+    
+    // Log to database for production debugging
+    await logSystemEvent(db, env, 'error', `Erro no updateOrderStatus [ID: ${id}, Status: ${status}]: ${(error as Error).message}`, {
+      orderId: id,
+      status
+    }, error as Error, ctx).catch(err => logger.error('Falha ao logar erro de status no banco', err));
+
     return { error: { code: 500, message: 'Erro ao modificar o status do pedido.' } };
   } finally {
     if (client.release) client.release();
   }
 }
 
-export async function deleteOrder(db: Database, id: string) {
+export async function deleteOrder(db: Database, id: string, env: any, ctx?: any) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -388,6 +401,12 @@ export async function deleteOrder(db: Database, id: string) {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     logger.error('Erro no deleteOrder', error as Error, { id });
+
+    // Log to database for production debugging
+    await logSystemEvent(db, env, 'error', `Erro no deleteOrder [ID: ${id}]: ${(error as Error).message}`, {
+      orderId: id
+    }, error as Error, ctx).catch(err => logger.error('Falha ao logar erro de exclusão no banco', err));
+
     return { error: { code: 500, message: 'Erro ao excluir o pedido.' } };
   } finally {
     if (client.release) client.release();

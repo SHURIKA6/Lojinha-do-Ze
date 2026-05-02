@@ -67,8 +67,8 @@ export default function AddressPicker({
       return;
     }
 
+    let timer: NodeJS.Timeout | null = null;
     let mounted = true;
-
     const loadMap = async () => {
       const L = (await import('leaflet')).default;
       await import('leaflet/dist/leaflet.css');
@@ -133,13 +133,28 @@ export default function AddressPicker({
       });
 
       setMapReady(true);
-      setTimeout(() => map.invalidateSize(), 200);
+      timer = setTimeout(() => {
+        if (mounted && mapInstanceRef.current) {
+          const map = mapInstanceRef.current;
+          // Extra safety: stack trace shows error in _getMapPanePos which relies on _mapPane
+          if (map._container && map._mapPane) {
+            try {
+              map.invalidateSize();
+            } catch (e) {
+              console.warn('Could not invalidate map size defensively', e);
+            }
+          }
+        }
+      }, 500);
     };
 
     loadMap();
 
     return () => {
       mounted = false;
+      if (timer) {
+        clearTimeout(timer);
+      }
       try {
         if (markerRef.current) {
           markerRef.current.remove();

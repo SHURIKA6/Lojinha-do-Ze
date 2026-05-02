@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
 import { formatCurrency } from '@/core/api';
@@ -126,6 +126,39 @@ export default function CheckoutModal({
   const pointsDiscount = usePoints ? pointsToRedeem * 0.05 : 0;
   const checkoutTotal = Math.max(0, cartTotal + shippingFee - pointsDiscount);
 
+  // State for client-side generated QR code (fallback when Mercado Pago doesn't return qr_code_base64)
+  const [generatedQrCode, setGeneratedQrCode] = useState<string>('');
+  const [qrCodeGenerating, setQrCodeGenerating] = useState<boolean>(false);
+
+  // Generate QR code from qr_code string when qr_code_base64 is not available
+  useEffect(() => {
+    if (orderResult?.pix?.qr_code && !orderResult.pix.qr_code_base64) {
+      setQrCodeGenerating(true);
+      import('qrcode').then((QRCode) => {
+        QRCode.default.toDataURL(orderResult.pix.qr_code, { 
+          width: 200,
+          margin: 1,
+          color: { dark: '#000000', light: '#FFFFFF' }
+        }).then((url: string) => {
+          setGeneratedQrCode(url);
+          setQrCodeGenerating(false);
+        }).catch((err: Error) => {
+          console.error('Erro ao gerar QR Code:', err);
+          setQrCodeGenerating(false);
+        });
+      }).catch((err: Error) => {
+        console.error('Erro ao carregar biblioteca QR Code:', err);
+        setQrCodeGenerating(false);
+      });
+    }
+  }, [orderResult?.pix?.qr_code, orderResult?.pix?.qr_code_base64]);
+
+  // Reset generated QR code when orderResult changes
+  useEffect(() => {
+    setGeneratedQrCode('');
+    setQrCodeGenerating(false);
+  }, [orderResult?.id]);
+
   if (orderResult) {
     const isPix = orderResult._paymentMethod === 'pix';
 
@@ -177,11 +210,27 @@ export default function CheckoutModal({
                       display: 'inline-block',
                       border: '1px solid var(--gray-200)'
                     }}>
-                      <img 
-                        src={`data:image/jpeg;base64,${orderResult.pix.qr_code_base64}`} 
-                        alt="QR Code Pix" 
-                        style={{ width: '200px', height: '200px' }}
-                      />
+                      {orderResult.pix.qr_code_base64 ? (
+                        <img 
+                          src={`data:image/jpeg;base64,${orderResult.pix.qr_code_base64}`} 
+                          alt="QR Code Pix" 
+                          style={{ width: '200px', height: '200px' }}
+                        />
+                      ) : qrCodeGenerating ? (
+                        <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)' }}>Gerando QR Code...</span>
+                        </div>
+                      ) : generatedQrCode ? (
+                        <img 
+                          src={generatedQrCode} 
+                          alt="QR Code Pix" 
+                          style={{ width: '200px', height: '200px' }}
+                        />
+                      ) : (
+                        <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--error-500)' }}>QR Code indisponível</span>
+                        </div>
+                      )}
                     </div>
                     
                     <button 
