@@ -98,7 +98,12 @@ export function createRateLimiter(namespace: string, limit: number, windowMs: nu
     const now = Date.now();
 
     const state = await store.get(key);
-    const waitUntil = c.executionCtx?.waitUntil?.bind(c.executionCtx);
+    let waitUntil: ((p: Promise<any>) => void) | undefined;
+    try {
+      waitUntil = c.executionCtx?.waitUntil?.bind(c.executionCtx);
+    } catch {
+      // executionCtx not available (not in Cloudflare Workers environment)
+    }
 
     if (!state) {
       const newState = { count: 1, resetAt: now + windowMs };

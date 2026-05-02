@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import app from '../src/server';
+import { app } from '../src/server';
 import { cacheService } from '../src/modules/system/cacheService';
 
 describe('Security and Performance Integration', () => {
@@ -23,16 +23,16 @@ describe('Security and Performance Integration', () => {
   });
 
   describe('Caching Service', () => {
-    it('should store and retrieve values', () => {
-      cacheService.set('test_key', { data: 'passed' }, 10);
-      expect(cacheService.get('test_key')).toEqual({ data: 'passed' });
+    it('should store and retrieve values', async () => {
+      await cacheService.set('test_key', { data: 'passed' }, 10);
+      expect(await cacheService.get('test_key')).toEqual({ data: 'passed' });
     });
 
-    it('should return null for expired keys', () => {
+    it('should return null for expired keys', async () => {
       jest.useFakeTimers();
-      cacheService.set('expire_key', 'value', 1);
+      await cacheService.set('expire_key', 'value', 1);
       jest.advanceTimersByTime(2000);
-      expect(cacheService.get('expire_key')).toBeNull();
+      expect(await cacheService.get('expire_key')).toBeNull();
       jest.useRealTimers();
     });
   });

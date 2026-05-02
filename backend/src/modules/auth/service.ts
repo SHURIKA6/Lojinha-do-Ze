@@ -34,6 +34,14 @@ import { RefreshTokenService } from './refreshTokenService';
 
 type AppEnv = { Bindings: Bindings; Variables: Variables };
 
+function getExecutionCtx(c: any): any {
+  try {
+    return c.executionCtx;
+  } catch {
+    return undefined;
+  }
+}
+
 type ResolvedSession = {
   id: string;
   userId: string;
@@ -257,7 +265,7 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
 
   // PERF: Alimenta o cache imediatamente para acelerar a próxima requisição
   // Não precisamos de await aqui se o ctx for fornecido, pois o setSession usará waitUntil internamente
-  cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV, c.executionCtx);
+  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env?.CACHE_KV, getExecutionCtx(c));
 
   // SEC: Refresh Token para renovação de sessão
   const refreshTokenService = getRefreshTokenService(client);
@@ -270,7 +278,7 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
     ipAddress, 
     userAgent,
     c.env,
-    c.executionCtx
+    getExecutionCtx(c)
   );
 
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions(c));
@@ -293,7 +301,7 @@ export async function destroySession(c: Context<AppEnv>, client: Database) {
   if (sessionToken) {
     const tokenHash = await sha256Hex(sessionToken);
     await deleteSessionByTokenHash(client, tokenHash);
-    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV, c.executionCtx);
+    await cacheService.deleteSession(tokenHash, c.env?.CACHE_KV, getExecutionCtx(c));
   }
 
   clearSessionCookies(c);
@@ -308,8 +316,8 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   // PERF-05: Limpeza probabilística — executa apenas ~1% das vezes em background
   if (Math.random() < 0.01) {
     const cleanupTask = deleteExpiredSessions(client).catch(err => logger.error('Erro na limpeza de sessões expiradas', err));
-    if (c.executionCtx?.waitUntil) {
-      c.executionCtx.waitUntil(cleanupTask);
+    if (getExecutionCtx(c)?.waitUntil) {
+      getExecutionCtx(c).waitUntil(cleanupTask);
     }
   }
 
@@ -322,7 +330,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const tokenHash = await sha256Hex(sessionToken);
 
   // PERF: Tenta obter do cache antes de consultar o banco
-  const fromCache = await cacheService.getSession(tokenHash, c.env.CACHE_KV, c.executionCtx);
+  const fromCache = await cacheService.getSession(tokenHash, c.env?.CACHE_KV, getExecutionCtx(c));
   if (fromCache) {
     const session = normalizeResolvedSession(fromCache);
     if (session) {
@@ -333,7 +341,7 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
     logger.warn('Entrada inválida no cache de sessão ignorada; consultando banco', {
       tokenHashPrefix: tokenHash.slice(0, 8),
     });
-    await cacheService.deleteSession(tokenHash, c.env.CACHE_KV, c.executionCtx);
+    await cacheService.deleteSession(tokenHash, c.env?.CACHE_KV, getExecutionCtx(c));
   }
 
   const row = await findSessionByTokenHash(client, tokenHash);
@@ -346,14 +354,14 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const session = buildResolvedSession(row);
 
   // Alimenta o cache para as próximas chamadas
-  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env.CACHE_KV, c.executionCtx);
+  await cacheService.setSession(tokenHash, session, SESSION_TTL_SECONDS, c.env?.CACHE_KV, getExecutionCtx(c));
 
   storeResolvedSession(c, session);
 
   try {
     const touchTask = touchSession(client, session.id).catch(err => logger.error('Erro ao atualizar sessão (touch)', err));
-    if (c.executionCtx?.waitUntil) {
-      c.executionCtx.waitUntil(touchTask);
+    if (getExecutionCtx(c)?.waitUntil) {
+      getExecutionCtx(c).waitUntil(touchTask);
     } else {
       await touchTask;
     }

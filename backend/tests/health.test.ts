@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import app from '../src/server';
+import { app } from '../src/server';
 
 describe('Health Check API', () => {
   it('should report degraded status when DATABASE_URL is absent in the request env', async () => {

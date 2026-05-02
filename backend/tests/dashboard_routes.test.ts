@@ -65,6 +65,8 @@ describe('Dashboard routes', () => {
           { name: 'Naturais', value: '2' },
           { name: 'Chás e Infusões', value: '4' },
         ]),
+        unique_visitors: '0',
+        monthly_revenue: JSON.stringify([]),
       })
     );
 
@@ -84,6 +86,9 @@ describe('Dashboard routes', () => {
         { name: 'Naturais', value: 2 },
         { name: 'Chás e Infusões', value: 4 },
       ],
+      uniqueVisitors: 0,
+      conversionRate: 0,
+      monthlyRevenue: [],
     });
   });
 });

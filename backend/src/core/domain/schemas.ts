@@ -19,7 +19,7 @@ function optionalTrimmedString(max: number, label: string) {
   return z.preprocess(
     emptyToUndefined,
     z.string().trim().max(max, `${label} deve ter no máximo ${max} caracteres`).optional()
-  );
+  ).optional();
 }
 
 const nonNegativeInt = (label: string) =>

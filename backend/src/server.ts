@@ -181,7 +181,7 @@ app.route('/api/notifications', notificationRoutes as any);
 app.route('/api/delivery', deliveryRoutes as any);
 app.route('/api/webhooks/whatsapp', webhookRoutes as any);
 
-export { NotificationDO, DeliveryLocationDO };
+export { app, NotificationDO, DeliveryLocationDO };
 
 export default {
   fetch: app.fetch,
