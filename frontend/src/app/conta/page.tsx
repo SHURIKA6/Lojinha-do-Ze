@@ -8,7 +8,7 @@ import {
   getStatusLabel,
   getStatusVariant,
 } from '@/core/api';
-import { FiCheckCircle, FiClock, FiPackage, FiTruck, FiMap } from 'react-icons/fi';
+import { CheckCircle, Clock, Package, Truck, Map } from 'lucide-react';
 import { Order } from '@/types';
 import DeliveryMap from '@/components/delivery/DeliveryMap';
 
@@ -51,7 +51,7 @@ export default function ClienteDashboard() {
       <div className="page-header">
         <div>
           <span className="page-eyebrow">
-            <FiPackage />
+            <Package />
             Minha conta
           </span>
           <h1>Meus pedidos</h1>
@@ -64,7 +64,7 @@ export default function ClienteDashboard() {
       <div className="status-summary">
         <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
-            <FiClock />
+            <Clock />
           </div>
           <div className="metric-card__content">
             <div className="metric-card__label">Na fila</div>
@@ -74,7 +74,7 @@ export default function ClienteDashboard() {
 
         <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
-            <FiPackage />
+            <Package />
           </div>
           <div className="metric-card__content">
             <div className="metric-card__label">Em preparo</div>
@@ -84,7 +84,7 @@ export default function ClienteDashboard() {
 
         <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
-            <FiTruck />
+            <Truck />
           </div>
           <div className="metric-card__content">
             <div className="metric-card__label">A caminho</div>
@@ -94,7 +94,7 @@ export default function ClienteDashboard() {
 
         <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' } as React.CSSProperties}>
           <div className="metric-card__icon">
-            <FiCheckCircle />
+            <CheckCircle />
           </div>
           <div className="metric-card__content">
             <div className="metric-card__label">Concluídos</div>
@@ -115,7 +115,7 @@ export default function ClienteDashboard() {
 
               try {
                 const items = typeof order.items === 'string' ? JSON.parse(order.items || '[]') : (order.items || []);
-                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => ${item.quantity}x ).join(', ');
+                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => `${item.quantity}x`).join(', ');
               } catch (error) {
                 console.error(error);
               }
@@ -142,7 +142,7 @@ export default function ClienteDashboard() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{formatCurrency(Number(order.total))}</div>
-                      <span className={adge badge--} style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+                      <span className={`badge badge--${getStatusVariant(order.status || '')}`} style={{ marginTop: '0.5rem', display: 'inline-block' }}>
                         {getStatusLabel(order.status || '')}
                       </span>
                     </div>
@@ -159,7 +159,7 @@ export default function ClienteDashboard() {
                       {currentStepIndex > 0 && (
                         <div style={{ 
                           position: 'absolute', top: '12px', left: '10%', 
-                          width: ${(currentStepIndex / (steps.length - 1)) * 80}%, 
+                          width: `${(currentStepIndex / (steps.length - 1)) * 80}%`, 
                           height: '2px', background: 'var(--primary-500)', zIndex: 1,
                           transition: 'width 0.3s ease'
                         }} />
@@ -179,7 +179,7 @@ export default function ClienteDashboard() {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               color: 'white', fontSize: '12px'
                             }}>
-                              {isCompleted && <FiCheckCircle />}
+                              {isCompleted && <CheckCircle size={14} />}
                             </div>
                             <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', fontWeight: isCurrent ? 600 : 400, color: isCompleted ? 'var(--gray-900)' : 'var(--gray-500)', textAlign: 'center' }}>
                               {step.label}
@@ -197,11 +197,11 @@ export default function ClienteDashboard() {
                   {order.status === 'saiu_entrega' && order.delivery_type === 'entrega' && (
                     <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
                       <button 
-                        className={tn }
+                        className="btn btn--outline"
                         onClick={() => setTrackingOrderId(trackingOrderId === String(order.id) ? null : String(order.id))}
                         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 auto' }}
                       >
-                        <FiMap />
+                        <Map size={18} />
                         {trackingOrderId === String(order.id) ? 'Fechar Mapa' : 'Localizar Entregador'}
                       </button>
                       {trackingOrderId === String(order.id) && (
@@ -214,7 +214,7 @@ export default function ClienteDashboard() {
 
                   {order.tracking_code && (
                     <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gray-200)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <FiTruck style={{ color: 'var(--primary-500)' }} />
+                      <Truck style={{ color: 'var(--primary-500)' }} />
                       <div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>Código de Rastreio</div>
                         <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '1.1rem' }}>{order.tracking_code}</div>
@@ -227,7 +227,7 @@ export default function ClienteDashboard() {
           ) : (
             <div className="empty-state">
               <div className="empty-state__icon">
-                <FiPackage />
+                <Package />
               </div>
               <p>Você ainda não fez nenhum pedido.</p>
             </div>

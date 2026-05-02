@@ -78,7 +78,7 @@ app.get('/api/health', async (c) => {
 
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
-  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(${prefix}/))) {
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     return await next();
   }
 
@@ -122,7 +122,7 @@ app.onError((error, c) => {
   const db = c.get('db');
   const user = c.get('user') as any;
 
-  logger.error(Unhandled Global Error [], error, {
+  logger.error("Unhandled Global Error []", error, {
     path: c.req.path,
     method: c.req.method,
     userId: user?.id,
@@ -131,16 +131,16 @@ app.onError((error, c) => {
   // Persiste o erro no banco e alerta via WhatsApp se possível
   if (db) {
     const logPromise = logSystemEvent(
-      db, 
-      c.env, 
-      'error', 
-      Erro Global []: , 
+      db,
+      c.env,
+      'error',
+      "Erro Global []",
       {
         path: c.req.path,
         method: c.req.method,
         userId: user?.id,
         requestId: errorId
-      }, 
+      },
       error as Error,
       c.executionCtx
     );
@@ -156,6 +156,7 @@ app.onError((error, c) => {
 import notificationRoutes from './modules/notifications/routes';
 import webhookRoutes from './modules/notifications/webhookRoutes';
 import { NotificationDO } from './modules/notifications/durableObject';
+import { DeliveryLocationDO } from './modules/delivery/locationDO';
 
 app.route('/api/auth', authRoutes as any);
 app.route('/api/catalog', catalogRoutes as any);

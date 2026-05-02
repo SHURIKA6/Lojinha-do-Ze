@@ -12,16 +12,17 @@ import {
   formatAddress
 } from '@/core/api';
 import {
-  FiClock,
-  FiCreditCard,
-  FiMapPin,
-  FiPackage,
-  FiPhone,
-  FiSearch,
-  FiTrash2,
-  FiTruck,
-  FiUser,
-  FiMap
+  Clock,
+  CreditCard,
+  MapPin,
+  Package,
+  Phone,
+  Search,
+  Trash2,
+  Truck,
+  User,
+  Map
+} from 'lucide-react';
 import { Order } from '@/types';
 
 const orderStatuses = ['novo', 'recebido', 'em_preparo', 'saiu_entrega', 'concluido', 'cancelado'];
@@ -225,7 +226,7 @@ export default function PedidosPage() {
       <div className="page-header">
         <div>
           <span className="page-eyebrow">
-            <FiPackage />
+            <Package />
             Logística
           </span>
           <h1>Pedidos</h1>
@@ -256,7 +257,7 @@ export default function PedidosPage() {
 
       <div className="filter-bar">
         <div className="table-search">
-          <FiSearch className="table-search__icon" />
+          <Search className="table-search__icon" />
           <input
             placeholder="Buscar por cliente ou telefone..."
             value={search}
@@ -288,7 +289,7 @@ export default function PedidosPage() {
                     </span>
                   </div>
                   <div className="ops-order-card__line">
-                    <FiClock />
+                    <Clock />
                     {formatDateTime(order.created_at || '')}
                   </div>
                 </div>
@@ -300,11 +301,11 @@ export default function PedidosPage() {
                 <div>
                   <div className="ops-order-card__label">Cliente</div>
                   <div className="ops-order-card__line">
-                    <FiUser />
+                    <User />
                     {order.customer_name || 'Cliente avulso'}
                   </div>
                   <div className="ops-order-card__line">
-                    <FiPhone />
+                    <Phone />
                     {order.customer_phone || 'Sem telefone'}
                   </div>
                 </div>
@@ -312,17 +313,17 @@ export default function PedidosPage() {
                 <div>
                   <div className="ops-order-card__label">Entrega e pagamento</div>
                   <div className="ops-order-card__line">
-                    {order.delivery_type === 'retirada' ? <FiPackage /> : <FiTruck />}
+                    {order.delivery_type === 'retirada' ? <Package /> : <Truck />}
                     {order.delivery_type === 'retirada' ? 'Retirada no local' : 'Entrega local'}
                   </div>
                   {order.delivery_type === 'entrega' && order.address && (
                     <div className="ops-order-card__line">
-                      <FiMapPin />
+                      <MapPin />
                       {formatAddress(order.address)}
                     </div>
                   )}
                   <div className="ops-order-card__line">
-                    <FiCreditCard />
+                    <CreditCard />
                     Pagamento: {order.payment_method?.toUpperCase() || 'Não informado'}
                   </div>
                 </div>
@@ -362,7 +363,7 @@ export default function PedidosPage() {
                        onClick={() => toggleLocationSharing(String(order.id))}
                        style={{ fontSize: '0.8rem', padding: '0.5rem 0.8rem' }}
                      >
-                       <FiMap />
+                       <Map />
                        {sharingLocation[String(order.id)] ? 'Parar Localização' : 'Compartilhar Local'}
                      </button>
                    )}
@@ -376,7 +377,7 @@ export default function PedidosPage() {
                      </button>
                    ) : (
                      <button className="btn btn--danger" onClick={() => handleDelete(order.id)}>
-                       <FiTrash2 />
+                       <Trash2 />
                        Excluir
                      </button>
                    )}
@@ -388,7 +389,7 @@ export default function PedidosPage() {
         {filtered.length === 0 && (
           <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
             <div className="empty-state__icon">
-              <FiPackage />
+              <Package />
             </div>
             <p>Nenhum pedido atende ao filtro atual.</p>
           </div>
