@@ -5,7 +5,12 @@ import * as m001 from './migrations/001_initial';
 import * as m008 from './migrations/008_add_performance_indexes';
 
 /**
- * Função principal de bootstrap para inicializar o banco de dados Neon
+ * Inicializa o banco de dados Neon PostgreSQL executando migrações e criando um usuário admin padrão.
+ * Esta função deve ser chamada uma vez durante a inicialização da aplicação ou via execução direta de script.
+ *
+ * @param databaseUrl - String de conexão do Neon PostgreSQL (variável de ambiente DATABASE_URL)
+ * @returns Promise que resolve quando a inicialização for concluída
+ * @throws {Error} Se DATABASE_URL não estiver configurada ou se as migrações falharem
  */
 export async function bootstrapDatabase(databaseUrl: string) {
   if (!databaseUrl) {
@@ -25,10 +30,10 @@ export async function bootstrapDatabase(databaseUrl: string) {
 
     if (users.length === 0) {
       logger.info('Criando usuário admin inicial...');
-      const adminPassHash = '$2b$10$TQH7yS2G9Wv7GK/Qo5xGue1X6m55H06E08e6/4H76L9.O5j2hGvG'; // admin123 (hash fixo para bootstrap)
+      const adminPassHash = '/Qo5xGue1X6m55H06E08e6/4H76L9.O5j2hGvG'; // admin123 (hash fixo para bootstrap)
 
       await sql.query(
-        'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO users (name, email, password, role) VALUES (, , , )',
         ['José Riadd', 'jose@lojinha.com', adminPassHash, 'admin']
       );
 

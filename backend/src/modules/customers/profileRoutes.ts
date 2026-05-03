@@ -15,6 +15,11 @@ import { profileLimiter } from '../../core/middleware/rateLimit';
 import { Bindings, Variables } from '../../core/types';
 import { loyaltyService } from './loyaltyService';
 
+/**
+ * Rotas para gerenciamento de perfil do cliente autenticado.
+ * - PUT /: Atualiza dados do perfil (nome, email, telefone, endereço).
+ * - GET /loyalty: Consulta saldo e histórico do programa de fidelidade.
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 router.use('*', authMiddleware);

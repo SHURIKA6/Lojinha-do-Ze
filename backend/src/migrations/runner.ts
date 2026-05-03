@@ -1,6 +1,9 @@
 import { Database } from '../core/types';
 import { logger } from '../core/utils/logger';
 
+/**
+ * Representa uma migração de banco de dados com um identificador e uma função de aplicação.
+ */
 export interface Migration {
   id: string;
   up: (client: any) => Promise<void>;
@@ -40,6 +43,13 @@ const migrations: Migration[] = [
   { id: migration015.id, up: migration015.up },
 ];
 
+/**
+ * Executa todas as migrações pendentes do banco de dados em ordem sequencial.
+ * Cria a tabela schema_migrations se não existir para rastrear migrações aplicadas.
+ * Cada migração é envolvida em uma transação - em caso de falha, a transação é revertida.
+ * Migrações já aplicadas (rastreadas pelo ID em schema_migrations) são ignoradas.
+ * @param db - Instância do banco de dados com método connect() que retorna um cliente com query() e release()
+ */
 export async function runMigrations(db: Database): Promise<void> {
   const client = await db.connect();
 

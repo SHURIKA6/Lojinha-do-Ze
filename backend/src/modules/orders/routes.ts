@@ -10,6 +10,12 @@ import * as orderService from './service';
 import { Bindings, Variables } from '../../core/types';
 import { logSystemEvent } from '../system/logService';
 
+/**
+ * Rotas para gerenciamento de pedidos.
+ * - GET /: Lista pedidos (customers veem apenas os seus; admins veem todos)
+ * - PATCH /:id/status: Atualiza status do pedido (admin only)
+ * - DELETE /:id: Exclui um pedido (admin only)
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 router.get('/', authMiddleware, async (c) => {

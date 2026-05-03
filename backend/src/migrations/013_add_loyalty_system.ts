@@ -1,5 +1,12 @@
 export const id = '013_add_loyalty_system';
 
+/**
+ * Implementa o sistema de pontos de fidelidade com duas tabelas.
+ * Cria a tabela loyalty_points para rastreamento de saldo de pontos dos usuários (chave primária em user_id),
+ * e a tabela loyalty_transactions para registro de transações de ganho/gasto de pontos.
+ * Cria índices em user_id e order_id em loyalty_transactions para performance.
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function up(client: any): Promise<void> {
   await client.query(`
     -- Tabela para saldo de pontos dos usuários

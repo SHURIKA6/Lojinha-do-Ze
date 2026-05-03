@@ -1,3 +1,8 @@
+/**
+ * Limpa uma string opcional, retornando null para valores vazios.
+ * @param value - Valor a ser limpo.
+ * @returns String limpa, null ou undefined.
+ */
 export function cleanOptionalString(value: any): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -7,21 +12,41 @@ export function cleanOptionalString(value: any): string | null | undefined {
   return trimmed === '' ? null : trimmed;
 }
 
+/**
+ * Limpa uma string obrigatória, retornando string vazia se inválida.
+ * @param value - Valor a ser limpo.
+ * @returns String sem espaços extras.
+ */
 export function cleanRequiredString(value: any): string {
   if (typeof value !== 'string') return '';
   return value.trim();
 }
 
+/**
+ * Remove todos os caracteres não numéricos do telefone.
+ * @param value - Telefone a ser normalizado.
+ * @returns Apenas dígitos do telefone.
+ */
 export function normalizePhoneDigits(value: any): string {
   if (typeof value !== 'string') return '';
   return value.replace(/\D/g, '');
 }
 
+/**
+ * Remove todos os caracteres não numéricos do CPF.
+ * @param value - CPF a ser normalizado.
+ * @returns Apenas dígitos do CPF.
+ */
 export function normalizeCpfDigits(value: any): string {
   if (typeof value !== 'string') return '';
   return value.replace(/\D/g, '');
 }
 
+/**
+ * Valida um CPF brasileiro verificando o dígito verificador.
+ * @param cpf - CPF a ser validado (com ou sem pontuação).
+ * @returns true se o CPF for válido.
+ */
 export function isValidCpf(cpf: any): boolean {
   if (typeof cpf !== 'string') return false;
   const digits = cpf.replace(/\D/g, '');
@@ -43,6 +68,11 @@ export function isValidCpf(cpf: any): boolean {
   return true;
 }
 
+/**
+ * Valida se uma string é um UUID válido (formato padrão).
+ * @param id - ID a ser validado.
+ * @returns true se for um UUID válido.
+ */
 export function isValidUuid(id: any): boolean {
   if (typeof id !== 'string') return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -57,12 +87,22 @@ export function isValidId(id: any): boolean {
   return isValidUuid(id) || /^\d+$/.test(id);
 }
 
+/**
+ * Normaliza um email para minúsculas e remove espaços.
+ * @param value - Email a ser normalizado.
+ * @returns Email normalizado ou null.
+ */
 export function normalizeEmail(value: any): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim().toLowerCase();
   return trimmed || null;
 }
 
+/**
+ * Gera um avatar a partir das iniciais do nome.
+ * @param name - Nome do usuário.
+ * @returns Até 2 letras maiúsculas ou 'U' como padrão.
+ */
 export function buildAvatar(name: any): string {
   if (typeof name !== 'string' || !name.trim()) return 'U';
   return name
@@ -74,10 +114,21 @@ export function buildAvatar(name: any): string {
     .toUpperCase();
 }
 
+/**
+ * Verifica se um erro do banco de dados é uma violação de constraint única (PostgreSQL).
+ * @param err - Erro capturado.
+ * @returns true se for erro de violação única (código 23505).
+ */
 export function isUniqueViolation(err: any): boolean {
   return err?.code === '23505';
 }
 
+/**
+ * Extrai o nome do campo que violou a constraint única a partir da mensagem de erro.
+ * Usado para retornar mensagens amigáveis ao usuário.
+ * @param err - Erro de violação única do PostgreSQL.
+ * @returns Nome do campo (Email, Telefone, Código) ou 'Registro'.
+ */
 export function uniqueFieldLabel(err: any): string {
   const detail = err?.detail || '';
 

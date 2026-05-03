@@ -12,22 +12,47 @@ type ExecutionContext = HonoCloudflareContext['executionCtx'];
 
 const REFRESH_TOKEN_PREFIX = 'refresh_token_';
 
+/**
+ * Estrutura de dados representando as informações de um refresh token.
+ * Usado para cache e recuperação de dados do token.
+ */
 export interface TokenData {
+  /** ID do usuário ao qual este token pertence */
   userId: number;
+  /** ID da sessão associada a este token */
   sessionId: string;
+  /** Data e hora em que este token expira */
   expiresAt: string | Date;
+  /** Papel/função do usuário (para acesso rápido sem consulta ao DB) */
   role?: string;
+  /** Email do usuário (para acesso rápido sem consulta ao DB) */
   email?: string;
+  /** Nome do usuário (para acesso rápido sem consulta ao DB) */
   name?: string;
+  /** Endereço IP de onde o token foi criado */
   ipAddress?: string;
+  /** User agent de onde o token foi criado */
   userAgent?: string;
+  /** Data e hora em que este token foi revogado (null se ainda for válido) */
   revokedAt?: string | Date;
 }
 
+/**
+ * RefreshTokenService lida com a criação, validação e revogação de refresh tokens.
+ * Refresh tokens permitem que usuários obtenham novos tokens de sessão sem reautenticação.
+ * Tokens são armazenados tanto no banco de dados (persistência) quanto no cache (consulta rápida).
+ * Implementa rotação de tokens - cada uso revoga o token antigo e emite um novo.
+ */
 export class RefreshTokenService {
   private db: Database;
   private cache: any;
 
+  /**
+   * Cria uma nova instância de RefreshTokenService.
+   * 
+   * @param db - Cliente do banco de dados para executar consultas
+   * @param cacheService - Serviço de cache para consulta rápida de tokens
+   */
   constructor(db: Database, cacheService: any) {
     this.db = db;
     this.cache = cacheService;
@@ -35,6 +60,16 @@ export class RefreshTokenService {
 
   /**
    * Cria um novo refresh token para o usuário
+   * Gera um novo refresh token, armazena no banco de dados e no cache.
+   * O token pode ser usado uma vez para obter uma nova sessão (rotação de token).
+   * 
+   * @param userId - ID do usuário para quem criar o token
+   * @param sessionId - ID da sessão associada a este token
+   * @param ipAddress - Endereço IP de onde a requisição originou-se
+   * @param userAgent - String do user agent da requisição
+   * @param env - Bindings de ambiente (para acesso ao cache)
+   * @param ctx - Contexto de execução para tarefas em background (Cloudflare Workers)
+   * @returns O refresh token bruto (deve ser armazenado em cookie HTTP-only)
    */
   async createRefreshToken(userId: number, sessionId: string, ipAddress: string, userAgent: string, env?: Bindings, ctx?: ExecutionContext): Promise<string> {
     const tokenId = randomToken(32);
@@ -71,6 +106,15 @@ export class RefreshTokenService {
 
   /**
    * Valida e usa um refresh token para gerar novos tokens
+   * Realiza rotação de token: valida o token, depois o revoga imediatamente.
+   * Retorna dados do usuário necessários para criar uma nova sessão.
+   * 
+   * @param refreshToken - O refresh token bruto vindo do cookie
+   * @param ipAddress - Endereço IP atual (para log de segurança)
+   * @param _userAgent - String atual do user agent
+   * @param env - Bindings de ambiente (para acesso ao cache)
+   * @param ctx - Contexto de execução para tarefas em background
+   * @returns Objeto contendo status de validade, dados do usuário e mensagem de erro
    */
   async refreshAccessToken(refreshToken: string, ipAddress: string, _userAgent: string, env?: Bindings, ctx?: ExecutionContext): Promise<{ valid: boolean; error?: string; user?: any; sessionId?: string }> {
     const tokenHash = await sha256Hex(refreshToken);
@@ -137,6 +181,12 @@ export class RefreshTokenService {
 
   /**
    * Revoga um refresh token específico
+   * Remove o token do cache e marca como revogado no banco de dados.
+   * Usado durante logout ou ao rotacionar tokens (política de uso único).
+   * 
+   * @param refreshToken - O refresh token bruto para revogar
+   * @param env - Bindings de ambiente (para acesso ao cache)
+   * @param ctx - Contexto de execução para tarefas em background
    */
   async revokeRefreshToken(refreshToken: string, env?: Bindings, ctx?: ExecutionContext): Promise<void> {
     const tokenHash = await sha256Hex(refreshToken);
@@ -161,6 +211,12 @@ export class RefreshTokenService {
 
   /**
    * Revoga todos os refresh tokens de um usuário
+   * Usado durante eventos de segurança ou quando o usuário altera a senha.
+   * Força reautenticação em todos os dispositivos.
+   * 
+   * @param userId - ID do usuário cujos tokens devem ser revogados
+   * @param env - Bindings de ambiente (para acesso ao cache)
+   * @param ctx - Contexto de execução para tarefas em background
    */
   async revokeAllUserTokens(userId: number, env?: Bindings, ctx?: ExecutionContext): Promise<void> {
     // Remove todos do cache
@@ -192,6 +248,12 @@ export class RefreshTokenService {
 
   /**
    * Limpa tokens expirados (executar periodicamente)
+   * Remove tokens que expiraram ou foram revogados do banco de dados.
+   * Esta é uma operação de limpeza para evitar inchaço do banco de dados.
+   * 
+   * @param _env - Bindings de ambiente (reservado para uso futuro)
+   * @param _ctx - Contexto de execução (reservado para uso futuro)
+   * @returns Número de tokens excluídos
    */
   async cleanupExpiredTokens(_env?: Bindings, _ctx?: ExecutionContext): Promise<number> {
     const result = await this.db.query(
@@ -209,6 +271,12 @@ export class RefreshTokenService {
 
   /**
    * Obtém estatísticas de tokens
+   * Retorna contagens de tokens total, ativos, expirados e revogados.
+   * Útil para monitoramento e depuração de uso de tokens.
+   * 
+   * @param _env - Bindings de ambiente (reservado para uso futuro)
+   * @param _ctx - Contexto de execução (reservado para uso futuro)
+   * @returns Objeto contendo estatísticas dos tokens
    */
   async getTokenStats(_env?: Bindings, _ctx?: ExecutionContext): Promise<any> {
     const { rows } = await this.db.query(`

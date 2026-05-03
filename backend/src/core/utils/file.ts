@@ -13,10 +13,11 @@ const MAGIC_BYTES: Record<string, number[]> = {
 };
 
 /**
- * Valida se o buffer corresponde à assinatura da extensão de arquivo esperada.
- * @param buffer 
- * @param extension 
- * @returns 
+ * Valida se os magic bytes (assinatura do arquivo) correspondem à extensão esperada.
+ * Suporta formatos JPEG, PNG e WEBP.
+ * @param buffer - O ArrayBuffer contendo os dados do arquivo a validar.
+ * @param extension - A extensão esperada do arquivo (ex: 'jpg', 'png', 'webp').
+ * @returns True se a assinatura do arquivo corresponder à extensão, false caso contrário.
  */
 export function validateFileSignature(buffer: ArrayBuffer, extension: string): boolean {
   const bytes = new Uint8Array(buffer);

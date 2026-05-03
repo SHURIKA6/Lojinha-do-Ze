@@ -1,13 +1,24 @@
 /**
  * Serviço de Análise de Comportamento do Cliente
  * Rastreia e analisa padrões de comportamento dos clientes
+ * 
+ * Este módulo implementa customer analytics para entender o comportamento
+ * de compra, navegação e engajamento dos clientes, permitindo segmentação
+ * e personalização de ofertas baseadas em dados reais.
  */
 
 import { logger } from '../../core/utils/logger';
 import { Bindings, ExecutionContext } from '../../core/types';
 
 /**
- * Tipos de comportamento
+ * Tipos de comportamento rastreáveis no sistema
+ * 
+ * @property {string} PURCHASE - Compra realizada
+ * @property {string} BROWSE - Navegação/visualização de produtos
+ * @property {string} SEARCH - Busca por produtos
+ * @property {string} CART_ABANDON - Abandono de carrinho
+ * @property {string} WISHLIST - Adição à lista de desejos
+ * @property {string} REVIEW - Avaliação de produtos
  */
 export const BEHAVIOR_TYPES = {
   PURCHASE: 'purchase',
@@ -19,7 +30,13 @@ export const BEHAVIOR_TYPES = {
 } as const;
 
 /**
- * Segmentos de clientes
+ * Segmentos de clientes para estratégias de marketing
+ * 
+ * @property {string} VIP - Clientes premium com alto valor e frequência
+ * @property {string} REGULAR - Clientes com comportamento de compra padrão
+ * @property {string} NEW - Novos clientes ainda em avaliação
+ * @property {string} AT_RISK - Clientes com risco de cancelamento/churn
+ * @property {string} CHURNED - Clientes que já abandonaram a plataforma
  */
 export const CUSTOMER_SEGMENTS = {
   VIP: 'vip',
@@ -29,9 +46,27 @@ export const CUSTOMER_SEGMENTS = {
   CHURNED: 'churned'
 } as const;
 
+/**
+ * Tipo que representa os tipos de comportamento disponíveis
+ */
 export type BehaviorType = typeof BEHAVIOR_TYPES[keyof typeof BEHAVIOR_TYPES];
+
+/**
+ * Tipo que representa os segmentos de clientes disponíveis
+ */
 export type CustomerSegment = typeof CUSTOMER_SEGMENTS[keyof typeof CUSTOMER_SEGMENTS];
 
+/**
+ * Dados de comportamento de um cliente
+ * 
+ * @interface BehaviorData
+ * @property {string} id - ID único do evento de comportamento
+ * @property {number} customerId - ID do cliente
+ * @property {BehaviorType} type - Tipo do comportamento registrado
+ * @property {any} data - Dados adicionais do evento (ex: amount, category)
+ * @property {string} timestamp - Timestamp ISO do evento
+ * @property {string} sessionId - ID da sessão do usuário
+ */
 export interface BehaviorData {
   id: string;
   customerId: number;
@@ -41,6 +76,28 @@ export interface BehaviorData {
   sessionId: string;
 }
 
+/**
+ * Perfil completo de um cliente baseado em seu comportamento
+ * 
+ * @interface CustomerProfile
+ * @property {number} id - ID do cliente
+ * @property {number} totalPurchases - Total de compras realizadas
+ * @property {number} totalSpent - Valor total gasto pelo cliente
+ * @property {number} averageOrderValue - Valor médio por pedido
+ * @property {string | null} lastPurchase - Data da última compra
+ * @property {Record<string, number>} favoriteCategories - Categorias preferidas com contagem
+ * @property {string} purchaseFrequency - Frequência de compras ('monthly', etc)
+ * @property {string | null} preferredPaymentMethod - Método de pagamento preferido
+ * @property {number} riskScore - Score de risco de churn (0 a 1)
+ * @property {number} lifetimeValue - Valor do cliente ao longo do tempo
+ * @property {string} [lastBrowse] - Data da última navegação
+ * @property {number} [browseCount] - Contagem de navegações
+ * @property {string} [lastSearch] - Data da última busca
+ * @property {number} [searchCount] - Contagem de buscas
+ * @property {number} [cartAbandonCount] - Contagem de abandonos de carrinho
+ * @property {string} [lastCartAbandon] - Data do último abandono
+ * @property {string} [firstPurchase] - Data da primeira compra
+ */
 export interface CustomerProfile {
   id: number;
   totalPurchases: number;
@@ -61,6 +118,17 @@ export interface CustomerProfile {
   firstPurchase?: string;
 }
 
+/**
+ * Serviço principal para análise de comportamento do cliente
+ * 
+ * Esta classe gerencia o rastreamento, perfilamento e segmentação de clientes.
+ * Permite entender padrões de consumo e identificar oportunidades de marketing.
+ * 
+ * @class CustomerBehaviorService
+ * @example
+ * const service = new CustomerBehaviorService();
+ * await service.trackBehavior(123, 'purchase', { amount: 100, category: 'eletronicos' });
+ */
 export class CustomerBehaviorService {
   private behaviorData = new Map<number, BehaviorData[]>();
   private customerProfiles = new Map<number, CustomerProfile>();
@@ -69,7 +137,18 @@ export class CustomerBehaviorService {
   constructor() {}
 
   /**
-   * Rastreia comportamento do cliente
+   * Rastreia um comportamento do cliente
+   * 
+   * Registra eventos de comportamento, atualiza o perfil do cliente,
+   * verifica necessidade de resegmentação e persiste no KV store se disponível.
+   * 
+   * @param {number} customerId - ID do cliente
+   * @param {BehaviorType} behaviorType - Tipo de comportamento ocorrido
+   * @param {any} data - Dados adicionais do evento (amount, category, etc)
+   * @param {Bindings} env - Variáveis de ambiente com ANALYTICS_KV
+   * @param {ExecutionContext} ctx - Contexto de execução
+   * @returns {Promise<{success: boolean, behavior?: BehaviorData, error?: string}>}
+   *          Comportamento registrado ou erro
    */
   async trackBehavior(customerId: number, behaviorType: BehaviorType, data: any = {}, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -123,7 +202,13 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Atualiza perfil do cliente
+   * Atualiza perfil do cliente baseado em novo comportamento
+   * 
+   * Atualiza métricas como total de compras, valor gasto, categorias favoritas
+   * e recalcula score de risco e lifetime value.
+   * 
+   * @param {number} customerId - ID do cliente
+   * @param {BehaviorData} behavior - Dados do comportamento ocorrido
    */
   async updateCustomerProfile(customerId: number, behavior: BehaviorData) {
     const profile: CustomerProfile = this.customerProfiles.get(customerId) || {
@@ -184,7 +269,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Calcula score de risco
+   * Calcula score de risco de churn do cliente
+   * 
+   * Avalia probabilidade do cliente abandonar a plataforma baseado em:
+   * tempo desde última compra, abandonos de carrinho e histórico de compras.
+   * Score varia de 0 (sem risco) a 1 (risco máximo).
+   * 
+   * @param {CustomerProfile} profile - Perfil do cliente para avaliação
+   * @returns {number} Score de risco entre 0 e 1
    */
   calculateRiskScore(profile: CustomerProfile) {
     let score = 0;
@@ -206,7 +298,13 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Calcula lifetime value
+   * Calcula o Lifetime Value (LTV) do cliente
+   * 
+   * O LTV representa o valor total que um cliente gera ao longo de sua
+   * relação com a empresa. Calculado como: valor médio * frequência * tempo.
+   * 
+   * @param {CustomerProfile} profile - Perfil do cliente
+   * @returns {number} Valor do Lifetime Value
    */
   calculateLifetimeValue(profile: CustomerProfile) {
     if (profile.totalPurchases === 0) return 0;
@@ -219,7 +317,13 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém frequência de compra
+   * Obtém frequência de compra do cliente (compras por mês)
+   * 
+   * Calcula a média de compras mensais baseada no histórico desde
+   * a primeira compra registrada.
+   * 
+   * @param {CustomerProfile} profile - Perfil do cliente
+   * @returns {number} Frequência de compras por mês
    */
   getPurchaseFrequency(profile: CustomerProfile) {
     if (profile.totalPurchases < 2) return 1;
@@ -232,7 +336,12 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Verifica se precisa resegmentar
+   * Verifica se o cliente precisa ser resegmentado
+   * 
+   * Compara o segmento atual com o novo segmento calculado.
+   * Se houver mudança, atualiza o segmento e dispara ações apropriadas.
+   * 
+   * @param {number} customerId - ID do cliente
    */
   async checkResegmentation(customerId: number) {
     const profile = this.customerProfiles.get(customerId);
@@ -256,7 +365,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Determina segmento do cliente
+   * Determina o segmento do cliente baseado no perfil
+   * 
+   * Aplica regras de negócio para classificar o cliente:
+   * VIP (10+ compras, ticket >= 100), AT_RISK (score >= 0.7),
+   * NEW (0 compras), CHURNED (score >= 0.9) ou REGULAR.
+   * 
+   * @param {CustomerProfile} profile - Perfil do cliente
+   * @returns {CustomerSegment} Segmento determinado
    */
   determineSegment(profile: CustomerProfile): CustomerSegment {
     if (profile.totalPurchases >= 10 && profile.averageOrderValue >= 100) {
@@ -279,7 +395,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Dispara ações baseadas no segmento
+   * Dispara ações baseadas no segmento do cliente
+   * 
+   * Executa ações de marketing ou operações específicas quando um cliente
+   * entra em um novo segmento (ex: alerta VIP, campanha de retenção).
+   * 
+   * @param {number} customerId - ID do cliente
+   * @param {CustomerSegment} segment - Novo segmento do cliente
+   * @param {CustomerProfile} profile - Perfil do cliente
    */
   async triggerSegmentActions(customerId: number, segment: CustomerSegment, profile: CustomerProfile) {
     switch (segment) {
@@ -298,7 +421,17 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Analisa padrões de comportamento
+   * Analisa padrões de comportamento de um cliente em um período
+   * 
+   * Gera análise completa incluindo breakdown de comportamentos,
+   * horários de pico, análise de sessões e funil de conversão.
+   * 
+   * @param {number} customerId - ID do cliente
+   * @param {string} period - Período de análise (ex: '30d', '7d', '24h')
+   * @param {any} env - Variáveis de ambiente
+   * @param {any} ctx - Contexto de execução
+   * @returns {Promise<{success: boolean, patterns?: Object, error?: string}>}
+   *          Padrões identificados ou erro
    */
   async analyzeBehaviorPatterns(customerId: number, period = '30d', env?: any, ctx?: any) {
     try {
@@ -325,6 +458,10 @@ export class CustomerBehaviorService {
 
   /**
    * Filtra comportamentos por período
+   * 
+   * @param {BehaviorData[]} behaviors - Lista de comportamentos
+   * @param {string} period - Período em formato (ex: '30d')
+   * @returns {BehaviorData[]} Comportamentos dentro do período
    */
   filterByPeriod(behaviors: BehaviorData[], period: string) {
     const periodMs = this.parsePeriod(period);
@@ -334,7 +471,10 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Converte período para milissegundos
+   * Converte período em string para milissegundos
+   * 
+   * @param {string} period - Período em formato (ex: '30d', '12h', '45m')
+   * @returns {number} Período em milissegundos
    */
   parsePeriod(period: string) {
     const match = period.match(/^(\d+)(d|h|m)$/);
@@ -352,7 +492,10 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém breakdown de comportamentos
+   * Obtém breakdown de comportamentos (contagem por tipo)
+   * 
+   * @param {BehaviorData[]} behaviors - Lista de comportamentos
+   * @returns {Record<string, number>} Mapa com contagem por tipo
    */
   getBehaviorBreakdown(behaviors: BehaviorData[]) {
     const breakdown: Record<string, number> = {};
@@ -365,7 +508,13 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém horários de pico
+   * Obtém horários de pico de atividade do cliente
+   * 
+   * Analisa os comportamentos e identifica em quais horas do dia
+   * o cliente é mais ativo.
+   * 
+   * @param {BehaviorData[]} behaviors - Lista de comportamentos
+   * @returns {{peakHour: number, distribution: number[]}} Hora do pico e distribuição 24h
    */
   getPeakHours(behaviors: BehaviorData[]) {
     const hourCounts = new Array(24).fill(0);
@@ -384,7 +533,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Analisa sessões
+   * Analisa sessões de usuário (agrupa comportamentos por sessionId)
+   * 
+   * Calcula métricas como duração média de sessão e
+   * comportamentos por sessão.
+   * 
+   * @param {BehaviorData[]} behaviors - Lista de comportamentos
+   * @returns {{totalSessions: number, averageSessionDuration: number, behaviorsPerSession: number}}
+   *          Métricas de sessão
    */
   analyzeSessions(behaviors: BehaviorData[]) {
     const sessions = new Map<string, BehaviorData[]>();
@@ -416,7 +572,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Analisa funil de conversão
+   * Analisa funil de conversão (Browse -> Search -> Purchase)
+   * 
+   * Calcula taxas de conversão entre estágios do funil de vendas
+   * para identificar gargalos na jornada do cliente.
+   * 
+   * @param {BehaviorData[]} behaviors - Lista de comportamentos
+   * @returns {{browseToSearch: string, searchToCart: string, overallConversion: string}}
+   *          Taxas de conversão em porcentagem
    */
   analyzeConversionFunnel(behaviors: BehaviorData[]) {
     const browseCount = behaviors.filter(b => b.type === BEHAVIOR_TYPES.BROWSE).length;
@@ -432,6 +595,12 @@ export class CustomerBehaviorService {
 
   /**
    * Gera recomendações baseadas em comportamento
+   * 
+   * Analisa padrões para sugerir ações de melhoria como
+   * redução de abandono de carrinho ou melhoria em busca.
+   * 
+   * @param {BehaviorData[]} behaviors - Lista de comportamentos
+   * @returns {Array<{type: string, priority: string, message: string}>} Recomendações
    */
   generateBehaviorRecommendations(behaviors: BehaviorData[]) {
     const recommendations: any[] = [];
@@ -459,7 +628,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém segmento do cliente
+   * Obtém segmento atual do cliente
+   * 
+   * Retorna o segmento, perfil e recomendações específicas
+   * para o segmento do cliente.
+   * 
+   * @param {number} customerId - ID do cliente
+   * @returns {Promise<{success: boolean, segment: CustomerSegment, profile?: CustomerProfile, recommendations: any[]}>}
+   *          Segmento e dados relacionados
    */
   async getCustomerSegment(customerId: number) {
     const segment = this.segments.get(customerId) || CUSTOMER_SEGMENTS.NEW;
@@ -474,7 +650,14 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém recomendações por segmento
+   * Obtém recomendações baseadas no segmento
+   * 
+   * Retorna ações de marketing sugeridas para cada tipo de segmento
+   * (ex: programa VIP, campanha de retenção, boas-vindas).
+   * 
+   * @param {CustomerSegment} segment - Segmento do cliente
+   * @param {CustomerProfile | undefined} _profile - Perfil do cliente (não utilizado)
+   * @returns {Array<{type: string, message: string}>} Recomendações
    */
   getSegmentRecommendations(segment: CustomerSegment, _profile: CustomerProfile | undefined) {
     const recommendations: any[] = [];
@@ -507,13 +690,23 @@ export class CustomerBehaviorService {
 
   /**
    * Gera ID único para comportamento
+   * 
+   * Cria identificador único baseado em timestamp e string aleatória.
+   * 
+   * @returns {string} ID único do comportamento
    */
   generateBehaviorId() {
     return `behavior_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Obtém estatísticas de comportamento
+   * Obtém estatísticas de comportamento do sistema
+   * 
+   * Retorna métricas agregadas como total de clientes, comportamentos,
+   * distribuição de segmentos e LTV médio.
+   * 
+   * @returns {Promise<{success: boolean, stats?: Object, error?: string}>}
+   *          Estatísticas ou erro
    */
   async getBehaviorStats() {
     try {
@@ -533,7 +726,9 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém distribuição de segmentos
+   * Obtém distribuição de segmentos de clientes
+   * 
+   * @returns {Record<string, number>} Mapa com contagem por segmento
    */
   getSegmentDistribution() {
     const distribution: Record<string, number> = {};
@@ -546,7 +741,9 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Calcula LTV médio
+   * Calcula LTV médio de todos os clientes
+   * 
+   * @returns {number} Lifetime Value médio
    */
   calculateAverageLTV() {
     const profiles = Array.from(this.customerProfiles.values());
@@ -557,7 +754,9 @@ export class CustomerBehaviorService {
   }
 
   /**
-   * Obtém breakdown geral de comportamentos
+   * Obtém breakdown geral de comportamentos de todos os clientes
+   * 
+   * @returns {Record<string, number>} Mapa com contagem total por tipo
    */
   getOverallBehaviorBreakdown() {
     const breakdown: Record<string, number> = {};
@@ -572,5 +771,14 @@ export class CustomerBehaviorService {
   }
 }
 
+/**
+ * Instância singleton do serviço de comportamento do cliente
+ * Recomendada para uso em toda a aplicação
+ */
 export const customerBehaviorService = new CustomerBehaviorService();
+
+/**
+ * Export default da classe CustomerBehaviorService
+ * Permite importação para instanciamento próprio se necessário
+ */
 export default CustomerBehaviorService;

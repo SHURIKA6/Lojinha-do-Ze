@@ -4,6 +4,15 @@ import { sendWhatsAppMessage } from '../notifications/whatsapp';
 
 /**
  * Registra logs do sistema no banco de dados e dispara alertas para erros críticos.
+ * Persiste logs na tabela system_logs e envia alertas via WhatsApp para erros de nível 'error'.
+ * 
+ * @param db - Instância do banco de dados para persistência do log
+ * @param env - Variáveis de ambiente contendo configurações como ZE_PHONE e ENVIRONMENT
+ * @param level - Nível do log ('info', 'warn', 'error')
+ * @param message - Mensagem descritiva do log
+ * @param context - Dados adicionais de contexto (opcional)
+ * @param error - Objeto de erro com stack trace (opcional)
+ * @param ctx - Contexto de execução com waitUntil para processamento assíncrono (opcional)
  */
 export async function logSystemEvent(
   db: Database,
@@ -54,6 +63,15 @@ export async function logSystemEvent(
   }
 }
 
+/**
+ * Recupera logs do sistema do banco de dados com paginação.
+ * Retorna logs ordenados por data de criação decrescente.
+ * 
+ * @param db - Instância do banco de dados para consulta
+ * @param limit - Número máximo de registros a retornar (padrão: 100)
+ * @param offset - Número de registros para pular (padrão: 0)
+ * @returns Array de objetos de log do sistema
+ */
 export async function getSystemLogs(db: Database, limit = 100, offset = 0) {
   const result = await db.query(
     'SELECT * FROM system_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2',

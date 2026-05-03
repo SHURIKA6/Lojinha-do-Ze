@@ -7,9 +7,7 @@ import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
 import { Bindings, ExecutionContext } from '../../core/types';
 
-/**
- * Status de fornecedores
- */
+/** Valores de status para fornecedores */
 export const SUPPLIER_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
@@ -17,9 +15,7 @@ export const SUPPLIER_STATUS = {
   PENDING: 'pending'
 } as const;
 
-/**
- * Categorias de fornecedores
- */
+/** Valores de categoria para fornecedores */
 export const SUPPLIER_CATEGORIES = {
   RAW_MATERIALS: 'raw_materials',
   PACKAGING: 'packaging',
@@ -28,9 +24,14 @@ export const SUPPLIER_CATEGORIES = {
   LOGISTICS: 'logistics'
 } as const;
 
+/** Tipo representando valores válidos de status de fornecedor */
 export type SupplierStatus = typeof SUPPLIER_STATUS[keyof typeof SUPPLIER_STATUS];
+/** Tipo representando valores válidos de categoria de fornecedor */
 export type SupplierCategory = typeof SUPPLIER_CATEGORIES[keyof typeof SUPPLIER_CATEGORIES];
 
+/**
+ * Métricas de performance de um fornecedor incluindo taxa de entrega, qualidade e tempo de resposta.
+ */
 export interface SupplierPerformance {
   deliveryRate: number;
   qualityScore: number;
@@ -39,6 +40,9 @@ export interface SupplierPerformance {
   onTimeDeliveries: number;
 }
 
+/**
+ * Representa um fornecedor com informações de contato, status, categoria e dados de performance.
+ */
 export interface Supplier {
   id: string;
   name: string;
@@ -51,6 +55,9 @@ export interface Supplier {
   performance: SupplierPerformance;
 }
 
+/**
+ * Representa um registro de entrega de um fornecedor com dados de qualidade e tempo.
+ */
 export interface Delivery {
   id: string;
   supplierId: string;
@@ -62,7 +69,8 @@ export interface Delivery {
 }
 
 /**
- * Classe principal do serviço de fornecedores
+ * Classe principal do serviço de fornecedores.
+ * Gerencia dados de fornecedores, rastreamento de performance e registros de entrega.
  */
 export class SupplierService {
   private suppliers = new Map<string, Supplier>();
@@ -72,7 +80,11 @@ export class SupplierService {
   constructor() {}
 
   /**
-   * Cria um novo fornecedor
+   * Cria um novo fornecedor com status pendente padrão e métricas de performance vazias.
+   * @param supplierData - Dados parciais do fornecedor com nome e categoria obrigatórios
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso e o fornecedor criado ou mensagem de erro
    */
   async createSupplier(supplierData: Partial<Supplier> & { name: string; category: SupplierCategory }, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -109,7 +121,12 @@ export class SupplierService {
   }
 
   /**
-   * Atualiza um fornecedor
+   * Atualiza os dados de um fornecedor existente.
+   * @param supplierId - O ID do fornecedor a ser atualizado
+   * @param updateData - Dados parciais do fornecedor para atualização
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso e fornecedor atualizado ou mensagem de erro
    */
   async updateSupplier(supplierId: string, updateData: Partial<Supplier>, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -139,7 +156,11 @@ export class SupplierService {
   }
 
   /**
-   * Obtém fornecedor por ID
+   * Recupera um fornecedor pelo ID, verificando primeiro o cache e depois o armazenamento local.
+   * @param supplierId - O ID do fornecedor a ser recuperado
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso e dados do fornecedor ou mensagem de erro
    */
   async getSupplier(supplierId: string, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -165,7 +186,9 @@ export class SupplierService {
   }
 
   /**
-   * Lista fornecedores com filtros
+   * Lista fornecedores com filtros e paginação opcionais.
+   * @param filters - Filtros opcionais para status, categoria, termo de busca e paginação
+   * @returns Status de sucesso com lista paginada de fornecedores e informações de paginação
    */
   async listSuppliers(filters: { status?: SupplierStatus; category?: SupplierCategory; search?: string; page?: number; limit?: number } = {}) {
     try {
@@ -217,7 +240,12 @@ export class SupplierService {
   }
 
   /**
-   * Registra entrega de fornecedor
+   * Registra uma entrega de um fornecedor e atualiza suas métricas de performance.
+   * @param supplierId - O ID do fornecedor
+   * @param deliveryData - Dados da entrega incluindo status onTime e métricas opcionais
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso e registro de entrega ou mensagem de erro
    */
   async recordDelivery(supplierId: string, deliveryData: Partial<Delivery> & { onTime: boolean }, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -255,7 +283,12 @@ export class SupplierService {
   }
 
   /**
-   * Atualiza métricas de performance do fornecedor
+   * Atualiza métricas de performance do fornecedor baseado em um registro de entrega.
+   * Recalcula taxa de entrega, score de qualidade e tempo de resposta.
+   * @param supplierId - O ID do fornecedor
+   * @param delivery - O registro de entrega com dados de performance
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
    */
   async updateSupplierPerformance(supplierId: string, delivery: Delivery, env?: Bindings, ctx?: ExecutionContext) {
     const supplier = this.suppliers.get(supplierId);
@@ -295,7 +328,10 @@ export class SupplierService {
   }
 
   /**
-   * Obtém relatório de performance de fornecedores
+   * Gera um relatório de performance para fornecedores com filtros opcionais.
+   * Inclui estatísticas resumidas e detalhes individuais dos fornecedores com avaliações.
+   * @param options - Opções incluindo supplierId opcional e período (padrão: '30d')
+   * @returns Status de sucesso e dados do relatório de performance
    */
   async getPerformanceReport(options: { supplierId?: string; period?: string } = {}) {
     try {
@@ -358,7 +394,10 @@ export class SupplierService {
   }
 
   /**
-   * Calcula rating do fornecedor
+   * Calcula uma avaliação em letra (A-F) para um fornecedor baseada nas métricas de performance.
+   * Pesos: taxa de entrega 40%, score de qualidade 40%, tempo de resposta 20%.
+   * @param performance - As métricas de performance do fornecedor
+   * @returns Avaliação em letra de A (melhor) a F (pior)
    */
   calculateSupplierRating(performance: SupplierPerformance) {
     const deliveryWeight = 0.4;
@@ -382,21 +421,25 @@ export class SupplierService {
   }
 
   /**
-   * Gera ID único para fornecedor
+   * Gera um ID único para um novo fornecedor.
+   * @returns String de ID único do fornecedor
    */
   generateSupplierId() {
     return `sup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Gera ID único para entrega
+   * Gera um ID único para um novo registro de entrega.
+   * @returns String de ID único da entrega
    */
   generateDeliveryId() {
     return `del_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Obtém estatísticas de fornecedores
+   * Recupera estatísticas agregadas sobre todos os fornecedores.
+   * Inclui contagens por status, categoria e métricas médias de performance.
+   * @returns Status de sucesso e objeto de estatísticas
    */
   async getStats() {
     try {

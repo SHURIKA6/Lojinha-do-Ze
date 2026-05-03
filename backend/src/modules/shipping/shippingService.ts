@@ -5,11 +5,24 @@
 
 import { logger } from '../../core/utils/logger';
 
+/**
+ * Representa um ponto de coordenada geográfica
+ * @property {number} lat - Coordenada de latitude
+ * @property {number} lng - Coordenada de longitude
+ */
 export interface Coordinates {
   lat: number;
   lng: number;
 }
 
+/**
+ * Representa uma opção de frete disponível para o cliente
+ * @property {string} id - Identificador único da opção de frete
+ * @property {string} name - Nome de exibição da opção de frete
+ * @property {number} price - Preço da opção de frete em BRL
+ * @property {number} estimatedDays - Tempo estimado de entrega em dias (0 = mesmo dia)
+ * @property {string} description - Descrição legível da opção de frete
+ */
 export interface ShippingOption {
   id: string;
   name: string;
@@ -24,10 +37,18 @@ const STORE_LOCATION: Coordinates = {
   lng: -55.5031
 };
 
+/**
+ * Classe de serviço para manipular cálculos de frete e logística.
+ * Fornece métodos para calcular distâncias entre pontos e determinar
+ * opções de frete disponíveis baseadas na distância e total do carrinho.
+ */
 export class ShippingService {
-  /**
-   * Calcula a distância entre dois pontos usando a fórmula de Haversine (em km)
-   */
+/**
+ * Calcula a distância entre dois pontos geográficos usando a fórmula de Haversine.
+ * @param {Coordinates} point1 - O primeiro ponto geográfico
+ * @param {Coordinates} point2 - O segundo ponto geográfico
+ * @returns {number} A distância entre os pontos em quilômetros
+ */
   calculateDistance(point1: Coordinates, point2: Coordinates): number {
     const R = 6371; // Raio da Terra em km
     const dLat = this.toRad(point2.lat - point1.lat);
@@ -42,13 +63,23 @@ export class ShippingService {
     return R * c;
   }
 
+/**
+ * Converte graus para radianos para cálculos geográficos
+ * @param {number} value - Ângulo em graus
+ * @returns {number} Ângulo em radianos
+ */
   private toRad(value: number): number {
     return (value * Math.PI) / 180;
   }
 
-  /**
-   * Calcula as opções de frete baseadas na distância e valor do pedido
-   */
+/**
+ * Calcula opções de frete disponíveis baseadas na localização do cliente e total do carrinho.
+ * Determina opções como entrega local via motoboy e frete via transportadora com
+ * preços dinâmicos baseados na distância e elegibilidade para frete grátis.
+ * @param {Coordinates} customerCoords - As coordenadas geográficas do cliente
+ * @param {number} cartTotal - O valor total do carrinho em BRL
+ * @returns {Promise<ShippingOption[]>} Array de opções de frete disponíveis
+ */
   async calculateOptions(customerCoords: Coordinates, cartTotal: number): Promise<ShippingOption[]> {
     try {
       const distance = this.calculateDistance(STORE_LOCATION, customerCoords);

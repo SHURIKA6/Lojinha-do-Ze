@@ -1,6 +1,10 @@
 /**
  * Serviço de Business Intelligence
  * Implementa análises avançadas e recomendações inteligentes
+ * 
+ * Este módulo fornece funcionalidades de BI incluindo recomendações
+ * personalizadas, detecção de fraudes, previsão de demanda e
+ * análise de sentimento para gerar insights acionáveis.
  */
 
 import { logger } from '../../core/utils/logger';
@@ -8,7 +12,13 @@ import { cacheService } from '../system/cacheService';
 import { Database, Bindings, ExecutionContext, PaymentFraudData, StockPrediction, ReviewAnalysis, HistoricalSalesData } from '../../core/types';
 
 /**
- * Tipos de recomendação
+ * Tipos de recomendação disponíveis
+ * 
+ * @property {string} PRODUCT - Recomendação de produtos específicos
+ * @property {string} CATEGORY - Recomendação por categoria
+ * @property {string} PRICE - Recomendação baseada em faixa de preço
+ * @property {string} PROMOTION - Recomendação de promoções
+ * @property {string} STOCK - Recomendação de reposição de estoque
  */
 export const RECOMMENDATION_TYPES = {
   PRODUCT: 'product',
@@ -19,7 +29,12 @@ export const RECOMMENDATION_TYPES = {
 } as const;
 
 /**
- * Algoritmos de recomendação
+ * Algoritmos de recomendação disponíveis
+ * 
+ * @property {string} COLLABORATIVE - Filtragem colaborativa (baseada em usuários similares)
+ * @property {string} CONTENT_BASED - Filtragem baseada em conteúdo (preferências do usuário)
+ * @property {string} HYBRID - Combinação de múltiplos algoritmos
+ * @property {string} TRENDING - Baseada em itens em tendência/popularidade
  */
 export const RECOMMENDATION_ALGORITHMS = {
   COLLABORATIVE: 'collaborative',
@@ -28,13 +43,41 @@ export const RECOMMENDATION_ALGORITHMS = {
   TRENDING: 'trending'
 } as const;
 
+/**
+ * Tipo que representa os tipos de recomendação disponíveis
+ */
 export type RecommendationType = typeof RECOMMENDATION_TYPES[keyof typeof RECOMMENDATION_TYPES];
+
+/**
+ * Tipo que representa os algoritmos de recomendação disponíveis
+ */
 export type RecommendationAlgorithm = typeof RECOMMENDATION_ALGORITHMS[keyof typeof RECOMMENDATION_ALGORITHMS];
 
+/**
+ * Opções para geração de recomendações
+ * 
+ * @interface RecommendationOptions
+ * @property {number} [limit] - Limite de recomendações a retornar
+ */
 export interface RecommendationOptions {
   limit?: number;
 }
 
+/**
+ * Perfil do usuário para personalização
+ * 
+ * @interface UserProfile
+ * @property {string | number} id - ID do usuário
+ * @property {Object} preferences - Preferências do usuário
+ * @property {string[]} preferences.categories - Categorias preferidas
+ * @property {{min: number, max: number}} preferences.priceRange - Faixa de preço preferida
+ * @property {string[]} preferences.brands - Marcas preferidas
+ * @property {Array<{productId: number, quantity: number, date: string}>} purchaseHistory - Histórico de compras
+ * @property {Object} behavior - Comportamento do usuário
+ * @property {number} behavior.averageOrderValue - Valor médio do pedido
+ * @property {string} behavior.purchaseFrequency - Frequência de compras
+ * @property {string} behavior.preferredPaymentMethod - Método de pagamento preferido
+ */
 export interface UserProfile {
   id: string | number;
   preferences: {
@@ -50,6 +93,19 @@ export interface UserProfile {
   };
 }
 
+/**
+ * Recomendação de produto personalizada
+ * 
+ * @interface ProductRecommendation
+ * @property {number} id - ID do produto
+ * @property {string} name - Nome do produto
+ * @property {string} category - Categoria do produto
+ * @property {number} price - Preço do produto
+ * @property {number} rating - Avaliação do produto
+ * @property {number} score - Score de relevância da recomendação (0 a 1)
+ * @property {RecommendationAlgorithm} algorithm - Algoritmo que gerou a recomendação
+ * @property {string} reason - Motivo da recomendação
+ */
 export interface ProductRecommendation {
   id: number;
   name: string;
@@ -61,6 +117,16 @@ export interface ProductRecommendation {
   reason: string;
 }
 
+/**
+ * Produto para recomendação (interface interna)
+ * 
+ * @interface RecommendationProduct
+ * @property {number} id - ID do produto
+ * @property {string} name - Nome do produto
+ * @property {string} category - Categoria
+ * @property {number} price - Preço
+ * @property {number} rating - Avaliação
+ */
 interface RecommendationProduct {
   id: number;
   name: string;
@@ -69,6 +135,18 @@ interface RecommendationProduct {
   rating: number;
 }
 
+/**
+ * Serviço principal de Business Intelligence
+ * 
+ * Esta classe integra múltiplas capacidades analíticas incluindo
+ * recomendações personalizadas, detecção de fraudes, previsão de estoque
+ * e análise de sentimento.
+ * 
+ * @class BusinessIntelligenceService
+ * @example
+ * const biService = new BusinessIntelligenceService();
+ * const recommendations = await biService.generatePersonalizedRecommendations(db, userId);
+ */
 export class BusinessIntelligenceService {
   private userProfiles = new Map<string | number, UserProfile>();
   private productFeatures = new Map<number, RecommendationProduct>();
@@ -80,6 +158,15 @@ export class BusinessIntelligenceService {
 
   /**
    * Gera recomendações personalizadas para um usuário
+   * 
+   * Utiliza perfil do usuário, histórico de compras e algoritmos
+   * de recomendação para sugerir produtos relevantes.
+   * 
+   * @param {Database} db - Instância do banco de dados
+   * @param {string | number} userId - ID do usuário
+   * @param {RecommendationOptions & {env?: Bindings, ctx?: ExecutionContext}} options - Opções incluindo limite e contexto
+   * @returns {Promise<{success: boolean, recommendations?: ProductRecommendation[], error?: string}>}
+   *          Recomendações geradas ou erro
    */
   async generatePersonalizedRecommendations(db: Database, userId: string | number, options: RecommendationOptions & { env?: Bindings, ctx?: ExecutionContext } = {}) {
     const { env, ctx } = options;
@@ -115,6 +202,15 @@ export class BusinessIntelligenceService {
 
   /**
    * Gera recomendações em lote para múltiplos usuários
+   * 
+   * Processa vários usuários em sequência, gerando recomendações
+   * personalizadas para cada um.
+   * 
+   * @param {Database} db - Instância do banco de dados
+   * @param {(string | number)[]} userIds - Array de IDs de usuários
+   * @param {RecommendationOptions & {env?: Bindings, ctx?: ExecutionContext}} options - Opções
+   * @returns {Promise<{success: boolean, results?: Array<{userId: string | number, recommendations: any[]}>, error?: string}>}
+   *          Resultados ou erro
    */
   async generateBatchRecommendations(db: Database, userIds: (string | number)[], options: RecommendationOptions & { env?: Bindings, ctx?: ExecutionContext } = {}) {
     const { env, ctx } = options;
@@ -135,6 +231,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Carrega perfil do usuário do banco de dados
+   * 
+   * Consulta dados do usuário, histórico de pedidos e extrai
+   * preferências de categorias para personalização.
+   * 
+   * @param {any} db - Instância do banco de dados
+   * @param {string | number} userId - ID do usuário
+   * @returns {Promise<UserProfile>} Perfil do usuário construído
    */
   async getUserProfile(db: any, userId: string | number): Promise<UserProfile> {
     const { rows: userRows } = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -184,6 +287,9 @@ export class BusinessIntelligenceService {
 
   /**
    * Carrega produtos disponíveis do banco de dados
+   * 
+   * @param {any} db - Instância do banco de dados
+   * @returns {Promise<RecommendationProduct[]>} Lista de produtos disponíveis
    */
   async getAvailableProducts(db: any): Promise<RecommendationProduct[]> {
     const { rows } = await db.query(`
@@ -205,6 +311,14 @@ export class BusinessIntelligenceService {
 
   /**
    * Aplica algoritmos de recomendação
+   * 
+   * Executa múltiplos algoritmos (content-based, collaborative, trending)
+   * e combina os resultados únicos ordenados por score.
+   * 
+   * @param {UserProfile} userProfile - Perfil do usuário
+   * @param {RecommendationProduct[]} products - Produtos disponíveis
+   * @param {RecommendationOptions} options - Opções (incluindo limite)
+   * @returns {Promise<ProductRecommendation[]>} Recomendações combinadas e ordenadas
    */
   async applyRecommendationAlgorithms(
     userProfile: UserProfile,
@@ -233,6 +347,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Filtragem baseada em conteúdo
+   * 
+   * Recomenda produtos baseados nas preferências do usuário
+   * (categorias favoritas e faixa de preço).
+   * 
+   * @param {UserProfile} userProfile - Perfil do usuário
+   * @param {RecommendationProduct[]} products - Produtos disponíveis
+   * @returns {ProductRecommendation[]} Recomendações baseadas em conteúdo
    */
   contentBasedFiltering(userProfile: UserProfile, products: RecommendationProduct[]): ProductRecommendation[] {
     return products
@@ -256,6 +377,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Filtragem colaborativa (simulada)
+   * 
+   * Simula recomendações baseadas em usuários similares.
+   * Em produção, usaria matriz de similaridade entre usuários.
+   * 
+   * @param {UserProfile} _userProfile - Perfil do usuário (não utilizado na simulação)
+   * @param {RecommendationProduct[]} products - Produtos disponíveis
+   * @returns {ProductRecommendation[]} Recomendações colaborativas
    */
   collaborativeFiltering(_userProfile: UserProfile, products: RecommendationProduct[]): ProductRecommendation[] {
     // Simula recomendações de usuários similares
@@ -285,6 +413,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Recomendações de produtos em tendência
+   * 
+   * Recomenda produtos com alta avaliação (rating >= 4.5).
+   * Simula produtos que estão em alta no momento.
+   * 
+   * @param {RecommendationProduct[]} products - Produtos disponíveis
+   * @returns {ProductRecommendation[]} Recomendações de tendência
    */
   trendingRecommendations(products: RecommendationProduct[]): ProductRecommendation[] {
     return products
@@ -299,6 +433,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Calcula score baseado em conteúdo
+   * 
+   * Pontua o produto baseado em: categoria (40%), faixa de preço (30%)
+   * e rating (30%). Score final varia de 0 a 1.
+   * 
+   * @param {RecommendationProduct} product - Produto a avaliar
+   * @param {UserProfile} userProfile - Perfil do usuário
+   * @returns {number} Score de relevância (0 a 1)
    */
   calculateContentScore(product: RecommendationProduct, userProfile: UserProfile): number {
     let score = 0;
@@ -322,6 +463,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Remove duplicatas e ordena por score
+   * 
+   * Mantém apenas a primeira ocorrência de cada produto
+   * e ordena do maior para o menor score.
+   * 
+   * @param {ProductRecommendation[]} recommendations - Recomendações possivelmente duplicadas
+   * @returns {ProductRecommendation[]} Recomendações únicas ordenadas
    */
   deduplicateAndRank(recommendations: ProductRecommendation[]): ProductRecommendation[] {
     const seen = new Set<number>();
@@ -339,6 +486,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Detecta fraudes em pagamentos
+   * 
+   * Analisa transações suspeitas baseando-se em valor, horário,
+   * múltiplas tentativas e localização geográfica.
+   * 
+   * @param {PaymentFraudData} paymentData - Dados do pagamento a analisar
+   * @returns {Promise<{success: boolean, analysis?: Object, error?: string}>}
+   *          Análise de fraude com score, nível de risco e recomendações
    */
   async detectPaymentFraud(paymentData: PaymentFraudData) {
     try {
@@ -372,6 +526,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Calcula score de fraude
+   * 
+   * Avalia múltiplos fatores de risco:
+   * valor atípico, horário suspeito, múltiplas tentativas, localização estrangeira.
+   * Score varia de 0 (sem risco) a 1 (risco máximo).
+   * 
+   * @param {PaymentFraudData} paymentData - Dados do pagamento
+   * @returns {Promise<number>} Score de fraude (0 a 1)
    */
   async calculateFraudScore(paymentData: PaymentFraudData): Promise<number> {
     let score = 0;
@@ -396,7 +557,10 @@ export class BusinessIntelligenceService {
   }
 
   /**
-   * Determina nível de risco
+   * Determina nível de risco baseado no score
+   * 
+   * @param {number} score - Score de fraude (0 a 1)
+   * @returns {'critical' | 'high' | 'medium' | 'low' | 'minimal'} Nível de risco
    */
   determineRiskLevel(score: number): 'critical' | 'high' | 'medium' | 'low' | 'minimal' {
     if (score >= 0.8) return 'critical';
@@ -408,6 +572,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Detecta bandeiras de fraude
+   * 
+   * Identifica sinais específicos de fraude como valor alto,
+   * múltiplas tentativas e localização estrangeira.
+   * 
+   * @param {PaymentFraudData} paymentData - Dados do pagamento
+   * @returns {Array<{type: string, severity: string, message: string}>} Lista de bandeiras
    */
   detectFraudFlags(paymentData: PaymentFraudData) {
     const flags: Array<{ type: string; severity: string; message: string }> = [];
@@ -440,7 +610,14 @@ export class BusinessIntelligenceService {
   }
 
   /**
-   * Gera recomendações de fraude
+   * Gera recomendações de ação contra fraude
+   * 
+   * Sugere ações baseadas no nível de risco:
+   * bloquear (critical), revisar manualmente (high), monitorar (medium).
+   * 
+   * @param {number} score - Score de fraude
+   * @param {string} riskLevel - Nível de risco
+   * @returns {Array<{action: string, priority: string, message: string}>} Recomendações
    */
   generateFraudRecommendations(score: number, riskLevel: string) {
     const recommendations: Array<{ action: string; priority: string; message: string }> = [];
@@ -473,6 +650,18 @@ export class BusinessIntelligenceService {
    */
   /**
    * Prevê demanda de estoque (Integrado com o serviço de previsão)
+   * 
+   * Carrega dados históricos, calcula previsão de demanda
+   * e gera recomendações de reposição de estoque.
+   * 
+   * @param {any} db - Instância do banco de dados
+   * @param {number} productId - ID do produto
+   * @param {number} daysAhead - Dias à frente para prever (padrão 30)
+   * @param {string} algorithm - Algoritmo a usar (padrão 'moving_average')
+   * @param {any} env - Variáveis de ambiente
+   * @param {any} ctx - Contexto de execução
+   * @returns {Promise<{success: boolean, prediction?: Object, error?: string}>}
+   *          Previsão com recomendações ou erro
    */
   async generateForecast(db: any, productId: number, daysAhead = 30, algorithm = 'moving_average', env?: any, ctx?: any) {
     try {
@@ -507,6 +696,15 @@ export class BusinessIntelligenceService {
 
   /**
    * Carrega dados históricos de vendas do banco de dados
+   * 
+   * Consulta pedidos concluídos e agrega quantidades vendidas
+   * por dia para o produto especificado.
+   * 
+   * @param {any} db - Instância do banco de dados
+   * @param {number} productId - ID do produto
+   * @param {number} days - Número de dias de histórico
+   * @param {any} _env - Variáveis de ambiente (não utilizado)
+   * @param {any} _ctx - Contexto de execução (não utilizado)
    */
   async loadHistoricalData(db: any, productId: number, days: number, _env?: any, _ctx?: any) {
     const { rows } = await db.query(`
@@ -542,6 +740,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Obtém dados históricos de vendas
+   * 
+   * Retorna dados simulados para demonstração.
+   * Em produção, consultaria o banco de dados real.
+   * 
+   * @param {number} productId - ID do produto
+   * @returns {Promise<HistoricalSalesData>} Dados históricos simulados
    */
   async getHistoricalSalesData(productId: number): Promise<HistoricalSalesData> {
     // Simula dados históricos
@@ -561,6 +765,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Calcula previsão de demanda
+   * 
+   * Utiliza média de vendas diárias e fator de tendência
+   * para projetar demanda futura.
+   * 
+   * @param {HistoricalSalesData} historicalData - Dados históricos
+   * @param {number} daysAhead - Dias à frente para prever
+   * @returns {Promise<StockPrediction>} Previsão com confiança e sazonalidade
    */
   async calculateDemandPrediction(historicalData: HistoricalSalesData, daysAhead: number): Promise<StockPrediction> {
     const avgDaily = historicalData.averageDailySales;
@@ -578,6 +789,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Gera recomendações de estoque
+   * 
+   * Sugere ações baseadas na previsão:
+   * aumentar estoque se demanda alta, monitorar se baixa confiança.
+   * 
+   * @param {StockPrediction} prediction - Previsão de demanda
+   * @returns {Array<{type: string, priority: string, message: string}>} Recomendações
    */
   generateStockRecommendations(prediction: StockPrediction) {
     const recommendations: Array<{ type: string; priority: string; message: string }> = [];
@@ -603,6 +820,13 @@ export class BusinessIntelligenceService {
 
   /**
    * Analisa sentimento de avaliações
+   * 
+   * Processa múltiplas avaliações, calcula sentimento individual,
+   * gera resumo estatístico e extrai palavras-chave.
+   * 
+   * @param {Array<{id: number, text: string, timestamp: string}>} reviews - Avaliações
+   * @returns {Promise<{success: boolean, summary?: Object, details?: any[], error?: string}>}
+   *          Análise completa ou erro
    */
   async analyzeReviewSentiment(reviews: Array<{ id: number; text: string; timestamp: string }>) {
     try {
@@ -630,6 +854,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Analisa sentimento de uma avaliação
+   * 
+   * Conta palavras positivas e negativas no texto para calcular
+   * um score de sentimento (0 = negativo, 0.5 = neutro, 1 = positivo).
+   * 
+   * @param {{id: number, text: string, timestamp: string}} review - Avaliação
+   * @returns {Object} Análise com sentimento, palavras-chave e timestamp
    */
   analyzeSingleReview(review: { id: number; text: string; timestamp: string }) {
     const text = review.text.toLowerCase();
@@ -662,7 +892,13 @@ export class BusinessIntelligenceService {
   }
 
   /**
-   * Extrai palavras-chave
+   * Extrai palavras-chave de um texto
+   * 
+   * Remove stop words e palavras curtas, retornando
+   * até 5 palavras mais relevantes.
+   * 
+   * @param {string} text - Texto para extrair palavras-chave
+   * @returns {string[]} Array de palavras-chave
    */
   extractKeywords(text: string) {
     const words = text.split(/\s+/);
@@ -675,6 +911,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Extrai palavras-chave mais frequentes
+   * 
+   * Agrega contagens de todas as análises e retorna
+   * as 10 palavras mais frequentes ordenadas.
+   * 
+   * @param {ReviewAnalysis[]} analyses - Análises de avaliações
+   * @returns {Array<{keyword: string, count: number}>} Top palavras-chave
    */
   extractTopKeywords(analyses: ReviewAnalysis[]) {
     const keywordCounts: Record<string, number> = {};
@@ -693,6 +935,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Gera recomendações baseadas em sentimento
+   * 
+   * Sugere ações se mais de 30% das avaliações
+   * forem negativas (ex: melhorar qualidade).
+   * 
+   * @param {ReviewAnalysis[]} analyses - Análises de avaliações
+   * @returns {Array<{type: string, priority: string, message: string}>} Recomendações
    */
   generateSentimentRecommendations(analyses: ReviewAnalysis[]) {
     const recommendations: Array<{ type: string; priority: string; message: string }> = [];
@@ -711,6 +959,12 @@ export class BusinessIntelligenceService {
 
   /**
    * Obtém estatísticas de BI
+   * 
+   * Retorna métricas do sistema incluindo total de recomendações,
+   * interações, perfis de usuário e taxas de detecção.
+   * 
+   * @returns {Promise<{success: boolean, stats?: Object, error?: string}>}
+   *          Estatísticas ou erro
    */
   async getBIStats() {
     try {
@@ -731,5 +985,14 @@ export class BusinessIntelligenceService {
   }
 }
 
+/**
+ * Instância singleton do serviço de Business Intelligence
+ * Recomendada para uso em toda a aplicação
+ */
 export const businessIntelligenceService = new BusinessIntelligenceService();
+
+/**
+ * Export default da classe BusinessIntelligenceService
+ * Permite importação para instanciamento próprio se necessário
+ */
 export default BusinessIntelligenceService;

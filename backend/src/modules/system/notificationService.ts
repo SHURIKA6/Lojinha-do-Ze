@@ -6,9 +6,7 @@
 import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
 
-/**
- * Canais de notificação disponíveis
- */
+/** Canais de entrega de notificação disponíveis */
 export const NOTIFICATION_CHANNELS = {
   EMAIL: 'email',
   SMS: 'sms',
@@ -18,9 +16,7 @@ export const NOTIFICATION_CHANNELS = {
   IN_APP: 'in_app'
 } as const;
 
-/**
- * Tipos de notificação
- */
+/** Tipos de notificação pré-configurados organizados por categoria (pedidos, pagamentos, estoque, sistema, usuário) */
 export const NOTIFICATION_TYPES = {
   // Pedidos
   ORDER_CREATED: 'order_created',
@@ -53,6 +49,9 @@ export const NOTIFICATION_TYPES = {
 export type NotificationChannel = typeof NOTIFICATION_CHANNELS[keyof typeof NOTIFICATION_CHANNELS];
 export type NotificationType = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
 
+/**
+ * Template para um tipo de notificação com título, mensagem e canais padrão.
+ */
 export interface NotificationTemplate {
   title: string;
   message: string;
@@ -60,7 +59,8 @@ export interface NotificationTemplate {
 }
 
 /**
- * Templates de notificação
+ * Templates pré-configurados para cada tipo de notificação.
+ * Mapeia tipos de notificação para seus títulos, templates de mensagem e canais de entrega.
  */
 export const NOTIFICATION_TEMPLATES: Partial<Record<NotificationType, NotificationTemplate>> = {
   [NOTIFICATION_TYPES.ORDER_CREATED]: {
@@ -95,12 +95,18 @@ export const NOTIFICATION_TEMPLATES: Partial<Record<NotificationType, Notificati
   }
 };
 
+/**
+ * Opções para customizar a entrega de notificações.
+ */
 export interface NotificationOptions {
   channels?: NotificationChannel[];
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   scheduledAt?: Date;
 }
 
+/**
+ * Resultado do envio de uma notificação via um canal específico.
+ */
 export interface NotificationResult {
   channel: NotificationChannel;
   success: boolean;
@@ -108,6 +114,9 @@ export interface NotificationResult {
   error?: string;
 }
 
+/**
+ * Representa uma notificação completa com metadados e status de entrega.
+ */
 export interface Notification {
   id: string;
   type: NotificationType;
@@ -123,6 +132,9 @@ export interface Notification {
   results?: NotificationResult[];
 }
 
+/**
+ * Notificação in-app exibida na interface do usuário.
+ */
 export interface InAppNotification {
   id: string;
   type: NotificationType;
@@ -143,7 +155,14 @@ export class NotificationService {
   constructor() {}
 
   /**
-   * Envia notificação para os canais apropriados
+   * Envia uma notificação usando o template apropriado para o tipo informado.
+   * Processa entrega através dos canais configurados (WhatsApp, email, in-app, etc).
+   * @param type - O tipo de notificação que determina o template
+   * @param data - Dados para interpolação no template (ex: orderId, customerName)
+   * @param env - Bindings de ambiente com configurações de canais
+   * @param options - Opções opcionais de entrega (canais, prioridade, agendamento)
+   * @param ctx - Contexto de execução opcional para operações assíncronas
+   * @returns Status de sucesso com ID da notificação e resultados de entrega
    */
   async send(type: NotificationType, data: any, env: any, options: NotificationOptions = {}, ctx?: any) {
     try {
@@ -197,7 +216,11 @@ export class NotificationService {
   }
 
   /**
-   * Processa envio para cada canal
+   * Processa entrega de notificação através de cada canal configurado.
+   * @param notification - A notificação a ser processada
+   * @param env - Bindings de ambiente
+   * @param ctx - Contexto de execução opcional
+   * @returns Array de resultados para cada canal
    */
   async processChannels(notification: Notification, env: any, ctx?: any) {
     const results: NotificationResult[] = [];
@@ -216,7 +239,12 @@ export class NotificationService {
   }
 
   /**
-   * Envia para canal específico
+   * Roteia notificação para o manipulador de canal apropriado.
+   * @param channel - O canal de entrega a ser usado
+   * @param notification - A notificação a ser enviada
+   * @param env - Bindings de ambiente
+   * @param ctx - Contexto de execução opcional
+   * @returns Resultado específico do canal
    */
   async sendToChannel(channel: NotificationChannel, notification: Notification, env: any, ctx?: any) {
     switch (channel) {
@@ -238,7 +266,9 @@ export class NotificationService {
   }
 
   /**
-   * Envia email
+   * Envia notificação via email (atualmente simulado).
+   * @param notification - A notificação a ser enviada
+   * @returns Resultado de sucesso com informações do canal
    */
   async sendEmail(notification: Notification) {
     logger.debug('Email enviado (simulado)', { to: notification.data.email });
@@ -246,7 +276,9 @@ export class NotificationService {
   }
 
   /**
-   * Envia SMS
+   * Envia notificação via SMS (atualmente simulado).
+   * @param notification - A notificação a ser enviada
+   * @returns Resultado de sucesso com informações do canal
    */
   async sendSMS(notification: Notification) {
     logger.debug('SMS enviado (simulado)', { to: notification.data.phone });
@@ -254,7 +286,9 @@ export class NotificationService {
   }
 
   /**
-   * Envia push notification
+   * Envia notificação push (atualmente simulado).
+   * @param notification - A notificação a ser enviada
+   * @returns Resultado de sucesso com informações do canal
    */
   async sendPush(notification: Notification) {
     logger.debug('Push enviado (simulado)', { userId: notification.data.userId });
@@ -262,7 +296,10 @@ export class NotificationService {
   }
 
   /**
-   * Envia WhatsApp
+   * Envia notificação via WhatsApp usando o número de telefone configurado.
+   * @param notification - A notificação a ser enviada
+   * @param env - Bindings de ambiente com configuração de telefone
+   * @returns Resultado de sucesso com informações do canal
    */
   async sendWhatsApp(notification: Notification, env: any) {
     const phone = notification.data.phone || env?.ZE_PHONE || env?.ZE_PHONE_1;
@@ -279,7 +316,10 @@ export class NotificationService {
   }
 
   /**
-   * Envia webhook
+   * Envia notificação via requisição POST para webhook.
+   * @param notification - A notificação a ser enviada
+   * @returns Resultado de sucesso com código de status HTTP
+   * @throws Error se URL do webhook não for fornecida ou a requisição falhar
    */
   async sendWebhook(notification: Notification) {
     const webhookUrl = notification.data.webhookUrl;
@@ -315,7 +355,12 @@ export class NotificationService {
   }
 
   /**
-   * Envia notificação in-app
+   * Armazena notificação in-app no cache de notificações do usuário.
+   * Mantém as últimas 50 notificações por usuário.
+   * @param notification - A notificação a ser armazenada
+   * @param env - Bindings de ambiente opcionais
+   * @param ctx - Contexto de execução opcional
+   * @returns Resultado de sucesso com ID da notificação
    */
   async sendInApp(notification: Notification, env?: any, ctx?: any) {
     const userId = notification.data.userId;
@@ -348,14 +393,19 @@ export class NotificationService {
   }
 
   /**
-   * Gera ID único para notificação
+   * Gera um ID único para uma nova notificação.
+   * @returns String de ID único da notificação
    */
   generateNotificationId() {
     return `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Interpola template com dados
+   * Interpola strings de template com valores de dados.
+   * Substitui placeholders {chave} com os valores de dados correspondentes.
+   * @param template - A string de template com placeholders {chave}
+   * @param data - Objeto contendo valores para interpolação
+   * @returns String interpolada
    */
   interpolateTemplate(template: string, data: any) {
     return template.replace(/\{(\w+)\}/g, (match, key) => {
@@ -364,7 +414,9 @@ export class NotificationService {
   }
 
   /**
-   * Move notificação para histórico
+   * Move uma notificação enviada de pendente para histórico.
+   * Impõe tamanho máximo do histórico removendo entradas mais antigas.
+   * @param notification - A notificação a ser movida para o histórico
    */
   moveToHistory(notification: Notification) {
     this.notificationHistory.set(notification.id, notification);
@@ -380,7 +432,11 @@ export class NotificationService {
   }
 
   /**
-   * Marca notificação como lida
+   * Marca uma notificação específica como lida para um usuário.
+   * Atualiza a lista de notificações em cache.
+   * @param userId - O ID do usuário
+   * @param notificationId - O ID da notificação a ser marcada como lida
+   * @returns True se a notificação foi encontrada e marcada, false caso contrário
    */
   async markAsRead(userId: number, notificationId: string) {
     const cacheKey = `notifications:${userId}`;
@@ -397,7 +453,9 @@ export class NotificationService {
   }
 
   /**
-   * Obtém notificações não lidas do usuário
+   * Recupera todas as notificações não lidas de um usuário.
+   * @param userId - O ID do usuário
+   * @returns Array de notificações não lidas
    */
   async getUnreadNotifications(userId: number) {
     const cacheKey = `notifications:${userId}`;
@@ -406,7 +464,8 @@ export class NotificationService {
   }
 
   /**
-   * Limpa notificações antigas
+   * Remove notificações mais antigas que a idade especificada do histórico.
+   * @param maxAgeHours - Idade máxima em horas (padrão: 168 = 7 dias)
    */
   cleanupOldNotifications(maxAgeHours = 168) { // 7 dias
     const cutoffTime = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).getTime();
@@ -419,7 +478,9 @@ export class NotificationService {
   }
 
   /**
-   * Obtém estatísticas de notificações
+   * Retorna estatísticas sobre o serviço de notificações.
+   * Inclui contagem pendente, tamanho do histórico e canais/tipos disponíveis.
+   * @returns Objeto com estatísticas de notificações
    */
   getStats() {
     return {

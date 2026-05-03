@@ -2,7 +2,18 @@ import { Bindings, Database } from '../../core/types';
 import { logger } from '../../core/utils/logger';
 
 /**
+ * Módulo de Assistente AI para Integração com WhatsApp
+ * Fornece manipulação de conversas com IA para mensagens de WhatsApp.
+ * Usa a API Google Gemini para gerar respostas contextuais como "Seu Zé",
+ * a persona amigável do dono da loja.
+ */
+
+/**
  * Faz uma chamada ao Gemini com retry automático em caso de rate limit (429).
+ * @param {string} url - A URL da API Gemini com a chave API
+ * @param {object} body - O corpo da requisição a ser enviado para a API Gemini
+ * @param {number} maxRetries - Número máximo de tentativas de retry (padrão: 2)
+ * @returns {Promise<Response>} A resposta da API após as tentativas
  */
 async function callGeminiWithRetry(url: string, body: object, maxRetries = 2): Promise<Response> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -31,6 +42,18 @@ async function callGeminiWithRetry(url: string, body: object, maxRetries = 2): P
   });
 }
 
+/**
+ * Processes incoming WhatsApp messages using AI (Google Gemini).
+ * Retrieves product context from database, builds a contextual prompt,
+ * and generates a response as "Seu Zé" persona. Supports both admin
+ * and customer contexts with different information visibility.
+ * @param {Database} db - A instância do banco de dados para consultar produtos
+ * @param {Bindings} env - Bindings de ambiente contendo chaves API e números de telefone
+ * @param {string} customerPhone - O número de telefone do cliente (WhatsApp JID)
+ * @param {string} userMessage - O texto da mensagem enviada pelo usuário
+ * @param {boolean} isAdmin - Indica se o remetente é um administrador (padrão: false)
+ * @returns {Promise<string>} A mensagem de resposta gerada pela IA
+ */
 export async function processWhatsAppWithAI(
   db: Database,
   env: Bindings,

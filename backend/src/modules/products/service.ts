@@ -11,10 +11,36 @@ import {
 } from '../../core/utils/normalize';
 import { logger } from '../../core/utils/logger';
 
+/**
+ * Recupera uma lista paginada de todos os produtos do inventário.
+ * @param db - Instância de conexão com o banco de dados
+ * @param limit - Número máximo de produtos a retornar
+ * @param offset - Número de produtos a pular para paginação
+ * @param env - Bindings de ambiente (opcional, para operações de cache)
+ * @param ctx - Contexto de execução (opcional, para operações de cache em background)
+ * @returns Array de registros de produtos
+ */
 export async function getProducts(db: Database, limit: number, offset: number, env?: Bindings, ctx?: ExecutionContext) {
   return productRepo.listProducts(db, limit, offset);
 }
 
+/**
+ * Recupera o catálogo de produtos com cache, busca, filtros e paginação.
+ * Os resultados são agrupados por categoria e cacheados para melhor performance.
+ * Utiliza busca de texto completo em português para a funcionalidade de pesquisa.
+ * @param db - Instância de conexão com o banco de dados
+ * @param options - Opções de recuperação do catálogo
+ * @param options.search - Termo de busca para pesquisa de texto completo
+ * @param options.category - Filtro por categoria de produto
+ * @param options.minPrice - Filtro de preço mínimo
+ * @param options.maxPrice - Filtro de preço máximo
+ * @param options.sortBy - Preferência de ordenação
+ * @param options.limit - Número máximo de resultados
+ * @param options.offset - Número de resultados a pular
+ * @param options.env - Bindings de ambiente para acesso ao cache
+ * @param options.ctx - Contexto de execução para operações em background
+ * @returns Dados do catálogo recuperados do cache ou buscados recentemente, com categorias, contagem total e informações de paginação
+ */
 export async function getCatalog(
   db: Database,
   options: { 
@@ -62,10 +88,29 @@ export async function getCatalog(
   return response;
 }
 
+/**
+ * Recupera um único produto pelo seu identificador único.
+ * @param db - Instância de conexão com o banco de dados
+ * @param id - Identificador único do produto (UUID)
+ * @param env - Bindings de ambiente (opcional)
+ * @param ctx - Contexto de execução (opcional)
+ * @returns Objeto do produto se encontrado, undefined caso contrário
+ */
 export async function getProduct(db: Database, id: string, env?: Bindings, ctx?: ExecutionContext) {
   return productRepo.getProductById(db, id);
 }
 
+/**
+ * Cria um novo produto com suporte a transação e registro automático de transação de estoque.
+ * Processa transação de compra de estoque inicial se quantidade e preço de custo forem fornecidos.
+ * Invalida o cache do catálogo após a criação.
+ * @param db - Instância de conexão com o banco de dados
+ * @param payload - Dados do produto incluindo código, nome, descrição, categoria, quantidade, preços, etc.
+ * @param env - Bindings de ambiente para invalidação de cache
+ * @param ctx - Contexto de execução para operações de cache em background
+ * @returns Objeto do produto recém-criado
+ * @throws {UNIQUE_VIOLATION} Quando código do produto ou outro campo único gerar conflito
+ */
 export async function createProduct(db: Database, payload: any, env?: Bindings, ctx?: ExecutionContext) {
   const client = await db.connect();
   try {
@@ -113,6 +158,19 @@ export async function createProduct(db: Database, payload: any, env?: Bindings, 
   }
 }
 
+/**
+ * Atualiza um produto existente com dados parciais e suporte a transação.
+ * Registra automaticamente transações de reposição de estoque e envia alertas de estoque baixo.
+ * Invalida o cache do catálogo após a atualização.
+ * @param db - Instância de conexão com o banco de dados
+ * @param id - Identificador único do produto (UUID)
+ * @param payload - Dados parciais do produto a serem atualizados
+ * @param env - Bindings de ambiente para invalidação de cache e notificações
+ * @param ctx - Contexto de execução para operações em background
+ * @returns Objeto do produto atualizado
+ * @throws {UNIQUE_VIOLATION} Quando campo único atualizado gerar conflito
+ * @throws {NOT_FOUND} Quando o produto não existir
+ */
 export async function updateProduct(db: Database, id: string, payload: any, env?: Bindings, ctx?: ExecutionContext) {
   const client = await db.connect();
   try {
@@ -180,6 +238,14 @@ export async function updateProduct(db: Database, id: string, payload: any, env?
   }
 }
 
+/**
+ * Exclui um produto pelo seu ID e invalida o cache do catálogo.
+ * @param db - Instância de conexão com o banco de dados
+ * @param id - Identificador único do produto (UUID)
+ * @param env - Bindings de ambiente para invalidação de cache
+ * @param ctx - Contexto de execução para operações de cache em background
+ * @returns True se o produto foi excluído, false se não encontrado
+ */
 export async function deleteProduct(db: Database, id: string, env?: Bindings, ctx?: ExecutionContext) {
   const success = await productRepo.deleteProduct(db, id);
   if (success) {

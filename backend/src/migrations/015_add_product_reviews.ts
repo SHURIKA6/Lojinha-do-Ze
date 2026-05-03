@@ -1,6 +1,12 @@
 export const id = '015_add_product_reviews';
 import { Database } from '../core/types';
 
+/**
+ * Cria a tabela product_reviews para armazenar avaliações de produtos dos clientes.
+ * Inclui avaliação (1-5), comentário, status de aprovação e referências ao
+ * produto e ao usuário. Cria índices em product_id e user_id para performance.
+ * @param db - Instância do banco de dados para executar consultas
+ */
 export async function up(db: Database) {
   await db.query(`
     CREATE TABLE IF NOT EXISTS product_reviews (
@@ -19,6 +25,10 @@ export async function up(db: Database) {
   `);
 }
 
+/**
+ * Reverte a migração de avaliações de produtos removendo a tabela product_reviews.
+ * @param db - Instância do banco de dados para executar consultas
+ */
 export async function down(db: Database) {
   await db.query(`DROP TABLE IF EXISTS product_reviews;`);
 }

@@ -6,11 +6,30 @@ import { Bindings, Variables } from '../../core/types';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+/**
+ * Converte valor para número com validação
+ * 
+ * Garante que o valor retornado é um número finito.
+ * Retorna 0 para valores inválidos ou undefined.
+ * 
+ * @param {unknown} value - Valor a converter
+ * @returns {number} Número válido ou 0
+ */
 function toNumber(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/**
+ * Converte valor para array de objetos com validação
+ * 
+ * Aceita arrays diretamente ou strings JSON.
+ * Retorna array vazio para valores inválidos.
+ * 
+ * @template T - Tipo dos objetos no array
+ * @param {unknown} value - Valor a converter
+ * @returns {T[]} Array de objetos tipados
+ */
 function toObjectArray<T = Record<string, unknown>>(value: unknown): T[] {
   if (Array.isArray(value)) {
     return value as T[];
@@ -30,6 +49,21 @@ function toObjectArray<T = Record<string, unknown>>(value: unknown): T[] {
 
 router.use('*', authMiddleware, adminOnly);
 
+/**
+ * GET /api/analytics/dashboard
+ * Dashboard Principal com Métricas Consolidadas
+ * 
+ * Retorna visão geral do negócio incluindo:
+ * - Receita e despesas do mês
+ * - Pedidos ativos e total de vendas
+ * - Produtos com estoque baixo
+ * - Pedidos recentes
+ * - Dados para gráficos (receita/despesa diária, categorias)
+ * - Visitantes únicos e taxa de conversão
+ * - Receita mensal dos últimos 6 meses
+ * 
+ * Requer: adminOnly
+ */
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
@@ -155,4 +189,10 @@ router.get('/', async (c) => {
   }
 });
 
+/**
+ * Export default do router de dashboard
+ * 
+ * Este router fornece o endpoint principal do dashboard
+ * com todas as métricas consolidadas em uma única consulta otimizada.
+ */
 export default router;

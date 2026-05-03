@@ -1,14 +1,31 @@
 import { Database } from '../../core/types';
 
+/**
+ * Representa um token de configuração de senha usado para ativação inicial da conta.
+ * Estes tokens são enviados aos usuários para permitir que definam sua senha pela primeira vez.
+ */
 export interface PasswordSetupToken {
+  /** Identificador único do token de configuração */
   id: string;
+  /** ID do usuário ao qual este token pertence */
   userId: string;
+  /** Hash SHA-256 do token bruto (o token bruto nunca é armazenado) */
   tokenHash: string;
+  /** Código de configuração legível por humanos que pode ser compartilhado via SMS/email */
   setupCode: string;
+  /** Data e hora em que este token expira */
   expiresAt: Date;
+  /** Data e hora em que este token foi consumido (null se ainda for válido) */
   consumedAt?: Date | null;
 }
 
+/**
+ * Revoga todos os tokens de configuração abertos (não utilizados) para um usuário específico.
+ * Marca tokens existentes como consumidos para evitar reutilização ao gerar um novo token.
+ * 
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param userId - ID do usuário cujos tokens devem ser revogados
+ */
 export async function revokeOpenSetupTokensForUser(client: Database, userId: string) {
   await client.query(
     `UPDATE password_setup_tokens
@@ -18,6 +35,14 @@ export async function revokeOpenSetupTokensForUser(client: Database, userId: str
   );
 }
 
+/**
+ * Cria um novo token de configuração de senha no banco de dados.
+ * Gera um registro que pode ser usado por um usuário para definir sua senha pela primeira vez.
+ * 
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param tokenData - Dados parciais do token contendo userId, tokenHash, setupCode e expiresAt
+ * @returns O registro de token criado com ID gerado e timestamps
+ */
 export async function createPasswordSetupToken(client: Database, tokenData: Partial<PasswordSetupToken>) {
   const { rows } = await client.query(
     `INSERT INTO password_setup_tokens (user_id, token_hash, setup_code, expires_at)
@@ -34,6 +59,15 @@ export async function createPasswordSetupToken(client: Database, tokenData: Part
   return rows[0];
 }
 
+/**
+ * Busca um token de configuração aberto (não utilizado e não expirado).
+ * Pesquisa pelo hash do token ou código de configuração, retornando a primeira correspondência válida.
+ * Faz join com a tabela de usuários para retornar dados do usuário junto com dados do token.
+ * 
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param lookup - Objeto contendo tokenHash ou setupCode para buscar
+ * @returns Dados combinados de token e usuário se encontrado e válido, null caso contrário
+ */
 export async function findOpenSetupToken(client: Database, lookup: { tokenHash?: string | null; setupCode?: string | null }) {
   const values: (string | null)[] = [];
   let whereClause: string;
@@ -75,6 +109,13 @@ export async function findOpenSetupToken(client: Database, lookup: { tokenHash?:
   return rows[0] || null;
 }
 
+/**
+ * Marca um token de configuração como consumido.
+ * Define o timestamp consumed_at para evitar que o token seja reutilizado.
+ * 
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param tokenId - ID do token a ser marcado como consumido
+ */
 export async function consumeSetupToken(client: Database, tokenId: string) {
   await client.query(
     'UPDATE password_setup_tokens SET consumed_at = NOW() WHERE id = $1',
@@ -82,6 +123,12 @@ export async function consumeSetupToken(client: Database, tokenId: string) {
   );
 }
 
+/**
+ * Exclui todos os tokens de configuração expirados ou já consumidos do banco de dados.
+ * Deve ser executado periodicamente para limpar registros de token obsoletos.
+ * 
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function deleteExpiredSetupTokens(client: Database) {
   await client.query(
     'DELETE FROM password_setup_tokens WHERE consumed_at IS NOT NULL OR expires_at <= NOW()'

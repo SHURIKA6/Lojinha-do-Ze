@@ -2,6 +2,17 @@ import { Bindings } from '../../core/types';
 import { logger } from '../../core/utils/logger';
 import { normalizePhoneDigits } from '../../core/utils/normalize';
 
+/**
+ * Envia uma mensagem WhatsApp usando a API configurada (Evolution ou Official).
+ * 
+ * O número é normalizado automaticamente:
+ * - Se já for um JID (contém @), usa diretamente
+ * - Caso contrário, normaliza e adiciona prefixo 55 se necessário
+ * 
+ * @param env - Variáveis de ambiente com configurações da API.
+ * @param to - Número de telefone do destinatário ou JID.
+ * @param message - Conteúdo da mensagem a ser enviada.
+ */
 export async function sendWhatsAppMessage(env: Bindings, to: string, message: string): Promise<void> {
   const apiType = env.WHATSAPP_API_TYPE || 'evolution';
   // Se já for um JID completo (contém @), usamos direto. 
@@ -20,6 +31,12 @@ export async function sendWhatsAppMessage(env: Bindings, to: string, message: st
   }
 }
 
+/**
+ * Envia mensagem via Evolution API.
+ * @param env - Variáveis de ambiente com WHATSAPP_API_URL, WHATSAPP_API_KEY, WHATSAPP_INSTANCE_NAME.
+ * @param to - Número de telefone ou JID do destinatário.
+ * @param message - Conteúdo da mensagem.
+ */
 async function sendViaEvolution(env: Bindings, to: string, message: string) {
   const url = env.WHATSAPP_API_URL;
   const apiKey = env.WHATSAPP_API_KEY;
@@ -53,6 +70,12 @@ async function sendViaEvolution(env: Bindings, to: string, message: string) {
   }
 }
 
+/**
+ * Envia mensagem via WhatsApp Official API (Meta/Facebook).
+ * @param env - Variáveis de ambiente com WHATSAPP_PHONE_ID e WHATSAPP_ACCESS_TOKEN.
+ * @param to - Número de telefone do destinatário.
+ * @param message - Conteúdo da mensagem.
+ */
 async function sendViaOfficial(env: Bindings, to: string, message: string) {
   const phoneId = env.WHATSAPP_PHONE_ID;
   const accessToken = env.WHATSAPP_ACCESS_TOKEN;

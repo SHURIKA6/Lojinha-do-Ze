@@ -6,6 +6,16 @@ import { logger } from '../../core/utils/logger';
 import { validateFileSignature } from '../../core/utils/file';
 import { Bindings, Variables } from '../../core/types';
 
+/**
+ * Rotas para upload e servir arquivos de imagem do sistema Lojinha do Zé.
+ * Gerencia upload de imagens de produtos para o bucket R2 (Cloudflare)
+ * e servidor de arquivos estáticos com cache configurado.
+ * 
+ * Funcionalidades:
+ * - Upload de imagens (JPG, PNG, WEBP) com validação de assinatura
+ * - Servir arquivos enviados com headers de cache e segurança
+ * - Validação de tamanho (máx 5MB) e tipo de arquivo
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -15,6 +25,14 @@ const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/webp': 'webp',
 };
 
+/**
+ * Endpoint POST para upload de imagens de produtos.
+ * Recebe um arquivo de imagem, valida tipo/tamanho/assinatura e armazena no bucket R2.
+ * Requer autenticação e privilégios de administrador.
+ * 
+ * @param c - Contexto do Hono contendo request e environment bindings
+ * @returns JSON com URL do arquivo enviado ou mensagem de erro
+ */
 router.post('/', authMiddleware, adminOnly, async (c) => {
   try {
     const body = await c.req.parseBody();
@@ -67,6 +85,14 @@ router.post('/', authMiddleware, adminOnly, async (c) => {
   }
 });
 
+/**
+ * Endpoint GET para servir arquivos de imagem enviados.
+ * Recupera arquivos do bucket R2 com headers de cache e segurança apropriados.
+ * Inclui proteção contra path traversal e validação de filename.
+ * 
+ * @param c - Contexto do Hono contendo parâmetros da rota
+ * @returns Response com o arquivo ou erro 404/400
+ */
 router.get('/products/:filename', async (c) => {
   try {
     const paramFilename = c.req.param('filename');
@@ -108,4 +134,8 @@ router.get('/products/:filename', async (c) => {
   }
 });
 
+/**
+ * Exporta as rotas de upload configuradas.
+ * Inclui rotas POST / para upload e GET /products/:filename para servir arquivos.
+ */
 export default router;

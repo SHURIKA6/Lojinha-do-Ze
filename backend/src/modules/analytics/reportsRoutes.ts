@@ -9,12 +9,33 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 router.use('*', authMiddleware, adminOnly);
 
+/**
+ * Extrai parâmetros de paginação da query string
+ * 
+ * @param {any} c - Contexto do Hono
+ * @returns {{limit: number, offset: number}} Parâmetros de paginação validados
+ */
 function parsePaginationParams(c: any) {
   const limit = Math.min(parseInt(c.req.query('limit') || '') || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
   const offset = Math.max(parseInt(c.req.query('offset') || '') || 0, 0);
   return { limit, offset };
 }
 
+/**
+ * GET /api/analytics/reports/:type
+ * Gerador de Relatórios por Tipo
+ * 
+ * Gera relatórios detalhados para diferentes áreas:
+ * - vendas: Pedidos com detalhes de clientes
+ * - estoque: Produtos com níveis atuais
+ * - clientes: Usuários com contagem de pedidos
+ * - financeiro: Transações com totais e lucro
+ * - inadimplencia: Pedidos pendentes com total em aberto
+ * 
+ * Requer: adminOnly
+ * 
+ * @param {any} c - Contexto do Hono
+ */
 router.get('/:type', async (c) => {
   try {
     const db = c.get('db');
@@ -124,8 +145,19 @@ router.get('/:type', async (c) => {
     logger.error('Erro no GET de Relatórios', error as Error, { type: c.req.param('type') });
     return jsonError(c, 500, 'Erro ao gerar os dados do relatório.');
   }
-});
+  });
 
+/**
+ * POST /api/analytics/reports/export/csv
+ * Exportação de Relatórios em CSV
+ * 
+ * Gera arquivo CSV para download contendo
+ * dados de vendas ou estoque (limite 500 registros).
+ * 
+ * Requer: adminOnly
+ * 
+ * @param {any} c - Contexto do Hono
+ */
 router.post('/export/csv', async (c) => {
   try {
     const db = c.get('db');
@@ -161,6 +193,13 @@ router.post('/export/csv', async (c) => {
     logger.error('Erro ao exportar CSV', error as Error);
     return jsonError(c, 500, 'Erro ao exportar os dados do relatório.');
   }
-});
+  });
 
+/**
+ * Export default do router de relatórios
+ * 
+ * Este router fornece endpoints para:
+ * - GET /:type - relatórios paginados (vendas, estoque, clientes, financeiro, inadimplencia)
+ * - POST /export/csv - exportação de dados em formato CSV
+ */
 export default router;

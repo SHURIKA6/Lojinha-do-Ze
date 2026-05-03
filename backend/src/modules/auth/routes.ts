@@ -13,13 +13,28 @@ import { REFRESH_TOKEN_COOKIE_NAME } from '../../core/domain/constants';
 import { getCookie } from 'hono/cookie';
 
 
+/**
+ * Módulo de rotas de autenticação.
+ * Define todos os endpoints da API relacionados à autenticação:
+ * - POST /login - Autenticação de usuário
+ * - POST /logout - Destruição de sessão
+ * - POST /setup-password - Configuração inicial de senha via convite
+ * - GET /me - Obter usuário autenticado atual
+ * - POST /refresh-csrf - Atualizar token CSRF
+ * - POST /refresh - Atualizar access token usando refresh token
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 
 
 /**
  * POST /api/auth/login
- * Autentica o usuário e cria uma sessão
+ * Autentica o usuário e cria uma nova sessão.
+ * Limitado por taxa para prevenir ataques de força bruta.
+ * Em caso de sucesso, define cookie de sessão, cookie CSRF e cookie de refresh token.
+ * 
+ * Corpo da requisição: { email/identifier: string, password: string }
+ * Resposta: { user: { id, role }, csrfToken: string }
  */
 router.post(
   '/login',
@@ -76,7 +91,11 @@ router.post(
 
 /**
  * POST /api/auth/logout
- * Destrói a sessão atual
+ * Destrói a sessão atual e revoga o refresh token.
+ * Limpa todos os cookies de autenticação da resposta.
+ * Revoga o refresh token em background se o contexto de execução estiver disponível.
+ * 
+ * Resposta: { message: 'Logout realizado com sucesso' }
  */
 router.post('/logout', async (c) => {
   const db = c.get('db');
@@ -99,7 +118,11 @@ router.post('/logout', async (c) => {
 
 /**
  * POST /api/auth/setup-password
- * Ativa a conta usando um convite e define a nova senha
+ * Ativa uma conta de usuário usando um token ou código de convite de configuração.
+ * Define a senha do usuário pela primeira vez e cria uma sessão.
+ * 
+ * Corpo da requisição: { token?: string, code?: string, password: string, confirmPassword: string }
+ * Resposta: { user: User, csrfToken: string }
  */
 router.post('/setup-password', async (c) => {
   const db = c.get('db');
@@ -137,7 +160,11 @@ router.post('/setup-password', async (c) => {
 
 /**
  * GET /api/auth/me
- * Retorna os dados do usuário autenticado
+ * Retorna os dados do usuário autenticado atual.
+ * Resolve a sessão a partir da requisição e retorna informações do usuário com token CSRF.
+ * 
+ * Resposta: { user: User, csrfToken: string }
+ * Erro: 401 se não estiver autenticado
  */
 router.get('/me', async (c) => {
   const db = c.get('db');
@@ -151,7 +178,10 @@ router.get('/me', async (c) => {
 
 /**
  * POST /api/auth/refresh-csrf
- * Atualiza o token CSRF da sessão
+ * Retorna o token CSRF da sessão atual.
+ * Requer autenticação (authMiddleware).
+ * 
+ * Resposta: { csrfToken: string }
  */
 router.post('/refresh-csrf', authMiddleware, async (c) => {
   const session = c.get('session');
@@ -160,7 +190,12 @@ router.post('/refresh-csrf', authMiddleware, async (c) => {
 
 /**
  * POST /api/auth/refresh
- * Usa o Refresh Token para gerar uma nova sessão (Access Token)
+ * Usa um refresh token para gerar uma nova sessão (access token).
+ * Implementa rotação de token - o refresh token antigo é revogado e um novo é emitido.
+ * 
+ * Requisição: Refresh token é lido do cookie HTTP-only
+ * Resposta: { user: { id, role }, csrfToken: string }
+ * Erro: 401 se o refresh token for inválido ou expirado
  */
 router.post('/refresh', async (c) => {
   const db = c.get('db');
@@ -196,4 +231,13 @@ router.post('/refresh', async (c) => {
   }
 });
 
+/**
+ * Exportação padrão do roteador de autenticação.
+ * Use isso para montar as rotas de autenticação na aplicação principal.
+ * 
+ * @example
+ * // No seu arquivo principal da aplicação:
+ * // import authRoutes from './modules/auth/routes';
+ * // app.route('/api/auth', authRoutes);
+ */
 export default router;

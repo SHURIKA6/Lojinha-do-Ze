@@ -20,6 +20,15 @@ neonConfig.useSecureWebSocket = true;
 const poolCache = new Map<string, Pool>();
 const httpCache = new Map<string, any>();
 
+/**
+ * Cria uma conexão com o banco de dados usando o driver serverless do Neon com pool de conexões.
+ * Utiliza queries baseadas em HTTP para melhor performance e confiabilidade em ambientes serverless.
+ * Implementa cache para instâncias de Pool e cliente HTTP para sobreviverem entre requisições.
+ * 
+ * @param {string} connectionString - String de conexão PostgreSQL (ex: postgres://user:pass@host:port/db)
+ * @returns {Database} Objeto Database com métodos query, connect e close
+ * @throws {Error} Se connectionString não for fornecida ou a conexão falhar
+ */
 export function createDb(connectionString: string): Database {
   if (!connectionString) {
     logger.error('DATABASE_URL ausente! Verifique as variáveis de ambiente ou secrets do Cloudflare.');
@@ -81,12 +90,12 @@ export function createDb(connectionString: string): Database {
     }
   }
 
-  /**
-   * Creates a pseudo-client that wraps the HTTP driver.
-   * Transaction commands (BEGIN/COMMIT/ROLLBACK) become no-ops since HTTP queries are auto-committed.
-   * This is used as a fallback when pool.connect() fails.
-   * WARNING: This does NOT provide true transaction isolation.
-   */
+/**
+ * Cria um pseudo-cliente que encapsula o driver HTTP.
+ * Comandos de transação (BEGIN/COMMIT/ROLLBACK) tornam-se no-ops já que queries HTTP são auto-commitadas.
+ * Usado como fallback quando pool.connect() falha.
+ * AVISO: Isso NÃO fornece isolamento real de transação.
+ */
   function createHttpFallbackClient() {
     logger.warn('Usando fallback HTTP para client (sem transação real)');
     
@@ -158,6 +167,16 @@ export function createDb(connectionString: string): Database {
   };
 }
 
+/**
+ * Executa um callback com uma conexão de banco de dados e garante a limpeza adequada.
+ * Cria uma instância de banco de dados, passa para o callback e fecha a conexão em seguida.
+ * Útil para operações pontuais de banco de dados onde o ciclo de vida da conexão deve ser gerenciado automaticamente.
+ * 
+ * @template T - O tipo de retorno da função de callback
+ * @param {string} connectionString - String de conexão PostgreSQL
+ * @param {function} callback - Função assíncrona que recebe a instância do banco de dados e retorna uma promise
+ * @returns {Promise<T>} O resultado da função de callback
+ */
 export async function withDb<T>(
   connectionString: string, 
   callback: (db: Database) => Promise<T>

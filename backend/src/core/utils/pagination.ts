@@ -39,7 +39,12 @@ interface Database {
 }
 
 /**
- * Gera cursor a partir de um registro
+ * Gera uma string de cursor codificada em base64 a partir de um registro usando os campos de cursor especificados.
+ * O cursor pode ser usado para paginação baseada em cursor.
+ * @param record - O registro para gerar o cursor.
+ * @param cursorFields - Os campos a incluir no cursor (padrão: ['id']).
+ * @returns Uma string JSON codificada em base64 contendo os dados do cursor.
+ * @throws {Error} Se algum campo de cursor não for encontrado no registro.
  */
 export function generateCursor(record: Record<string, unknown>, cursorFields: string[] = ['id']): string {
   const cursorData: CursorData = {};
@@ -55,7 +60,10 @@ export function generateCursor(record: Record<string, unknown>, cursorFields: st
 }
 
 /**
- * Decodifica cursor para objeto
+ * Decodifica uma string de cursor codificada em base64 de volta para um objeto.
+ * @param cursor - A string de cursor codificada em base64 a ser decodificada.
+ * @returns Os dados do cursor decodificados como um objeto.
+ * @throws {Error} Se o cursor for inválido ou não puder ser decodificado.
  */
 export function decodeCursor(cursor: string): CursorData {
   try {
@@ -68,7 +76,13 @@ export function decodeCursor(cursor: string): CursorData {
 }
 
 /**
- * Constrói query SQL com paginação cursor-based
+ * Constrói uma consulta SQL com condições de paginação baseada em cursor.
+ * Gera cláusulas WHERE para paginação eficiente usando campos de cursor.
+ * @param baseQuery - A consulta SQL base sem paginação.
+ * @param cursor - A string de cursor de uma página anterior, ou null para a primeira página.
+ * @param cursorFields - Os campos usados para paginação baseada em cursor (padrão: ['id']).
+ * @param direction - A direção de ordenação ('ASC' ou 'DESC', padrão: 'DESC').
+ * @returns Um objeto contendo a consulta modificada, parâmetros e o próximo índice de parâmetro.
  */
 export function buildCursorQuery(
   baseQuery: string,
@@ -139,7 +153,13 @@ export function buildCursorQuery(
 }
 
 /**
- * Wrapper para queries com paginação cursor-based
+ * Executa uma consulta de banco de dados com paginação baseada em cursor.
+ * Busca uma página de resultados e gera o próximo cursor se existirem mais resultados.
+ * @param db - O objeto de banco de dados com um método query.
+ * @param baseQuery - A consulta SQL base sem paginação.
+ * @param options - Opções de paginação incluindo cursor, limit, cursorFields, direction e parâmetros adicionais.
+ * @returns Uma Promise que resolve para o resultado paginado com dados e metadados de paginação.
+ * @throws {Error} Se a consulta ao banco de dados falhar.
  */
 export async function paginateWithCursor<T>(
   db: Database,
@@ -191,7 +211,11 @@ export async function paginateWithCursor<T>(
 }
 
 /**
- * Middleware para paginação cursor-based
+ * Cria um middleware para paginação baseada em cursor que extrai parâmetros de paginação da requisição.
+ * Define as opções de paginação (cursor, limit, cursorFields, direction) no contexto.
+ * @param cursorFields - Os campos a usar para paginação baseada em cursor (padrão: ['id']).
+ * @param direction - A direção de ordenação ('ASC' ou 'DESC', padrão: 'DESC').
+ * @returns Uma função de middleware que processa os parâmetros de paginação.
  */
 export function cursorPaginationMiddleware(cursorFields: string[] = ['id'], direction: 'ASC' | 'DESC' = 'DESC') {
   return async (c: { set: (key: string, value: unknown) => void; req: { query: (key: string) => string | undefined } }, next: () => Promise<void>) => {
@@ -211,7 +235,12 @@ export function cursorPaginationMiddleware(cursorFields: string[] = ['id'], dire
 }
 
 /**
- * Helper para respostas paginadas
+ * Cria um objeto de resposta paginada padronizado.
+ * Opcionalmente gera uma URL nextPage para respostas de API.
+ * @param data - O array de itens de dados para a página atual.
+ * @param pagination - Os metadados de paginação de uma consulta baseada em cursor.
+ * @param baseUrl - A URL base para gerar o link nextPage (padrão: '').
+ * @returns Uma resposta paginada completa com dados e informações de paginação.
  */
 export function createPaginatedResponse<T>(
   data: T[],
@@ -237,7 +266,14 @@ export function createPaginatedResponse<T>(
 }
 
 /**
- * Converte paginação offset-based para cursor-based
+ * Converte paginação baseada em offset para paginação baseada em cursor.
+ * Encontra o registro na posição do offset e gera um cursor a partir dele.
+ * @param db - O objeto de banco de dados com um método query.
+ * @param baseQuery - A consulta SQL base sem paginação.
+ * @param offset - O offset de base zero a ser convertido para um cursor.
+ * @param limit - O número máximo de registros a retornar.
+ * @param cursorFields - Os campos a usar para geração do cursor (padrão: ['id']).
+ * @returns Uma Promise que resolve para um objeto contendo o cursor, dados e metadados de paginação.
  */
 export async function convertOffsetToCursor<T>(
   db: Database,
@@ -285,7 +321,11 @@ export async function convertOffsetToCursor<T>(
 }
 
 /**
- * Valida parâmetros de paginação
+ * Valida parâmetros de paginação para paginação baseada em cursor.
+ * Verifica se o cursor é uma string (se fornecido) e se o limit está entre 1 e 100.
+ * @param cursor - A string de cursor a validar (pode ser null ou undefined).
+ * @param limit - O valor de limit a validar.
+ * @returns Um objeto com uma flag valid e um array de mensagens de erro.
  */
 export function validatePaginationParams(cursor: string | null | undefined, limit: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -308,8 +348,10 @@ export function validatePaginationParams(cursor: string | null | undefined, limi
 }
 
 /**
- * Paginação cursor-based para React (hook)
- * Nota: Este hook deve ser usado apenas no frontend
+ * Placeholder de hook para paginação baseada em cursor no frontend React.
+ * Esta função lança um erro se for chamada, pois deve ser usada apenas no frontend.
+ * @param _initialOptions - Opções iniciais de paginação (não usado no backend).
+ * @throws {Error} Sempre lança um erro indicando que deve ser usado apenas no frontend React.
  */
 export function useCursorPagination(_initialOptions: Record<string, unknown> = {}) {
   // Este hook é apenas um placeholder para uso no frontend

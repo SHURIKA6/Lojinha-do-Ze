@@ -1,5 +1,8 @@
 import { Database } from '../../core/types';
 
+/**
+ * Representa um produto no sistema de inventário da Lojinha do Zé.
+ */
 export interface Product {
   id: string;
   code: string;
@@ -17,6 +20,9 @@ export interface Product {
   updated_at: Date;
 }
 
+/**
+ * Payload para criar um novo produto.
+ */
 export interface ProductCreatePayload {
   code: string;
   name: string;
@@ -31,6 +37,9 @@ export interface ProductCreatePayload {
   is_active: boolean;
 }
 
+/**
+ * Payload para atualizar um produto existente. Todos os campos são opcionais.
+ */
 export interface ProductUpdatePayload {
   code?: string;
   name?: string;
@@ -45,6 +54,13 @@ export interface ProductUpdatePayload {
   is_active?: boolean;
 }
 
+/**
+ * Lista produtos do banco de dados com paginação.
+ * @param client - Instância de conexão com o banco de dados
+ * @param limit - Número máximo de produtos a retornar
+ * @param offset - Número de produtos a pular para paginação
+ * @returns Array de registros de produtos ordenados por nome
+ */
 export async function listProducts(client: Database, limit: number, offset: number) {
   const { rows } = await client.query(
     `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
@@ -56,6 +72,20 @@ export async function listProducts(client: Database, limit: number, offset: numb
   return rows;
 }
 
+/**
+ * Pesquisa produtos no catálogo com filtros, ordenação e paginação.
+ * Suporta busca de texto completo em português, filtro por categoria e filtro por faixa de preço.
+ * @param client - Instância de conexão com o banco de dados
+ * @param options - Opções de pesquisa incluindo termo de busca, categoria, faixa de preço, ordenação e paginação
+ * @param options.search - Termo de busca de texto completo (suporta busca em português)
+ * @param options.category - Filtro por categoria de produto
+ * @param options.minPrice - Filtro de preço mínimo
+ * @param options.maxPrice - Filtro de preço máximo
+ * @param options.sortBy - Ordenação: 'price_asc', 'price_desc', 'newest' ou 'relevance'
+ * @param options.limit - Número máximo de resultados a retornar
+ * @param options.offset - Número de resultados a pular para paginação
+ * @returns Objeto contendo as linhas de produtos que correspondem e a contagem total
+ */
 export async function searchProducts(
   client: Database,
   options: { 
@@ -123,6 +153,12 @@ export async function searchProducts(
 }
 
 
+/**
+ * Recupera um único produto pelo seu identificador único.
+ * @param client - Instância de conexão com o banco de dados
+ * @param id - Identificador único do produto (UUID)
+ * @returns Objeto do produto se encontrado, null caso contrário
+ */
 export async function getProductById(client: Database, id: string) {
   const { rows } = await client.query(
     `SELECT id, code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active, created_at, updated_at
@@ -133,6 +169,12 @@ export async function getProductById(client: Database, id: string) {
   return rows[0] || null;
 }
 
+/**
+ * Cria um novo produto no banco de dados.
+ * @param client - Instância de conexão com o banco de dados
+ * @param p - Payload de criação do produto contendo todos os campos obrigatórios
+ * @returns Novo produto criado com ID gerado e timestamps
+ */
 export async function createProduct(client: Database, p: ProductCreatePayload) {
   const { rows } = await client.query(
     `INSERT INTO products (code, name, description, photo, category, quantity, min_stock, cost_price, sale_price, supplier, is_active)
@@ -143,6 +185,14 @@ export async function createProduct(client: Database, p: ProductCreatePayload) {
   return rows[0];
 }
 
+/**
+ * Atualiza um produto existente com os campos fornecidos.
+ * Apenas os campos especificados em data serão atualizados.
+ * @param client - Instância de conexão com o banco de dados
+ * @param id - Identificador único do produto (UUID)
+ * @param data - Dados parciais do produto contendo os campos a atualizar
+ * @returns Objeto do produto atualizado, ou produto atual se não houver campos para atualizar
+ */
 export async function updateProduct(client: Database, id: string, data: ProductUpdatePayload) {
   const fields: string[] = [];
   const values: (string | number | boolean | null)[] = [];
@@ -172,11 +222,27 @@ export async function updateProduct(client: Database, id: string, data: ProductU
   return rows[0];
 }
 
+/**
+ * Exclui um produto do banco de dados pelo seu ID.
+ * @param client - Instância de conexão com o banco de dados
+ * @param id - Identificador único do produto (UUID)
+ * @returns True se o produto foi excluído, false se não encontrado
+ */
 export async function deleteProduct(client: Database, id: string) {
   const { rowCount } = await client.query('DELETE FROM products WHERE id = $1', [id]);
   return rowCount !== 0;
 }
 
+/**
+ * Cria um registro de transação de estoque para mudanças no inventário.
+ * Usado para rastrear despesas ao adicionar estoque inicial ou reposição.
+ * @param client - Instância de conexão com o banco de dados
+ * @param param - Dados da transação
+ * @param param.type - Tipo da transação (ex: 'despesa' para despesa)
+ * @param param.category - Categoria da transação (ex: 'Compra de estoque')
+ * @param param.description - Descrição da transação
+ * @param param.value - Valor da transação (valor monetário)
+ */
 export async function createStockTransaction(client: Database, { type, category, description, value }: { type: string, category: string, description: string, value: number }) {
   await client.query(
     `INSERT INTO transactions (type, category, description, value, date)
@@ -185,6 +251,13 @@ export async function createStockTransaction(client: Database, { type, category,
   );
 }
 
+/**
+ * Recupera um produto com bloqueio FOR UPDATE para segurança de transação.
+ * Usado antes de atualizar dados do produto dentro de uma transação de banco de dados.
+ * @param client - Instância de conexão com o banco de dados (deve estar em transação)
+ * @param id - Identificador único do produto (UUID)
+ * @returns Produto com nome, quantidade e custo se encontrado, null caso contrário
+ */
 export async function getProductForUpdate(client: Database, id: string) {
   const { rows } = await client.query(
     'SELECT name, quantity, cost_price FROM products WHERE id = $1 FOR UPDATE',

@@ -34,6 +34,13 @@ import { RefreshTokenService } from './refreshTokenService';
 
 type AppEnv = { Bindings: Bindings; Variables: Variables };
 
+/**
+ * Obtém o contexto de execução de um contexto Hono.
+ * Usado para tarefas em background no Cloudflare Workers (waitUntil).
+ * 
+ * @param c - Objeto de contexto Hono
+ * @returns Contexto de execução se disponível, undefined caso contrário
+ */
 function getExecutionCtx(c: any): any {
   try {
     return c.executionCtx;
@@ -42,14 +49,30 @@ function getExecutionCtx(c: any): any {
   }
 }
 
+/**
+ * Representa uma sessão totalmente resolvida com os dados do usuário anexados.
+ * Este é o objeto de sessão principal usado em toda a aplicação.
+ */
 type ResolvedSession = {
+  /** Identificador único da sessão */
   id: string;
+  /** ID do usuário associado a esta sessão */
   userId: string;
+  /** Token CSRF para o padrão de double-submit cookie */
   csrfToken: string;
+  /** Data e hora em que esta sessão expira */
   expiresAt: Date;
+  /** Objeto completo do usuário associado a esta sessão */
   user: User;
 };
 
+/**
+ * Type guard para verificar se um valor é um objeto User válido.
+ * Verifica se o objeto possui as propriedades obrigatórias do User (id e role).
+ * 
+ * @param value - Valor a ser verificado
+ * @returns True se o valor for um User válido, false caso contrário
+ */
 function isResolvedSessionUser(value: unknown): value is User {
   if (!value || typeof value !== 'object') {
     return false;
@@ -59,6 +82,13 @@ function isResolvedSessionUser(value: unknown): value is User {
   return typeof candidate.id === 'string' && typeof candidate.role === 'string';
 }
 
+/**
+ * Normaliza um valor do cache em um objeto ResolvedSession válido.
+ * Valida todos os campos obrigatórios e converte strings de data em objetos Date.
+ * 
+ * @param value - Valor do cache a ser normalizado
+ * @returns ResolvedSession válido ou null se inválido
+ */
 function normalizeResolvedSession(value: unknown): ResolvedSession | null {
   if (!value || typeof value !== 'object') {
     return null;
@@ -92,6 +122,14 @@ function normalizeResolvedSession(value: unknown): ResolvedSession | null {
   };
 }
 
+/**
+ * Constrói um objeto ResolvedSession a partir de uma linha do banco e dados opcionais do usuário.
+ * Lida com nomes de propriedades em snake_case (DB) e camelCase (JS).
+ * 
+ * @param row - Linha do banco de dados contendo sessão e opcionalmente dados do usuário
+ * @param user - Dados do usuário pré-buscados opcionais (se não estiverem na linha)
+ * @returns Objeto ResolvedSession totalmente construído
+ */
 function buildResolvedSession(row: Record<string, any>, user?: User): ResolvedSession {
   const expiresAtValue = row.expires_at ?? row.expiresAt;
 
@@ -104,20 +142,40 @@ function buildResolvedSession(row: Record<string, any>, user?: User): ResolvedSe
   };
 }
 
+/**
+ * Armazena a sessão resolvida no contexto Hono para handlers downstream.
+ * Define múltiplas variáveis de contexto para padrões de acesso flexíveis.
+ * 
+ * @param c - Objeto de contexto Hono
+ * @param session - Sessão resolvida a ser armazenada, ou null para limpar
+ */
 function storeResolvedSession(c: Context<AppEnv>, session: ResolvedSession | null) {
   c.set('resolvedSession', session);
   c.set('session', session);
   c.set('user', session?.user ?? null);
 }
 
+/**
+ * Verifica se a requisição atual está usando o protocolo HTTPS.
+ * Usado para determinar se cookies seguros devem ser definidos.
+ * 
+ * @param c - Objeto de contexto Hono
+ * @returns True se a requisição for segura (HTTPS), false caso contrário
+ */
 function isSecureRequest(c: Context): boolean {
   return new URL(c.req.url).protocol === 'https:';
 }
 
 /**
- * SEC-04: sameSite: 'Strict' impede envio do cookie em qualquer navegação cross-site.
- * SEC-11: O cookie CSRF usa httpOnly: false intencionalmente (double-submit cookie pattern).
- *         A proteção primária contra XSS roubar o CSRF token é o CSP + origin guard.
+ * Gera opções de cookie de sessão baseadas no ambiente e na requisição.
+ * SEC-04: sameSite: 'Strict' impede o envio de cookies em navegação cross-site.
+ * SEC-11: Cookie CSRF usa httpOnly: false intencionalmente (padrão double-submit cookie).
+ *         Proteção primária contra XSS para token CSRF é CSP + guarda de origem.
+ * 
+ * @param c - Objeto de contexto Hono
+ * @param maxAge - Tempo máximo do cookie em segundos (padrão: SESSION_TTL_SECONDS)
+ * @param httpOnly - Se o cookie deve ser apenas HTTP (padrão: true)
+ * @returns Objeto de opções de cookie para setCookie
  */
 function sessionCookieOptions(c: Context<AppEnv>, maxAge = SESSION_TTL_SECONDS, httpOnly = true) {
   const isProd = c.env?.ENVIRONMENT === 'production';
@@ -130,6 +188,13 @@ function sessionCookieOptions(c: Context<AppEnv>, maxAge = SESSION_TTL_SECONDS, 
   };
 }
 
+/**
+ * Converte uma linha de usuário do banco de dados (UserDB) para um objeto User.
+ * Faz o parse de campos JSON (como address) e converte strings de data em objetos Date.
+ * 
+ * @param row - Linha do banco de dados contendo dados do usuário
+ * @returns Objeto User normalizado
+ */
 function serializeUser(row: UserDB): User {
   let address = undefined;
   
@@ -160,6 +225,18 @@ function serializeUser(row: UserDB): User {
 }
 
 
+/**
+ * Autentica um usuário com seu identificador (email ou CPF) e senha.
+ * Lida com múltiplos cenários de autenticação, incluindo hashes de senha legados.
+ * Implementa bloqueio de conta após 5 tentativas falhas (bloqueio de 15 minutos).
+ * 
+ * @param db - Cliente do banco de dados para executar consultas
+ * @param identifier - Email ou CPF do usuário (case-insensitive)
+ * @param password - Senha do usuário a ser verificada
+ * @returns Objeto do usuário autenticado
+ * @throws Error com mensagem 'Credenciais inválidas' se a autenticação falhar
+ * @throws Error com mensagem de bloqueio se a conta estiver temporariamente bloqueada
+ */
 export async function authenticate(db: Database, identifier: string, password: string) {
   const loginValue = identifier.trim().toLowerCase();
   
@@ -240,6 +317,17 @@ export async function authenticate(db: Database, identifier: string, password: s
 }
 
 
+/**
+ * Cria uma nova sessão para um usuário autenticado.
+ * Gera token de sessão, token CSRF e refresh token.
+ * Armazena a sessão no banco de dados e no cache para consulta rápida.
+ * Define cookies de sessão e CSRF na resposta.
+ * 
+ * @param c - Objeto de contexto Hono (usado para cookies e contexto de execução)
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param user - Objeto do usuário (formato User ou UserDB)
+ * @returns Objeto contendo o token CSRF para a nova sessão
+ */
 export async function issueSession(c: Context<AppEnv>, client: Database, user: User | UserDB) {
   const resolvedUser = 'createdAt' in user ? user : serializeUser(user);
   const sessionToken = randomToken(32);
@@ -290,12 +378,26 @@ export async function issueSession(c: Context<AppEnv>, client: Database, user: U
   return { csrfToken };
 }
 
+/**
+ * Limpa todos os cookies relacionados à autenticação da resposta.
+ * Remove cookies de sessão, CSRF e refresh token.
+ * 
+ * @param c - Objeto de contexto Hono
+ */
 export function clearSessionCookies(c: Context) {
   deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' });
   deleteCookie(c, CSRF_COOKIE_NAME, { path: '/' });
   deleteCookie(c, REFRESH_TOKEN_COOKIE_NAME, { path: '/' });
 }
 
+/**
+ * Destrói completamente a sessão atual.
+ * Remove a sessão do banco de dados e do cache, depois limpa os cookies.
+ * Deve ser chamado no logout explícito.
+ * 
+ * @param c - Objeto de contexto Hono
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function destroySession(c: Context<AppEnv>, client: Database) {
   const sessionToken = getCookie(c, SESSION_COOKIE_NAME);
   if (sessionToken) {
@@ -307,6 +409,19 @@ export async function destroySession(c: Context<AppEnv>, client: Database) {
   clearSessionCookies(c);
 }
 
+/**
+ * Resolve a sessão atual a partir da requisição.
+ * Implementa resolução de sessão em múltiplas camadas:
+ * 1. Verifica cache de contexto (já resolvido nesta requisição)
+ * 2. Verifica cache distribuído (caminho rápido)
+ * 3. Consulta banco de dados (caminho lento)
+ * Executa limpeza probabilística de sessões expiradas.
+ * Atualiza o timestamp last_seen_at da sessão assincronamente.
+ * 
+ * @param c - Objeto de contexto Hono
+ * @param client - Cliente do banco de dados para executar consultas
+ * @returns ResolvedSession se uma sessão válida for encontrada, null caso contrário
+ */
 export async function resolveSession(c: Context<AppEnv>, client: Database) {
   const cached = c.get('resolvedSession');
   if (cached !== undefined) {
@@ -372,6 +487,14 @@ export async function resolveSession(c: Context<AppEnv>, client: Database) {
   return session;
 }
 
+/**
+ * Invalida a sessão atualmente resolvida.
+ * Exclui a sessão do banco de dados e limpa todos os cookies de sessão.
+ * Usado quando um evento de segurança exige o encerramento imediato da sessão.
+ * 
+ * @param c - Objeto de contexto Hono
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function invalidateResolvedSession(c: Context<AppEnv>, client: Database) {
   const session = c.get('session');
   if (session?.id) {
@@ -382,6 +505,16 @@ export async function invalidateResolvedSession(c: Context<AppEnv>, client: Data
   clearSessionCookies(c);
 }
 
+/**
+ * Gera um convite de configuração de senha para um usuário.
+ * Cria um token de configuração com um código que pode ser usado para definir a senha inicial.
+ * Revoga quaisquer tokens abertos existentes para o usuário antes de criar um novo.
+ * 
+ * @param c - Objeto de contexto Hono (usado para determinar a URL do frontend)
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param user - Objeto do usuário para gerar o convite
+ * @returns Objeto contendo URL de configuração, código de configuração e data de expiração
+ */
 export async function generatePasswordSetupInvite(c: Context<AppEnv>, client: Database, user: User) {
   await deleteExpiredSetupTokens(client);
   await revokeOpenSetupTokensForUser(client, user.id);
@@ -408,6 +541,15 @@ export async function generatePasswordSetupInvite(c: Context<AppEnv>, client: Da
   };
 }
 
+/**
+ * Consome um token ou código de convite de configuração de senha.
+ * Valida o token/código, marca como consumido e retorna os dados do usuário.
+ * Funciona apenas com tokens válidos, não expirados e não consumidos.
+ * 
+ * @param client - Cliente do banco de dados para executar consultas
+ * @param lookup - Objeto contendo token ou código para buscar
+ * @returns Objeto com ID do convite e dados do usuário se válido, null caso contrário
+ */
 export async function consumePasswordSetupInvite(client: Database, lookup: { token?: string; code?: string }) {
   await deleteExpiredSetupTokens(client);
 
@@ -435,6 +577,11 @@ export const refreshTokenService = new RefreshTokenService(null as any as Databa
 
 /**
  * Vincula o banco de dados dinamicamente ao serviço de refresh token
+ * Cria uma nova instância de RefreshTokenService vinculada ao cliente do banco de dados fornecido.
+ * Use isso em vez da instância global refreshTokenService para vinculação adequada do DB.
+ * 
+ * @param db - Cliente do banco de dados para vincular ao serviço
+ * @returns Instância de RefreshTokenService com a vinculação de banco de dados especificada
  */
 export function getRefreshTokenService(db: Database) {
   return new RefreshTokenService(db, cacheService);

@@ -1,6 +1,10 @@
 /**
  * Serviço de Previsão de Demanda Baseada em Histórico
  * Implementa algoritmos de previsão para estoque e produção
+ * 
+ * Este módulo fornece funcionalidades para prever demanda futura de produtos
+ * baseando-se em dados históricos de vendas, utilizando diversos algoritmos
+ * estatísticos como média móvel, suavização exponencial e regressão linear.
  */
 
 import { logger } from '../../core/utils/logger';
@@ -8,7 +12,12 @@ import { cacheService } from '../system/cacheService';
 import { Database, Bindings, ExecutionContext } from '../../core/types';
 
 /**
- * Algoritmos de previsão disponíveis
+ * Algoritmos de previsão disponíveis para análise de demanda
+ * 
+ * @property {string} MOVING_AVERAGE - Média móvel simples (suaviza flutuações recentes)
+ * @property {string} EXPONENTIAL_SMOOTHING - Suavização exponencial (dá peso maior a dados recentes)
+ * @property {string} LINEAR_REGRESSION - Regressão linear (identifica tendências de longo prazo)
+ * @property {string} SEASONAL_DECOMPOSITION - Decomposição sazonal (identifica padrões temporais)
  */
 export const FORECAST_ALGORITHMS = {
   MOVING_AVERAGE: 'moving_average',
@@ -18,7 +27,11 @@ export const FORECAST_ALGORITHMS = {
 } as const;
 
 /**
- * Períodos de sazonalidade
+ * Períodos de sazonalidade para análise de padrões temporais
+ * 
+ * @property {number} DAILY - 7 períodos (sazonalidade semanal)
+ * @property {number} WEEKLY - 52 períodos (sazonalidade anual por semanas)
+ * @property {number} MONTHLY - 12 períodos (sazonalidade anual por meses)
  */
 export const SEASONALITY_PERIODS = {
   DAILY: 7,      // Semanal
@@ -26,8 +39,21 @@ export const SEASONALITY_PERIODS = {
   MONTHLY: 12    // Anual
 } as const;
 
+/**
+ * Tipo que representa os algoritmos de previsão disponíveis
+ * Baseado nos valores constantes de FORECAST_ALGORITHMS
+ */
 export type ForecastAlgorithm = typeof FORECAST_ALGORITHMS[keyof typeof FORECAST_ALGORITHMS];
 
+/**
+ * Item de dado histórico utilizado para análise de demanda
+ * 
+ * @interface HistoricalDataItem
+ * @property {string} date - Data do registro no formato ISO (YYYY-MM-DD)
+ * @property {number} sales - Quantidade de vendas no dia
+ * @property {number} stock - Nível de estoque no dia
+ * @property {number} price - Preço do produto no dia
+ */
 export interface HistoricalDataItem {
   date: string;
   sales: number;
@@ -35,6 +61,19 @@ export interface HistoricalDataItem {
   price: number;
 }
 
+/**
+ * Resultado de uma previsão de demanda gerada pelo serviço
+ * 
+ * @interface ForecastResult
+ * @property {number} productId - ID do produto analisado
+ * @property {string} algorithm - Algoritmo utilizado para a previsão
+ * @property {number} prediction - Valor previsto para a demanda
+ * @property {number} confidence - Nível de confiança da previsão (0 a 1)
+ * @property {{ lower: number; upper: number }} confidenceInterval - Intervalo de confiança (limite inferior e superior)
+ * @property {any} seasonality - Dados sobre sazonalidade detectada
+ * @property {number} daysAhead - Número de dias à frente que foram previstos
+ * @property {string} generatedAt - Timestamp de quando a previsão foi gerada
+ */
 export interface ForecastResult {
   productId: number;
   algorithm: string;
@@ -46,6 +85,18 @@ export interface ForecastResult {
   generatedAt: string;
 }
 
+/**
+ * Serviço principal para previsão de demanda de produtos
+ * 
+ * Esta classe implementa diversos algoritmos de forecasting para auxiliar
+ * na gestão de estoque, permitindo antecipar necessidades de reposição
+ * e otimizar a cadeia de suprimentos.
+ * 
+ * @class DemandForecastService
+ * @example
+ * const service = new DemandForecastService();
+ * const result = await service.generateForecast(db, 123, 30, 'moving_average');
+ */
 export class DemandForecastService {
   private historicalData = new Map<number, HistoricalDataItem[]>();
   private predictions = new Map<number, ForecastResult>();
@@ -54,6 +105,14 @@ export class DemandForecastService {
 
   /**
    * Carrega dados históricos reais para um produto do banco de dados
+   * 
+   * @param {Database} db - Instância do banco de dados
+   * @param {number} productId - ID do produto para carregar dados
+   * @param {number} days - Número de dias de histórico (padrão 90)
+   * @param {Bindings} env - Variáveis de ambiente com CACHE_KV
+   * @param {ExecutionContext} ctx - Contexto de execução para operações assíncronas
+   * @returns {Promise<{success: boolean, data?: HistoricalDataItem[], error?: string}>} 
+   *          Dados históricos carregados ou erro
    */
   async loadHistoricalData(db: Database, productId: number, days = 90, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -99,7 +158,14 @@ export class DemandForecastService {
   }
 
   /**
-   * Gera dados históricos simulados
+   * Gera dados históricos simulados para complementar dados insuficientes
+   * 
+   * Cria um conjunto de dados sintéticos incorporando padrões de sazonalidade
+   * como maior venda em fins de semana, aumento em dezembro e redução em janeiro.
+   * 
+   * @param {number} productId - ID do produto para gerar dados
+   * @param {number} days - Número de dias de dados a gerar
+   * @returns {HistoricalDataItem[]} Array de dados históricos simulados
    */
   generateMockHistoricalData(productId: number, days: number): HistoricalDataItem[] {
     const data: HistoricalDataItem[] = [];
@@ -143,7 +209,15 @@ export class DemandForecastService {
   }
 
   /**
-   * Calcula previsão usando média móvel
+   * Calcula previsão usando média móvel simples
+   * 
+   * A média móvel suaviza flutuações de curto prazo e destaca tendências.
+   * Utiliza as vendas dos últimos 'windowSize' dias para prever o próximo período.
+   * 
+   * @param {any[]} data - Array de dados históricos (deve conter propriedade 'sales' ou ser numérico)
+   * @param {number} windowSize - Tamanho da janela para cálculo (padrão 7 dias)
+   * @returns {{prediction: number, confidence: number, algorithm: string, windowSize: number} | {error: string}}
+   *          Previsão calculada ou erro se dados insuficientes
    */
   calculateMovingAverage(data: any[], windowSize = 7) {
     if (data.length < windowSize) {
@@ -164,6 +238,15 @@ export class DemandForecastService {
 
   /**
    * Calcula previsão usando suavização exponencial
+   * 
+   * A suavização exponencial atribui pesos decrescentes aos dados históricos,
+   * dando maior importância aos dados mais recentes. O parâmetro alpha controla
+   * a velocidade de decaimento do peso das observações passadas.
+   * 
+   * @param {any[]} data - Array de dados históricos para análise
+   * @param {number} alpha - Fator de suavização (0 a 1, padrão 0.3)
+   * @returns {{prediction: number, confidence: number, algorithm: string, alpha: number} | {error: string}}
+   *          Previsão calculada ou erro se dados insuficientes
    */
   calculateExponentialSmoothing(data: any[], alpha = 0.3) {
     if (data.length < 2) {
@@ -187,6 +270,14 @@ export class DemandForecastService {
 
   /**
    * Calcula previsão usando regressão linear
+   * 
+   * A regressão linear identifica a tendência de longo prazo nos dados históricos,
+   * ajustando uma linha reta que minimiza a soma dos quadrados dos resíduos.
+   * 
+   * @param {any[]} data - Array de dados históricos para análise
+   * @param {number} forecastSteps - Passos à frente para prever (padrão 1)
+   * @returns {{prediction: number, confidence: number, algorithm: string, slope: number, intercept: number} | {error: string}}
+   *          Previsão calculada com coeficientes da reta ou erro
    */
   calculateLinearRegression(data: any[], forecastSteps = 1) {
     if (data.length < 2) {
@@ -224,7 +315,15 @@ export class DemandForecastService {
   }
 
   /**
-   * Detecta sazonalidade nos dados
+   * Detecta sazonalidade nos dados históricos
+   * 
+   * Analisa padrões repetitivos nos dados, como variações semanais de vendas.
+   * Utiliza a variância do padrão semanal para determinar se existe sazonalidade
+   * significativa (desvio padrão > 10% da média).
+   * 
+   * @param {HistoricalDataItem[]} data - Dados históricos para análise
+   * @returns {{hasSeasonality: boolean, period: string | null, pattern: number[] | null, strength: number}}
+   *          Objeto com informações sobre sazonalidade detectada
    */
   detectSeasonality(data: HistoricalDataItem[]) {
     if (data.length < 14) {
@@ -264,7 +363,20 @@ export class DemandForecastService {
   }
 
   /**
-   * Gera previsão de demanda
+   * Gera previsão de demanda para um produto específico
+   * 
+   * Método principal que orquestra todo o processo de forecasting:
+   * carrega dados históricos, aplica o algoritmo selecionado, detecta
+   * sazonalidade e ajusta a previsão final com intervalo de confiança.
+   * 
+   * @param {Database} db - Instância do banco de dados
+   * @param {number} productId - ID do produto para prever demanda
+   * @param {number} daysAhead - Dias à frente para prever (padrão 30)
+   * @param {ForecastAlgorithm} algorithm - Algoritmo de previsão (padrão 'moving_average')
+   * @param {Bindings} env - Variáveis de ambiente
+   * @param {ExecutionContext} ctx - Contexto de execução
+   * @returns {Promise<{success: boolean, forecast?: ForecastResult, error?: string}>}
+   *          Resultado da previsão com metadados ou erro
    */
   async generateForecast(db: Database, productId: number, daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average', env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -351,7 +463,19 @@ export class DemandForecastService {
   }
 
   /**
-   * Gera previsões para múltiplos produtos
+   * Gera previsões para múltiplos produtos em lote
+   * 
+   * Itera sobre uma lista de IDs de produtos e gera previsões individuais
+   * para cada um, retornando um array com todas as previsões bem-sucedidas.
+   * 
+   * @param {any} db - Instância do banco de dados
+   * @param {number[]} productIds - Array de IDs dos produtos
+   * @param {number} daysAhead - Dias à frente para prever (padrão 30)
+   * @param {ForecastAlgorithm} algorithm - Algoritmo de previsão (padrão 'moving_average')
+   * @param {any} env - Variáveis de ambiente
+   * @param {any} ctx - Contexto de execução
+   * @returns {Promise<{success: boolean, forecasts: ForecastResult[], error?: string}>}
+   *          Array de previsões geradas ou erro
    */
   async generateBatchForecasts(db: any, productIds: number[], daysAhead = 30, algorithm: ForecastAlgorithm = 'moving_average', env?: any, ctx?: any) {
     try {
@@ -372,7 +496,20 @@ export class DemandForecastService {
   }
 
   /**
-   * Obtém previsão de estoque recomendado
+   * Obtém recomendação de estoque baseada em previsão de demanda
+   * 
+   * Calcula a quantidade ideal de estoque considerando a demanda prevista,
+   * tempo de lead (fornecimento) e um estoque de segurança de 20%.
+   * Útil para decidir quando e quanto reabastecer.
+   * 
+   * @param {any} db - Instância do banco de dados
+   * @param {number} productId - ID do produto
+   * @param {number} currentStock - Estoque atual do produto
+   * @param {number} leadTimeDays - Tempo de lead em dias (padrão 7)
+   * @param {any} env - Variáveis de ambiente
+   * @param {any} ctx - Contexto de execução
+   * @returns {Promise<{success: boolean, recommendation?: Object, error?: string}>}
+   *          Objeto com recomendações detalhadas ou erro
    */
   async getStockRecommendation(db: any, productId: number, currentStock: number, leadTimeDays = 7, env?: any, ctx?: any) {
     try {
@@ -409,7 +546,13 @@ export class DemandForecastService {
   }
 
   /**
-   * Obtém estatísticas de previsão
+   * Obtém estatísticas sobre as previsões geradas
+   * 
+   * Retorna métricas de uso do serviço incluindo total de previsões,
+   * algoritmos mais utilizados e confiança média das previsões em cache.
+   * 
+   * @returns {Promise<{success: boolean, stats?: Object, error?: string}>}
+   *          Estatísticas de uso do serviço ou erro
    */
   async getForecastStats() {
     try {
@@ -440,5 +583,14 @@ export class DemandForecastService {
   }
 }
 
+/**
+ * Instância singleton do serviço de previsão de demanda
+ * Recomendada para uso em toda a aplicação para manter cache consistente
+ */
 export const demandForecastService = new DemandForecastService();
+
+/**
+ * Export default da classe DemandForecastService
+ * Permite importação para instanciamento próprio se necessário
+ */
 export default DemandForecastService;

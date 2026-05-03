@@ -1,5 +1,13 @@
 import { Database, CustomerCreateData, CustomerUpdateData } from '../../core/types';
 
+/**
+ * Lista todos os clientes (usuários cadastrados + convidados que fizeram pedidos).
+ * Utiliza UNION ALL para combinar dados de users e orders (para guests).
+ * @param db - Conexão com o banco de dados.
+ * @param limit - Limite de resultados.
+ * @param offset - Deslocamento para paginação.
+ * @returns Lista combinada de clientes.
+ */
 export async function findAllCustomers(db: Database, limit: number, offset: number) {
   const { rows } = await db.query(
     `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at
@@ -21,6 +29,12 @@ export async function findAllCustomers(db: Database, limit: number, offset: numb
   return rows;
 }
 
+/**
+ * Busca um cliente pelo ID, verificando primeiro na tabela users e depois em orders (para guests).
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do cliente (pode ser UUID de user ou ID de pedido para guests).
+ * @returns Dados do cliente ou null se não encontrado.
+ */
 export async function findCustomerById(db: Database, id: string) {
   const { rows: userRows } = await db.query(
     `SELECT id, name, email, phone, cpf, address, notes, avatar, role, created_at FROM users WHERE id = $1`,
@@ -44,6 +58,13 @@ export async function findCustomerById(db: Database, id: string) {
   return guestRows.length ? guestRows[0] : null;
 }
 
+/**
+ * Lista pedidos de um cliente (usuário cadastrado ou convidado via telefone).
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do cliente (users).
+ * @param normalizedPhone - Telefone normalizado para busca de convidados.
+ * @returns Lista de pedidos do cliente.
+ */
 export async function findOrdersByCustomer(db: Database, id: string, normalizedPhone: string) {
   const { rows } = await db.query(
     `SELECT id, customer_name, customer_phone, items, total, status, delivery_type, payment_method, created_at
@@ -55,6 +76,13 @@ export async function findOrdersByCustomer(db: Database, id: string, normalizedP
   return rows;
 }
 
+/**
+ * Calcula estatísticas de um cliente: total gastado e quantidade de pedidos concluídos.
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do cliente.
+ * @param normalizedPhone - Telefone normalizado para convidados.
+ * @returns Objeto com total_spent e order_count.
+ */
 export async function getCustomerStats(db: Database, id: string, normalizedPhone: string) {
   const { rows } = await db.query(
     `SELECT COALESCE(SUM(total), 0) as total_spent, COUNT(*) as order_count
@@ -66,6 +94,12 @@ export async function getCustomerStats(db: Database, id: string, normalizedPhone
   return rows[0];
 }
 
+/**
+ * Cria um novo cliente na tabela users.
+ * @param db - Cliente de conexão (pode ser transação).
+ * @param data - Dados do cliente a ser criado.
+ * @returns Cliente criado com campos retornados.
+ */
 export async function createCustomer(db: Database, data: CustomerCreateData) {
   const { rows } = await db.query(
     `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
@@ -76,6 +110,14 @@ export async function createCustomer(db: Database, data: CustomerCreateData) {
   return rows[0];
 }
 
+/**
+ * Atualiza os dados de um cliente existente.
+ * Apenas os campos fornecidos (não nulos) serão atualizados.
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do cliente.
+ * @param data - Novos dados do cliente.
+ * @returns Cliente atualizado.
+ */
 export async function updateCustomer(db: Database, id: string, data: CustomerUpdateData) {
   const { rows } = await db.query(
     `UPDATE users SET
@@ -94,6 +136,13 @@ export async function updateCustomer(db: Database, id: string, data: CustomerUpd
   return rows[0];
 }
 
+/**
+ * Atualiza o papel (role) de um cliente.
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do cliente.
+ * @param role - Novo papel ('admin' ou 'customer').
+ * @returns Cliente com role atualizada.
+ */
 export async function updateCustomerRole(db: Database, id: string, role: string) {
   const { rows } = await db.query(
     `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name, role`,
@@ -102,11 +151,23 @@ export async function updateCustomerRole(db: Database, id: string, role: string)
   return rows[0];
 }
 
+/**
+ * Remove um cliente da tabela users.
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do cliente a ser removido.
+ * @returns true se o cliente foi removido, false caso contrário.
+ */
 export async function deleteCustomer(db: Database, id: string) {
   const { rowCount } = await db.query('DELETE FROM users WHERE id = $1', [id]);
   return rowCount !== null && rowCount > 0;
 }
 
+/**
+ * Obtém o hash da senha de um usuário para verificação.
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do usuário.
+ * @returns Hash da senha ou null se não encontrado.
+ */
 export async function getUserPassword(db: Database, id: string) {
   const { rows } = await db.query('SELECT password FROM users WHERE id = $1', [id]);
   return rows.length ? rows[0].password : null;

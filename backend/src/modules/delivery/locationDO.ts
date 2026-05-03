@@ -1,15 +1,37 @@
 import { DurableObject } from 'hono/cloudflare-workers';
 
+/**
+ * Módulo de Entrega - Location Durable Object
+ * Gerencia rastreamento de localização de entrega em tempo real usando Cloudflare Durable Objects.
+ * Armazena o estado da localização e transmite atualizações para clientes WebSocket conectados.
+ */
+
+/**
+ * Representa o estado de uma localização de entrega
+ * @property {number | null} lat - Coordenada de latitude da localização de entrega
+ * @property {number | null} lng - Coordenada de longitude da localização de entrega
+ * @property {number | null} updatedAt - Timestamp da última atualização de localização em milissegundos
+ */
 export interface DeliveryLocationState {
   lat: number | null;
   lng: number | null;
   updatedAt: number | null;
 }
 
+/**
+ * Durable Object que gerencia rastreamento de localização de entrega.
+ * Manipula atualizações de localização, recupera localização atual e gerencia
+ * conexões WebSocket para transmissão de localização em tempo real.
+ */
 export class DeliveryLocationDO {
   state: DeliveryLocationState;
   sessions: Set<WebSocket>;
 
+/**
+ * Cria uma instância de DeliveryLocationDO.
+ * @param {DurableObjectState} state - O estado do Durable Object para persistência de dados
+ * @param {Bindings} env - Bindings de ambiente contendo configurações
+ */
   constructor(state: DurableObjectState, env: Bindings) {
     this.state = state.storage.get<DeliveryLocationState>('location') || {
       lat: null,
@@ -19,6 +41,13 @@ export class DeliveryLocationDO {
     this.sessions = new Set();
   }
 
+/**
+ * Manipula requisições HTTP recebidas pelo Durable Object.
+ * Suporta atualizações de localização via POST, recuperação de localização via GET,
+ * e conexões WebSocket para atualizações em tempo real.
+ * @param {Request} request - A requisição HTTP recebida
+ * @returns {Promise<Response>} A resposta baseada no caminho e método da requisição
+ */
   async fetch(request: Request) {
     const url = new URL(request.url);
 
@@ -67,6 +96,11 @@ export class DeliveryLocationDO {
     return new Response('Not Found', { status: 404 });
   }
 
+/**
+ * Transmite uma mensagem para todos os clientes WebSocket conectados.
+ * Remove conexões fechadas automaticamente.
+ * @param {any} message - A mensagem a ser transmitida para todos os clientes conectados
+ */
   broadcast(message: any) {
     const data = JSON.stringify(message);
     this.sessions.forEach(ws => {

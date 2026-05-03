@@ -12,7 +12,13 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const biService = new BusinessIntelligenceService();
 const forecastService = new DemandForecastService();
 
-// Rota pública para rastreamento de analytics (visitantes)
+/**
+ * POST /api/analytics/track
+ * Rota pública para rastreamento de analytics (visitantes)
+ * 
+ * Registra eventos de navegação como page views, cliques e interações.
+ * Não requer autenticação. Erros não interrompem a navegação do usuário.
+ */
 router.post('/track', async (c) => {
   try {
     const db = c.get('db');
@@ -44,7 +50,14 @@ router.post('/track', async (c) => {
 
 router.use('*', authMiddleware, adminOnly);
 
-// Rota para Previsão de Demanda (Estoque)
+/**
+ * GET /api/analytics/forecast
+ * Rota para Previsão de Demanda (Estoque)
+ * 
+ * Gera previsões de demanda utilizando algoritmos de forecasting
+ * (média móvel, regressão linear) para produtos ativos.
+ * Requer: adminOnly
+ */
 router.get('/forecast', async (c) => {
   try {
     const db = c.get('db');
@@ -89,9 +102,16 @@ router.get('/forecast', async (c) => {
     logger.error('Erro no Analytics / Forecast', error as Error);
     return jsonError(c, 500, 'Erro ao gerar previsão de demanda.');
   }
-});
+  });
 
-// Ações do Business Intelligence (Fraude, Recomendações etc)
+/**
+ * GET /api/analytics/bi/sentiment
+ * Análise de Sentimento de Avaliações
+ * 
+ * Processa avaliações de clientes para extrair sentimento
+ * (positivo/negativo/neutro) utilizando análise de palavras-chave.
+ * Requer: adminOnly
+ */
 router.get('/bi/sentiment', async (c) => {
   try {
     // Na nossa simulação, pegamos comentários dos clientes para analisar
@@ -111,7 +131,14 @@ router.get('/bi/sentiment', async (c) => {
   }
 });
 
-// Recomendações personalizadas para o admin ver (simulando para o cliente 1 ou o próprio admin)
+/**
+ * GET /api/analytics/bi/recommendations
+ * Recomendações Personalizadas (Admin View)
+ * 
+ * Gera recomendações de produtos baseadas no perfil
+ * e histórico do usuário autenticado.
+ * Requer: adminOnly
+ */
 router.get('/bi/recommendations', async (c) => {
   try {
     const db = c.get('db');
@@ -129,11 +156,13 @@ router.get('/bi/recommendations', async (c) => {
   }
 });
 
-export default router;
-
 /**
  * GET /api/analytics/summary
- * Resumo geral de faturamento e pedidos
+ * Resumo Geral de Faturamento e Pedidos
+ * 
+ * Retorna métricas consolidadas: receita total,
+ * ticket médio e quantidade de pedidos.
+ * Requer: adminOnly
  */
 router.get('/summary', async (c) => {
   const db = c.get('db');
@@ -158,11 +187,15 @@ router.get('/summary', async (c) => {
     logger.error('Erro no Analytics / Summary', error as Error);
     return jsonError(c, 500, 'Erro ao carregar resumo analítico');
   }
-});
+  });
 
 /**
  * GET /api/analytics/revenue-chart
- * Dados de faturamento diário para gráfico
+ * Dados de Faturamento Diário para Gráfico
+ * 
+ * Retorna receita agregada por dia nos últimos 30 dias
+ * para visualização em gráficos de linha/barra.
+ * Requer: adminOnly
  */
 router.get('/revenue-chart', async (c) => {
   const db = c.get('db');
@@ -185,11 +218,15 @@ router.get('/revenue-chart', async (c) => {
     logger.error('Erro no Analytics / Revenue Chart', error as Error);
     return jsonError(c, 500, 'Erro ao carregar dados do gráfico');
   }
-});
+  });
 
 /**
  * GET /api/analytics/best-sellers
- * Top 5 produtos mais vendidos
+ * Top 5 Produtos Mais Vendidos
+ * 
+ * Retorna os 5 produtos com maior volume de saída
+ * do estoque (vendas consolidadas).
+ * Requer: adminOnly
  */
 router.get('/best-sellers', async (c) => {
   const db = c.get('db');
@@ -213,3 +250,14 @@ router.get('/best-sellers', async (c) => {
     return jsonError(c, 500, 'Erro ao carregar produtos mais vendidos');
   }
 });
+
+/**
+ * Export default do router de analytics
+ * 
+ * Este router agrupa todas as rotas de análise de dados:
+ * - /track (público) - rastreamento
+ * - /forecast - previsão de demanda
+ * - /bi/* - business intelligence
+ * - /summary, /revenue-chart, /best-sellers - relatórios
+ */
+export default router;

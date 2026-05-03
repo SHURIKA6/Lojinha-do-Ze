@@ -6,8 +6,17 @@ import { jsonError, validationError } from '../../core/utils/http';
 import * as reviewService from './reviewService';
 import { Bindings, Variables } from '../../core/types';
 
+/**
+ * Roteador Hono para gerenciamento de avaliações de produtos.
+ * Rotas públicas: visualizar avaliações aprovadas de um produto, submeter avaliações (autenticado).
+ * Rotas administrativas: listar avaliações pendentes, aprovar avaliações, excluir avaliações.
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+/**
+ * Esquema Zod para validar dados de submissão de avaliação.
+ * A nota deve estar entre 1 e 5, comentário é opcional.
+ */
 const reviewSchema = z.object({
   rating: z.number().min(1).max(5),
   comment: z.string().optional().nullable(),
@@ -105,4 +114,13 @@ router.delete('/:id', authMiddleware, adminOnly, async (c) => {
   }
 });
 
+/**
+ * Exportação padrão do roteador de gerenciamento de avaliações.
+ * Endpoints:
+ * - GET /:productId - Lista avaliações aprovadas de um produto (Público)
+ * - POST /:productId - Submete uma avaliação para um produto (Autenticado)
+ * - GET /pending - Lista avaliações pendentes para aprovação (Apenas admin)
+ * - POST /approve/:id - Aprova uma avaliação pendente (Apenas admin)
+ * - DELETE /:id - Exclui uma avaliação (Apenas admin)
+ */
 export default router;

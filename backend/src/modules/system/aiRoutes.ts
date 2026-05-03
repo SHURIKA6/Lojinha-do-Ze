@@ -4,9 +4,25 @@ import { getRequiredEnv } from '../../core/load-local-env';
 import { authMiddleware, adminOnly } from '../../core/middleware/auth';
 import { Bindings, Variables } from '../../core/types';
 
+/**
+ * Rotas de integração com IA para o sistema Lojinha do Zé.
+ * Fornece endpoint para comunicação com a API Google Gemini,
+ * implementando o "Guardião da Lojinha" - um assistente inteligente
+ * para auxiliar administradores com dados da loja e dicas de marketing.
+ * 
+ * Rotas protegidas por autenticação e autorização de administrador.
+ */
 const aiRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // SEC-03: Proteção obrigatória para rotas administrativas de IA
+/**
+ * Endpoint POST para interação com o assistente IA "Guardião da Lojinha".
+ * Processa mensagens do administrador e retorna respostas geradas pelo Google Gemini.
+ * Requer autenticação e privilégios de administrador.
+ * 
+ * @param c - Contexto do Hono contendo request e environment bindings
+ * @returns JSON com a resposta da IA ou mensagem de erro
+ */
 aiRoutes.post('/chat', authMiddleware, adminOnly, async (c) => {
   try {
     const { message } = await c.req.json() as { message: string };
@@ -75,4 +91,8 @@ aiRoutes.post('/chat', authMiddleware, adminOnly, async (c) => {
   }
 });
 
+/**
+ * Exporta as rotas de IA configuradas.
+ * Inclui rota POST /chat para comunicação com o assistente virtual.
+ */
 export default aiRoutes;

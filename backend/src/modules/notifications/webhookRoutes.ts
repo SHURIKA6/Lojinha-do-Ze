@@ -4,18 +4,31 @@ import { logger } from '../../core/utils/logger';
 import { processWhatsAppWithAI } from './aiAssistant';
 import { sendWhatsAppMessage } from './whatsapp';
 
+/**
+ * Módulo de Rotas de Webhook para Integração com WhatsApp
+ * Gerencia webhooks recebidos da Evolution API para mensagens de WhatsApp.
+ * Processa mensagens usando assistente AI e envia respostas automáticas.
+ */
+
 const webhookRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**
- * Rota de teste para verificação via navegador (GET)
+ * GET /evolution
+ * Rota de teste para verificação de webhook via navegador.
+ * @param {any} c - O contexto do Hono
+ * @returns {Response} Texto plano confirmando que o webhook está online
  */
 webhookRoutes.get('/evolution', (c) => {
   return c.text('Opa! O webhook do Zé está online e esperando mensagens via POST da Evolution API. 🌿');
 });
 
 /**
- * Webhook para Evolution API
- * Recebe mensagens do WhatsApp e responde usando IA
+ * POST /evolution
+ * Endpoint de webhook para mensagens WhatsApp da Evolution API.
+ * Recebe mensagens do WhatsApp e responde usando assistente AI (Seu Zé).
+ * Gerencia verificação de administrador, processamento de mensagens e respostas automáticas.
+ * @param {any} c - O contexto do Hono contendo o corpo da requisição e ambiente
+ * @returns {Promise<Response>} Resposta JSON indicando o status do processamento
  */
 webhookRoutes.post('/evolution', async (c) => {
   const body = await c.req.json() as any;

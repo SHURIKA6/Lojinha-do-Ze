@@ -1,5 +1,8 @@
 import { Bindings } from '../../core/types';
 
+/**
+ * Payload para notificações em tempo real enviadas via Durable Object.
+ */
 export interface NotificationPayload {
   type: 'order' | 'stock' | 'payment' | 'system';
   title: string;
@@ -7,6 +10,13 @@ export interface NotificationPayload {
   [key: string]: any;
 }
 
+/**
+ * Envia uma notificação em tempo real para todos os clientes conectados via WebSocket.
+ * Utiliza o Durable Object NOTIFICATIONS_DO para broadcasting.
+ * 
+ * @param env - Variáveis de ambiente contendo o binding NOTIFICATIONS_DO.
+ * @param payload - Dados da notificação a ser enviada.
+ */
 export async function broadcastNotification(env: Bindings, payload: NotificationPayload): Promise<void> {
   try {
     if (!env.NOTIFICATIONS_DO || typeof env.NOTIFICATIONS_DO.idFromName !== 'function') {

@@ -1,5 +1,25 @@
 export const id = '001_initial';
 
+/**
+ * Migração inicial do esquema do banco de dados.
+ * Cria as tabelas principais para o sistema de e-commerce incluindo users, products, orders,
+ * transactions, inventory_log, auth_sessions, password_setup_tokens e schema_migrations.
+ * Também cria índices de performance iniciais para colunas consultadas frequentemente.
+ *
+ * Operações SQL:
+ * - CREATE TABLE users (id, name, email, password, role, phone, cpf, address, notes, avatar, timestamps)
+ * - CREATE TABLE products (id, code, name, description, photo, category, quantity, prices, supplier, is_active, timestamps)
+ * - CREATE TABLE orders (id, customer info, items JSONB, totals, status, delivery info, payment, timestamps)
+ * - CREATE TABLE transactions (id, type, category, description, value, date, order_id, created_at)
+ * - CREATE TABLE inventory_log (id, product_id, product_name, type, quantity, reason, date)
+ * - CREATE TABLE auth_sessions (id, user_id, token_hash, csrf_token, ip_address, user_agent, timestamps, expires_at)
+ * - CREATE TABLE password_setup_tokens (id, user_id, token_hash, setup_code, created_at, expires_at, consumed_at)
+ * - CREATE TABLE schema_migrations (id, applied_at)
+ * - CREATE INDEX para orders (status, created_at), customer_id, transactions (type, date), auth_sessions (user_id, expires_at)
+ * - CREATE INDEX para password_setup_tokens (user_id, expires_at)
+ *
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function up(client: any): Promise<void> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS users (

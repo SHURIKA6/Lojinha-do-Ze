@@ -11,8 +11,19 @@ import * as orderService from '../orders/service';
 import * as productService from './service';
 import { logSystemEvent } from '../system/logService';
 
+/**
+ * Roteador Hono para endpoints públicos de catálogo e criação de pedidos.
+ * Fornece acesso de leitura ao catálogo e criação de pedidos sem privilégios de administrador.
+ * Resultados do catálogo são cacheados para melhor performance.
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+/**
+ * Escapa caracteres especiais para correspondência de padrão ILIKE.
+ * Escapa caracteres %, _ e \ para prevenir injeção de SQL em consultas LIKE/ILIKE.
+ * @param value - String a ser escapada
+ * @returns String escapada segura para correspondência de padrão ILIKE
+ */
 function escapeIlike(value: string): string {
   return value.replace(/[%_\\]/g, '\\$&');
 }
@@ -103,4 +114,10 @@ router.post(
   }
 );
 
+/**
+ * Exportação padrão do roteador de catálogo.
+ * Endpoints:
+ * - GET / - Navegar pelo catálogo de produtos com busca, filtro por categoria, faixa de preço, ordenação e paginação
+ * - POST /orders - Criar um novo pedido a partir do catálogo (com limite de taxa)
+ */
 export default router;

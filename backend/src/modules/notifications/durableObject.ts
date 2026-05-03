@@ -1,3 +1,7 @@
+/**
+ * Durable Object responsável por gerenciar notificações em tempo real via WebSocket.
+ * Mantém uma lista de sessões ativas e faz broadcast de mensagens para todos os clientes conectados.
+ */
 export class NotificationDO {
   state: any;
   env: any;
@@ -9,6 +13,11 @@ export class NotificationDO {
     this.sessions = new Set();
   }
 
+  /**
+   * Manipula requisições ao Durable Object.
+   * - POST: Faz broadcast da mensagem para todos os WebSockets conectados.
+   * - Outros: Realiza upgrade para WebSocket e adiciona à lista de sessões.
+   */
   async fetch(request: Request) {
     // Intercept internal POST requests to broadcast to all websockets
     if (request.method === 'POST') {
@@ -44,10 +53,16 @@ export class NotificationDO {
     });
   }
 
+  /**
+   * Remove o WebSocket da lista de sessões quando a conexão é fechada.
+   */
   webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
     this.sessions.delete(ws);
   }
 
+  /**
+   * Remove o WebSocket da lista de sessões em caso de erro.
+   */
   webSocketError(ws: WebSocket, error: unknown) {
     this.sessions.delete(ws);
   }

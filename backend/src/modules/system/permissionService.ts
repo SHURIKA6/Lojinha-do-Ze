@@ -7,9 +7,7 @@ import { logger } from '../../core/utils/logger';
 import { cacheService } from './cacheService';
 import { Bindings, ExecutionContext } from '../../core/types';
 
-/**
- * Recursos do sistema
- */
+/** Recursos disponíveis no sistema para controle de permissões */
 export const RESOURCES = {
   PRODUCTS: 'products',
   ORDERS: 'orders',
@@ -21,9 +19,7 @@ export const RESOURCES = {
   NOTIFICATIONS: 'notifications'
 } as const;
 
-/**
- * Ações disponíveis
- */
+/** Ações disponíveis que podem ser realizadas em recursos */
 export const ACTIONS = {
   CREATE: 'create',
   READ: 'read',
@@ -33,9 +29,7 @@ export const ACTIONS = {
   MANAGE: 'manage'
 } as const;
 
-/**
- * Roles predefinidos
- */
+/** Papéis predefinidos no sistema com diferentes níveis de permissão */
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   ADMIN: 'admin',
@@ -45,14 +39,19 @@ export const ROLES = {
   CUSTOMER: 'customer'
 } as const;
 
+/** Tipo representando valores válidos de recurso */
 export type Resource = typeof RESOURCES[keyof typeof RESOURCES];
+/** Tipo representando valores válidos de ação */
 export type Action = typeof ACTIONS[keyof typeof ACTIONS];
+/** Tipo representando valores válidos de papel */
 export type Role = typeof ROLES[keyof typeof ROLES];
 
+/** Mapeia recursos para arrays de ações permitidas */
 export type ResourcePermissions = Partial<Record<Resource, Action[]>>;
 
 /**
- * Permissões padrão por role
+ * Permissões padrão atribuídas a cada papel predefinido.
+ * Super admin tem acesso total, cliente tem acesso mínimo.
  */
 export const DEFAULT_PERMISSIONS: Record<string, ResourcePermissions> = {
   [ROLES.SUPER_ADMIN]: {
@@ -106,6 +105,9 @@ export const DEFAULT_PERMISSIONS: Record<string, ResourcePermissions> = {
   }
 };
 
+/**
+ * Representa um papel customizado com permissões específicas.
+ */
 export interface CustomRole {
   id: string;
   name: string;
@@ -116,7 +118,8 @@ export interface CustomRole {
 }
 
 /**
- * Classe principal do serviço de permissões
+ * Classe principal do serviço de permissões.
+ * Gerencia permissões de usuários, papéis e controle de acesso para recursos do sistema.
  */
 export class PermissionService {
   private userPermissions = new Map<number, ResourcePermissions>();
@@ -125,7 +128,14 @@ export class PermissionService {
   constructor() {}
 
   /**
-   * Verifica se um usuário tem permissão para uma ação específica
+   * Verifica se um usuário tem permissão para realizar uma ação em um recurso.
+   * Verifica primeiro o cache, depois busca do banco de dados se necessário.
+   * @param userId - O ID do usuário a ser verificado
+   * @param resource - O recurso para verificar acesso
+   * @param action - A ação a ser verificada
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns True se o usuário tem permissão, false caso contrário
    */
   async hasPermission(userId: number, resource: Resource, action: Action, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -150,7 +160,11 @@ export class PermissionService {
   }
 
   /**
-   * Obtém permissões de um usuário
+   * Recupera todas as permissões de um usuário, verificando primeiro o cache.
+   * @param userId - O ID do usuário
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Objeto mapeando recursos para ações permitidas
    */
   async getUserPermissions(userId: number, env?: Bindings, ctx?: ExecutionContext): Promise<ResourcePermissions> {
     try {
@@ -172,7 +186,10 @@ export class PermissionService {
   }
 
   /**
-   * Busca permissões do banco de dados (simulado)
+   * Busca permissões de usuário do banco de dados (simulado).
+   * Em produção, isso consultaria o banco de dados para o papel e permissões do usuário.
+   * @param userId - O ID do usuário
+   * @returns Permissões de recurso baseadas no papel do usuário
    */
   async fetchUserPermissionsFromDB(userId: number): Promise<ResourcePermissions> {
     // Simulação - em produção, isso seria uma consulta ao banco
@@ -186,7 +203,9 @@ export class PermissionService {
   }
 
   /**
-   * Simula busca de usuário por ID
+   * Simula a busca de um usuário pelo ID no banco de dados.
+   * @param userId - O ID do usuário
+   * @returns Objeto do usuário com papel (padrão: CUSTOMER)
    */
   async getUserById(userId: number) {
     // Simulação - em produção, isso seria uma consulta ao banco
@@ -197,7 +216,13 @@ export class PermissionService {
   }
 
   /**
-   * Define permissões customizadas para um usuário
+   * Define permissões customizadas para um usuário, sobrescrevendo os padrões.
+   * Atualiza tanto o cache quanto o banco de dados.
+   * @param userId - O ID do usuário
+   * @param permissions - As permissões a serem definidas
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso ou mensagem de erro
    */
   async setUserPermissions(userId: number, permissions: ResourcePermissions, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -216,7 +241,9 @@ export class PermissionService {
   }
 
   /**
-   * Salva permissões no banco de dados (simulado)
+   * Salva permissões de usuário no banco de dados (simulado).
+   * @param userId - O ID do usuário
+   * @param permissions - As permissões a serem salvas
    */
   async saveUserPermissionsToDB(userId: number, permissions: ResourcePermissions) {
     // Simulação - em produção, isso seria uma inserção/atualização no banco
@@ -224,7 +251,9 @@ export class PermissionService {
   }
 
   /**
-   * Cria um role customizado
+   * Cria um novo papel customizado com permissões específicas.
+   * @param roleData - Dados do papel incluindo nome, descrição e permissões
+   * @returns Status de sucesso e papel criado ou mensagem de erro
    */
   async createCustomRole(roleData: { name: string; description: string; permissions: ResourcePermissions }) {
     try {
@@ -251,7 +280,8 @@ export class PermissionService {
   }
 
   /**
-   * Salva role customizado no banco de dados (simulado)
+   * Salva papel customizado no banco de dados (simulado).
+   * @param role - O papel customizado a ser salvo
    */
   async saveCustomRoleToDB(role: CustomRole) {
     // Simulação - em produção, isso seria uma inserção no banco
@@ -259,7 +289,8 @@ export class PermissionService {
   }
 
   /**
-   * Lista todos os roles disponíveis
+   * Lista todos os papéis disponíveis incluindo padrões e customizados.
+   * @returns Status de sucesso e array de todos os papéis com permissões
    */
   async listRoles() {
     try {
@@ -286,7 +317,12 @@ export class PermissionService {
   }
 
   /**
-   * Verifica múltiplas permissões de uma vez
+   * Verifica múltiplas permissões de uma vez para um usuário.
+   * @param userId - O ID do usuário
+   * @param checks - Array de pares recurso/ação para verificar
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso e objeto com resultados das verificações
    */
   async checkMultiplePermissions(userId: number, checks: { resource: Resource; action: Action }[], env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -306,7 +342,11 @@ export class PermissionService {
   }
 
   /**
-   * Obtém permissões efetivas de um usuário (incluindo roles customizados)
+   * Obtém permissões efetivas para um usuário, mesclando papel padrão e permissões customizadas.
+   * @param userId - O ID do usuário
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso com ID do usuário, papel e permissões mescladas
    */
   async getEffectivePermissions(userId: number, env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -336,7 +376,11 @@ export class PermissionService {
   }
 
   /**
-   * Mescla permissões padrão com customizadas
+   * Mescla permissões padrão com permissões customizadas.
+   * Remove duplicatas e combina arrays de ações.
+   * @param defaultPerms - Permissões padrão do papel
+   * @param customPerms - Permissões customizadas definidas para o usuário
+   * @returns Objeto de permissões mescladas
    */
   mergePermissions(defaultPerms: ResourcePermissions, customPerms: ResourcePermissions): ResourcePermissions {
     const merged: ResourcePermissions = { ...defaultPerms };
@@ -355,14 +399,21 @@ export class PermissionService {
   }
 
   /**
-   * Gera ID único para role
+   * Gera um ID único para um novo papel customizado.
+   * @returns String de ID único do papel
    */
   generateRoleId() {
     return `role_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Remove permissões de um usuário
+   * Remove ações específicas das permissões de um usuário para um recurso.
+   * @param userId - O ID do usuário
+   * @param resource - O recurso para modificar permissões
+   * @param actions - Array de ações a serem removidas
+   * @param env - Bindings opcionais do ambiente Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Status de sucesso ou mensagem de erro
    */
   async removeUserPermissions(userId: number, resource: Resource, actions: Action[], env?: Bindings, ctx?: ExecutionContext) {
     try {
@@ -392,7 +443,10 @@ export class PermissionService {
   }
 
   /**
-   * Limpa cache de permissões de um usuário
+   * Limpa todo o cache de permissões de um usuário.
+   * Força nova busca na próxima verificação de permissão.
+   * @param userId - O ID do usuário
+   * @param env - Bindings opcionais do ambiente Cloudflare
    */
   async clearUserPermissionCache(userId: number, env?: Bindings) {
     const cacheKey = `user_permissions:${userId}`;
@@ -405,7 +459,8 @@ export class PermissionService {
   }
 
   /**
-   * Obtém estatísticas de permissões
+   * Retorna estatísticas sobre o uso do sistema de permissões.
+   * @returns Status de sucesso e objeto de estatísticas com contagens
    */
   async getStats() {
     try {

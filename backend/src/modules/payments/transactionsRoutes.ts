@@ -11,6 +11,23 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 router.use('*', authMiddleware, adminOnly);
 
+/**
+ * Rota GET /
+ * 
+ * Lista todas as transações financeiras (receitas e despesas).
+ * 
+ * Esta rota permite consultar o histórico de transações registradas no sistema,
+ * com suporte a filtros e paginação.
+ * 
+ * Query params:
+ * - type: Filtra por tipo ('receita' ou 'despesa'). Opcional.
+ * - limit: Número máximo de registros (padrão: 50, máximo: 100)
+ * - offset: Número de registros para pular (padrão: 0)
+ * 
+ * Response: Array de transações ordenadas por data decrescente.
+ * 
+ * Middleware: authMiddleware + adminOnly (apenas administradores)
+ */
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
@@ -49,6 +66,26 @@ router.get('/', async (c) => {
   }
 });
 
+/**
+ * Rota POST /
+ * 
+ * Registra uma nova transação financeira (receita ou despesa).
+ * 
+ * Esta rota é usada para registrar manualmente transações financeiras no sistema,
+ * como receitas de vendas (além das geradas automaticamente via PIX) ou despesas
+ * operacionais da loja.
+ * 
+ * Body (validado via transactionCreateSchema):
+ * - type: 'receita' ou 'despesa'
+ * - category: Categoria da transação (ex: "Venda de produtos", "Aluguel")
+ * - description: Descrição detalhada da transação
+ * - value: Valor da transação (deve ser positivo)
+ * - date: Data da transação (opcional, padrão: agora)
+ * 
+ * Response: Transação criada com ID e timestamps.
+ * 
+ * Middleware: authMiddleware + adminOnly + csrfMiddleware
+ */
 router.post(
   '/',
   csrfMiddleware,
@@ -77,6 +114,25 @@ router.post(
   }
 );
 
+/**
+ * Rota DELETE /:id
+ * 
+ * Exclui uma transação financeira pelo ID.
+ * 
+ * Esta rota permite remover transações registradas incorretamente ou
+ * que precisam ser estornadas. A exclusão é permanente.
+ * 
+ * Params:
+ * - id: ID numérico da transação a ser excluída
+ * 
+ * Response: { message: 'Transação excluída' } em caso de sucesso.
+ * 
+ * Erros possíveis:
+ * - 400: ID inválido (não numérico ou menor/igual a zero)
+ * - 404: Transação não encontrada
+ * 
+ * Middleware: authMiddleware + adminOnly + csrfMiddleware
+ */
 router.delete('/:id', csrfMiddleware, async (c) => {
   try {
     const db = c.get('db');

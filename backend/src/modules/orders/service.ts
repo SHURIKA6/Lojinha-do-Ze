@@ -11,6 +11,9 @@ import { loyaltyService } from '../customers/loyaltyService';
 import { logSystemEvent } from '../system/logService';
 
 
+/**
+ * Payload para criação de um novo pedido.
+ */
 interface CreateOrderPayload {
   customer_name: string;
   customer_phone: string;
@@ -23,12 +26,20 @@ interface CreateOrderPayload {
   points_to_redeem?: number;
 }
 
+/**
+ * Usuário autenticado que está realizando a operação no pedido.
+ */
 interface OrderServiceUser {
   id: string;
   role: string;
   phone?: string;
 }
 
+/**
+ * Mescla itens duplicados do pedido somando suas quantidades.
+ * @param items - Lista de itens do pedido que pode conter duplicatas.
+ * @returns Lista de itens com quantidades agregadas por productId.
+ */
 function mergeOrderItems(items: orderRepository.OrderItem[]): orderRepository.OrderItem[] {
   const merged = new Map<string, number>();
   for (const item of items) {
@@ -41,6 +52,11 @@ function mergeOrderItems(items: orderRepository.OrderItem[]): orderRepository.Or
   }));
 }
 
+/**
+ * Faz o parse dos itens do pedido, aceitando tanto um array quanto uma string JSON.
+ * @param items - Itens no formato array ou string JSON.
+ * @returns Lista de itens enriquecidos do pedido.
+ */
 function parseItems(items: any): orderRepository.EnrichedOrderItem[] {
   if (Array.isArray(items)) return items;
   if (typeof items === 'string') {
@@ -54,6 +70,25 @@ function parseItems(items: any): orderRepository.EnrichedOrderItem[] {
   return [];
 }
 
+/**
+ * Cria um novo pedido com transação, validação de estoque, cálculo de totais e notificações.
+ * 
+ * Fluxo:
+ * 1. Valida e mescla itens duplicados
+ * 2. Verifica estoque suficiente
+ * 3. Calcula subtotal, taxa de entrega e desconto (pontos de fidelidade)
+ * 4. Cria o pedido no banco
+ * 5. Atualiza estoque e registra log de inventário
+ * 6. Envia notificações WhatsApp (cliente e admin)
+ * 7. Envia notificação em tempo real
+ * 
+ * @param db - Conexão com o banco de dados.
+ * @param payload - Dados do pedido a ser criado.
+ * @param authUser - Usuário autenticado (se houver) ou null para guest.
+ * @param env - Variáveis de ambiente (Bindings do Cloudflare).
+ * @param ctx - Contexto de execução (para waitUntil no Cloudflare Workers).
+ * @returns O pedido criado.
+ */
 export async function createOrder(db: Database, payload: CreateOrderPayload, authUser: OrderServiceUser | null, env: any, ctx?: any) {
   const client = await db.connect();
   try {
@@ -207,6 +242,12 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
   }
 }
 
+/**
+ * Lista pedidos com filtros opcionais de usuário e status.
+ * @param db - Conexão com o banco de dados.
+ * @param params - Parâmetros de filtro (userId, status, limit, offset).
+ * @returns Lista de pedidos encontrados.
+ */
 export async function getOrders(
   db: Database,
   { userId, status, limit, offset }: { userId?: string; status?: string; limit: number; offset: number }
@@ -214,6 +255,21 @@ export async function getOrders(
   return orderRepository.findOrders(db, { userId, status, limit, offset });
 }
 
+/**
+ * Atualiza o status de um pedido e executa ações associadas (notificações, estorno de pontos, etc).
+ * 
+ * Regras de negócio por status:
+ * - 'cancelado': restaura estoque, cancela pagamento no Mercado Pago, estorna pontos de fidelidade
+ * - 'concluido': registra transação financeira, concede pontos de fidelidade
+ * 
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do pedido a ser atualizado.
+ * @param status - Novo status do pedido.
+ * @param env - Variáveis de ambiente.
+ * @param ctx - Contexto de execução.
+ * @param trackingCode - Código de rastreio (opcional, usado para status 'enviado').
+ * @returns Objeto com dados do pedido atualizado ou erro.
+ */
 export async function updateOrderStatus(
   db: Database,
   id: string,
@@ -361,6 +417,18 @@ export async function updateOrderStatus(
   }
 }
 
+/**
+ * Exclui um pedido permanentemente, restaurando o estoque se necessário.
+ * 
+ * Se o pedido não estiver cancelado ou concluído, o estoque dos itens é restaurado
+ * e os pontos de fidelidade utilizados são estornados.
+ * 
+ * @param db - Conexão com o banco de dados.
+ * @param id - ID do pedido a ser excluído.
+ * @param env - Variáveis de ambiente.
+ * @param ctx - Contexto de execução.
+ * @returns Objeto com mensagem de sucesso ou erro.
+ */
 export async function deleteOrder(db: Database, id: string, env: any, ctx?: any) {
   const client = await db.connect();
   try {

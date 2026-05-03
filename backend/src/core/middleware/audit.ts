@@ -5,8 +5,18 @@ import { createAuditLog } from '../../modules/system/auditRepository';
 
 /**
  * Middleware para auditoria de segurança automatizada.
- * Registra todas as requisições não-seguras (POST, PUT, DELETE, etc.) 
- * e seus respectivos resultados.
+ * Registra todas as requisições não-seguras (POST, PUT, DELETE, etc.) e seus resultados.
+ * Persiste logs de auditoria no banco de dados para usuários admin quando disponível.
+ *
+ * Implicações de segurança:
+ * - Dados sensíveis em corpos de requisição são sanitizados antes do registro
+ * - Conteúdo form-data é ocultado para conservar armazenamento
+ * - Logs de auditoria para admins são persistidos assincronamente (não-bloqueante via waitUntil)
+ * - Operações falhas (5xx) não são persistidas para evitar ruído de ataques
+ *
+ * @param {Context} c - O contexto Hono
+ * @param {Next} next - A próxima função middleware na cadeia
+ * @returns {Promise<void | Response>} A resposta do próximo middleware ou undefined
  */
 export async function auditMiddleware(c: Context, next: Next) {
   const method = c.req.method;

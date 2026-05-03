@@ -5,6 +5,12 @@ import { shippingService } from './shippingService';
 import { Bindings, Variables } from '../../core/types';
 import { logSystemEvent } from '../system/logService';
 
+/**
+ * Módulo de Rotas de Frete
+ * Gerencia rotas HTTP para cálculo de frete.
+ * Fornece endpoint para calcular opções de frete baseadas na localização do cliente e total do carrinho.
+ */
+
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 /**

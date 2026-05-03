@@ -7,6 +7,9 @@
 // Debug: check if module is loaded multiple times
 console.log('cacheService module loaded:', Math.random().toFixed(10));
 
+/**
+ * Representa uma entrada de cache com seu valor e timestamp de expiração.
+ */
 interface CacheEntry {
   value: any;
   expiry: number;
@@ -17,19 +20,25 @@ const sessionCache = new Map<string, CacheEntry>();
 const queryCache = new Map<string, CacheEntry>();
 const reportCache = new Map<string, CacheEntry>();
 
+/** Número máximo de entradas no cache principal */
 const MAX_CACHE_SIZE = 500;
+/** Número máximo de entradas no cache de sessão */
 const MAX_SESSION_CACHE_SIZE = 1000;
+/** Número máximo de entradas no cache de consultas */
 const MAX_QUERY_CACHE_SIZE = 200;
+/** Número máximo de entradas no cache de relatórios */
 const MAX_REPORT_CACHE_SIZE = 50;
 
 import { logger } from '../../core/utils/logger';
 import { Bindings, HonoCloudflareContext } from '../../core/types';
 
+/** Apelido de tipo para o namespace KV do Cloudflare proveniente das bindings */
 type KVNamespace = Bindings['CACHE_KV'];
+/** Apelido de tipo para o ExecutionContext do Cloudflare proveniente do contexto Hono */
 type ExecutionContext = HonoCloudflareContext['executionCtx'];
 
-// Métricas de cache expandidas
-const metrics = { 
+/** Métricas coletadas para operações de cache */
+const metrics = {  
   hits: 0, 
   misses: 0, 
   sets: 0, 
@@ -43,7 +52,20 @@ const metrics = {
   evictions: 0
 };
 
+/**
+ * Serviço de cache provendo cache multi-nível com suporte a L1 (em memória) e L2 (Cloudflare KV).
+ * Suporta diferentes tipos de cache: geral, sessão, consulta e relatórios.
+ * Inclui rastreamento de métricas para hits, misses e evicções.
+ */
 export const cacheService = {
+  /**
+   * Recupera um valor do cache pela chave.
+   * Verifica primeiro o cache L1 (em memória), depois recorre ao KV se disponível.
+   * @param key - A chave do cache a ser recuperada
+   * @param kv - Namespace KV opcional do Cloudflare para cache L2
+   * @param ctx - Contexto de execução opcional para operações assíncronas
+   * @returns O valor em cache ou null se não encontrado/expirado
+   */
   get: async (key: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     console.log('getSession called:', key, 'sessionCache.size before:', sessionCache.size);
     const entry = sessionCache.get(key);
@@ -78,6 +100,16 @@ export const cacheService = {
     return null;
   },
 
+  /**
+   * Armazena um valor no cache com TTL opcional.
+   * Gerencia evicção de cache quando o tamanho máximo é atingido.
+   * Opcionalmente persiste no Cloudflare KV para cache distribuído.
+   * @param key - A chave do cache
+   * @param value - O valor a ser armazenado em cache
+   * @param ttlSeconds - Tempo de vida em segundos (padrão: 60)
+   * @param kv - Namespace KV opcional do Cloudflare para cache L2
+   * @param ctx - Contexto de execução opcional para operações assíncronas
+   */
   set: async (key: string, value: any, ttlSeconds = 60, kv?: KVNamespace, ctx?: ExecutionContext) => {
     if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
       const now = Date.now();
@@ -115,6 +147,12 @@ export const cacheService = {
     }
   },
 
+  /**
+   * Remove uma chave do cache (tanto L1 quanto opcionalmente L2/KV).
+   * @param key - A chave do cache a ser removida
+   * @param kv - Namespace KV opcional do Cloudflare
+   * @param ctx - Contexto de execução opcional para operações assíncronas
+   */
   delete: async (key: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     cache.delete(key);
     if (kv) {
@@ -134,6 +172,14 @@ export const cacheService = {
     }
   },
 
+  /**
+   * Invalida todas as entradas do cache com chaves começando com o prefixo informado.
+   * Nota: Apenas o cache L1 é invalidado; entradas KV expiram pelo TTL.
+   * @param prefix - O prefixo a ser correspondido para invalidação
+   * @param _kv - Placeholder para namespace KV (não usado atualmente)
+   * @param _ctx - Placeholder para contexto de execução (não usado atualmente)
+   * @returns O número de entradas invalidadas
+   */
   invalidateByPrefix: async (prefix: string, _kv?: KVNamespace, _ctx?: ExecutionContext) => {
     let count = 0;
     for (const key of cache.keys()) {
@@ -148,10 +194,17 @@ export const cacheService = {
     return count;
   },
 
+  /**
+   * Clears all entries from the main cache.
+   */
   clear: () => {
     cache.clear();
   },
 
+  /**
+   * Retorna métricas atuais do cache incluindo hits, misses, tamanhos e taxas de acerto.
+   * @returns Objeto contendo todas as métricas e tamanhos do cache
+   */
   getMetrics: () => ({
     ...metrics,
     size: cache.size,
@@ -164,6 +217,14 @@ export const cacheService = {
   }),
 
   // Cache de Sessão (Também async para consistência)
+  /**
+   * Recupera uma sessão do cache de sessões.
+   * Verifica primeiro o cache L1 de sessões, depois recorre ao KV.
+   * @param sessionId - O identificador da sessão
+   * @param kv - Namespace KV opcional do Cloudflare
+   * @param ctx - Contexto de execução opcional
+   * @returns Os dados da sessão ou null se não encontrada/expirada
+   */
   getSession: async (sessionId: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     const entry = sessionCache.get(sessionId);
     if (entry) {
@@ -189,6 +250,15 @@ export const cacheService = {
     return null;
   },
 
+  /**
+   * Armazena dados de sessão no cache de sessões com TTL.
+   * Gerencia evicção quando o cache de sessões atinge o tamanho máximo.
+   * @param sessionId - O identificador da sessão
+   * @param sessionData - Os dados da sessão a serem armazenados
+   * @param ttlSeconds - Tempo de vida em segundos (padrão: 3600)
+   * @param kv - Namespace KV opcional do Cloudflare
+   * @param ctx - Contexto de execução opcional
+   */
   setSession: async (sessionId: string, sessionData: any, ttlSeconds = 3600, kv?: KVNamespace, ctx?: ExecutionContext) => {
     console.log('setSession called:', sessionId, 'sessionCache.size before:', sessionCache.size);
     if (sessionCache.size >= MAX_SESSION_CACHE_SIZE && !sessionCache.has(sessionId)) {
@@ -225,6 +295,12 @@ export const cacheService = {
     }
   },
 
+  /**
+   * Remove uma sessão tanto do cache L1 de sessões quanto do KV.
+   * @param sessionId - O identificador da sessão a ser removida
+   * @param kv - Namespace KV opcional do Cloudflare
+   * @param ctx - Contexto de execução opcional
+   */
   deleteSession: async (sessionId: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
     sessionCache.delete(sessionId);
     if (kv) {
@@ -245,6 +321,11 @@ export const cacheService = {
   },
 
   // Cache de Consultas Complexas
+  /**
+   * Recupera um resultado de consulta em cache pela chave.
+   * @param queryKey - A chave do cache de consulta
+   * @returns O resultado da consulta em cache ou null se não encontrado/expirado
+   */
   getQuery: async (queryKey: string) => {
     const entry = queryCache.get(queryKey);
     if (!entry) {
@@ -260,6 +341,13 @@ export const cacheService = {
     return entry.value;
   },
 
+  /**
+   * Armazena um resultado de consulta em cache com TTL.
+   * Remove a entrada mais antiga se o tamanho máximo do cache for atingido.
+   * @param queryKey - A chave do cache de consulta
+   * @param queryResult - O resultado da consulta a ser armazenado
+   * @param ttlSeconds - Tempo de vida em segundos (padrão: 300)
+   */
   setQuery: async (queryKey: string, queryResult: any, ttlSeconds = 300) => {
     if (queryCache.size >= MAX_QUERY_CACHE_SIZE && !queryCache.has(queryKey)) {
       const oldest = queryCache.keys().next().value;
@@ -272,6 +360,12 @@ export const cacheService = {
   },
 
   // Cache de Relatórios
+  /**
+   * Recupera um relatório em cache pela chave.
+   * Relatórios tipicamente têm TTL mais longo para operações custosas.
+   * @param reportKey - A chave do cache de relatório
+   * @returns Os dados do relatório em cache ou null se não encontrado/expirado
+   */
   getReport: async (reportKey: string) => {
     const entry = reportCache.get(reportKey);
     if (!entry) {
@@ -287,6 +381,13 @@ export const cacheService = {
     return entry.value;
   },
 
+  /**
+   * Armazena um relatório em cache com TTL (padrão 30 minutos).
+   * Remove a entrada mais antiga se o tamanho máximo do cache for atingido.
+   * @param reportKey - A chave do cache de relatório
+   * @param reportData - Os dados do relatório a serem armazenados
+   * @param ttlSeconds - Tempo de vida em segundos (padrão: 1800)
+   */
   setReport: async (reportKey: string, reportData: any, ttlSeconds = 1800) => {
     if (reportCache.size >= MAX_REPORT_CACHE_SIZE && !reportCache.has(reportKey)) {
       const oldest = reportCache.keys().next().value;
@@ -298,6 +399,9 @@ export const cacheService = {
     });
   },
 
+  /**
+   * Limpa todas as entradas de cache de todos os tipos (principal, sessão, consulta, relatório).
+   */
   clearAll: () => {
     cache.clear();
     sessionCache.clear();
@@ -305,6 +409,9 @@ export const cacheService = {
     reportCache.clear();
   },
 
+  /**
+   * Reseta todas as métricas do cache para zero.
+   */
   resetMetrics: () => {
     metrics.hits = 0;
     metrics.misses = 0;
@@ -319,6 +426,10 @@ export const cacheService = {
     metrics.evictions = 0;
   },
 
+  /**
+   * Retorna estatísticas detalhadas para todos os tipos de cache incluindo tamanhos e taxas de acerto.
+   * @returns Objeto com estatísticas detalhadas do cache e métricas
+   */
   getDetailedStats: () => ({
     mainCache: { size: cache.size, hitRate: metrics.hits + metrics.misses > 0 ? (metrics.hits / (metrics.hits + metrics.misses) * 100).toFixed(1) + '%' : 'N/A' },
     sessionCache: { size: sessionCache.size, hitRate: metrics.sessionHits + metrics.sessionMisses > 0 ? (metrics.sessionHits / (metrics.sessionHits + metrics.sessionMisses) * 100).toFixed(1) + '%' : 'N/A' },

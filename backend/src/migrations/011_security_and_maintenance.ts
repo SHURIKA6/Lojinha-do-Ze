@@ -1,5 +1,13 @@
 export const id = '011_security_and_maintenance';
 
+/**
+ * Adiciona tabelas e colunas de segurança e manutenção.
+ * Cria a tabela audit_logs para rastreamento de ações administrativas,
+ * a tabela system_logs para logs centralizados, e adiciona as colunas login_attempts
+ * e locked_until à tabela users para proteção contra força bruta.
+ * Também cria índices de performance nas novas tabelas.
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function up(client: any) {
   // Tabela para log de ações administrativas
   await client.query(`
@@ -43,6 +51,12 @@ export async function up(client: any) {
   `);
 }
 
+/**
+ * Reverte a migração de segurança e manutenção removendo
+ * as tabelas system_logs e audit_logs, e removendo as colunas login_attempts
+ * e locked_until da tabela users.
+ * @param client - Cliente do banco de dados para executar consultas
+ */
 export async function down(client: any) {
   await client.query(`DROP TABLE IF EXISTS system_logs;`);
   await client.query(`DROP TABLE IF EXISTS audit_logs;`);

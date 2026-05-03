@@ -29,6 +29,11 @@ import { csrfMiddleware, optionalAuthMiddleware } from './core/middleware/auth';
 import { timeout } from 'hono/timeout';
 import { Bindings, Variables, Database } from './core/types';
 
+/**
+ * Instância principal da aplicação Hono para a API da Lojinha do Zé.
+ * Gerencia todas as rotas da API com middlewares para CORS, segurança, rate limiting, autenticação e auditoria.
+ * Configurada com Bindings (variáveis de ambiente do Cloudflare Workers/Pages) e Variables (variáveis de contexto como db, usuário).
+ */
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 const DBLESS_PATH_PREFIXES = ['/api/health', '/api/notifications/ws', '/api/notifications/broadcast', '/api/delivery'];
 const DBLESS_SAFE_PREFIXES = ['/api/upload/products/'];
@@ -46,7 +51,7 @@ app.get('/api/health', async (c) => {
 
   const health: any = {
     status: 'ok',
-    message: 'Lojinha do Zé API',
+    message: 'Lojinha do Ze API',
     timestamp: new Date().toISOString(),
     checks: {}
   };
@@ -78,7 +83,7 @@ app.get('/api/health', async (c) => {
 
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
-  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(${prefix}/))) {
     return await next();
   }
 
@@ -100,7 +105,7 @@ app.use('/api/*', async (c, next) => {
       return await csrfMiddleware(c, next);
     }) as Next);
   } catch (error) {
-    logger.error('Erro na Requisição API', error as Error);
+    logger.error('Erro na Requisicao API', error as Error);
     return jsonError(c, 500, 'Erro interno no servidor');
   } finally {
     const db = c.get('db');
@@ -112,9 +117,9 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
-// Middleware de auditoria deve rodar DEPOIS do DB para ter acesso ao banco e usuário,
-// mas ANTES de fechar a conexão no finally do middleware acima? 
-// Não, o middleware acima ENVELOPA o próximo. Então auditMiddleware rodará "dentro" do try/finally.
+// Middleware de auditoria deve rodar DEPOIS do DB para ter acesso ao banco e usuario,
+// mas ANTES de fechar a conexao no finally do middleware acima? 
+// Nao, o middleware acima ENVELOPA o proximo. Entao auditMiddleware rodara "dentro" do try/finally.
 app.use('/api/*', auditMiddleware);
 
 app.onError((error, c) => {
@@ -128,7 +133,7 @@ app.onError((error, c) => {
     userId: user?.id,
   });
 
-  // Persiste o erro no banco e alerta via WhatsApp se possível
+  // Persiste o erro no banco e alerta via WhatsApp se possivel
   if (db) {
     const logPromise = logSystemEvent(
       db,
@@ -181,11 +186,23 @@ app.route('/api/notifications', notificationRoutes as any);
 app.route('/api/delivery', deliveryRoutes as any);
 app.route('/api/webhooks/whatsapp', webhookRoutes as any);
 
+/**
+ * Exportações nominais do módulo do servidor.
+ * @exports app - Instância principal da aplicação Hono com todas as rotas e middlewares configurados
+ * @exports NotificationDO - Cloudflare Durable Object para gerenciar notificações em tempo real via WebSocket
+ * @exports DeliveryLocationDO - Cloudflare Durable Object para rastreamento de localização de entrega em tempo real
+ */
 export { app, NotificationDO, DeliveryLocationDO };
 
+/**
+ * Exportação padrão para compatibilidade com Cloudflare Workers/Pages.
+ * Fornece o handler fetch para requisições HTTP recebidas e handler de tarefas agendadas para gatilhos cron.
+ */
 export default {
   fetch: app.fetch,
   async scheduled(event: any, env: Bindings, ctx: any) {
     ctx.waitUntil(handleScheduledTasks(env));
   },
 };
+
+

@@ -23,8 +23,17 @@ import {
 } from '../../core/utils/normalize';
 import { logSystemEvent } from '../system/logService';
 
+/**
+ * Rotas para gerenciamento de clientes.
+ * Todas as rotas exigem autenticação e privilégios de admin.
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+/**
+ * Valida se o ID fornecido é um UUID válido ou um número.
+ * @param id - ID a ser validado.
+ * @returns true se o ID for válido.
+ */
 function isValidId(id: string): boolean {
   return isValidUuid(id) || /^\d+$/.test(id);
 }
@@ -44,6 +53,15 @@ const deleteSchema = z.object({
     .max(128, 'Senha administrativa excede o limite permitido'),
 });
 
+/**
+ * Valida uma ação privilegiada (como alteração de role ou exclusão) confirmando a senha do admin.
+ * @param c - Contexto do Hono.
+ * @param service - Instância do CustomerService.
+ * @param password - Senha para verificação.
+ * @param action - Nome da ação sendo validada (para logs).
+ * @param targetId - ID do alvo da ação.
+ * @returns Objeto indicando sucesso ou erro com resposta.
+ */
 async function validatePrivilegedAction(c: any, service: CustomerService, password: string, action: string, targetId: string) {
   const currentUser = c.get('user');
   if (!currentUser) {

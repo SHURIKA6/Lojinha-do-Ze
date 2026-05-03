@@ -1,6 +1,9 @@
 import { Database } from '../../core/types';
 import { logger } from '../../core/utils/logger';
 
+/**
+ * Representa um pedido completo com todos os campos do banco de dados.
+ */
 export interface Order {
   id: string;
   customer_id: string;
@@ -22,11 +25,17 @@ export interface Order {
   payment_id?: string;
 }
 
+/**
+ * Item básico do pedido contendo apenas ID do produto e quantidade.
+ */
 export interface OrderItem {
   productId: string;
   quantity: number;
 }
 
+/**
+ * Item do pedido enriquecido com informações do produto (nome, preço, subtotal).
+ */
 export interface EnrichedOrderItem {
   productId: string;
   name: string;
@@ -35,6 +44,9 @@ export interface EnrichedOrderItem {
   subtotal: number;
 }
 
+/**
+ * Dados necessários para criar um novo pedido no banco de dados.
+ */
 export interface OrderCreateData {
   customerId: string | null;
   customerName: string;
@@ -50,6 +62,12 @@ export interface OrderCreateData {
   discount: number;
 }
 
+/**
+ * Lista pedidos com filtros opcionais de usuário e status.
+ * @param client - Cliente de conexão com o banco (pode ser transação).
+ * @param params - Filtros opcionais (userId, status) e paginação (limit, offset).
+ * @returns Lista de pedidos com valores numéricos convertidos.
+ */
 export async function findOrders(
   client: Database,
   { userId, status, limit, offset }: { userId?: string; status?: string; limit: number; offset: number }
@@ -103,6 +121,12 @@ export async function findOrders(
   }
 }
 
+/**
+ * Busca um pedido pelo ID com lock FOR UPDATE para transações.
+ * @param client - Cliente de conexão com o banco.
+ * @param id - ID do pedido.
+ * @returns Pedido encontrado ou null.
+ */
 export async function findOrderByIdForUpdate(client: Database, id: string) {
   const { rows } = await client.query(
     `SELECT id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at, payment_id
@@ -114,6 +138,14 @@ export async function findOrderByIdForUpdate(client: Database, id: string) {
   return rows[0] || null;
 }
 
+/**
+ * Atualiza o status de um pedido e opcionalmente o código de rastreio.
+ * @param client - Cliente de conexão com o banco.
+ * @param id - ID do pedido.
+ * @param status - Novo status.
+ * @param trackingCode - Código de rastreio (opcional).
+ * @returns Pedido atualizado.
+ */
 export async function updateOrderStatus(client: Database, id: string, status: string, trackingCode?: string) {
   let query = `UPDATE orders SET status = $1, updated_at = NOW()`;
   const params: any[] = [status, id];
@@ -129,10 +161,23 @@ export async function updateOrderStatus(client: Database, id: string, status: st
   return rows[0] || null;
 }
 
+/**
+ * Remove um pedido permanentemente do banco de dados.
+ * @param client - Cliente de conexão com o banco.
+ * @param id - ID do pedido a ser excluído.
+ */
 export async function deleteOrder(client: Database, id: string) {
   await client.query('DELETE FROM orders WHERE id = $1', [id]);
 }
 
+/**
+ * Restaura o estoque de um produto e registra no log de inventário.
+ * @param client - Cliente de conexão com o banco.
+ * @param productId - ID do produto.
+ * @param quantity - Quantidade a ser devolvida ao estoque.
+ * @param productName - Nome do produto para o log.
+ * @param reason - Motivo da restauração (ex: cancelamento de pedido).
+ */
 export async function restoreProductStock(
   client: Database,
   productId: string,
@@ -154,6 +199,11 @@ export async function restoreProductStock(
   );
 }
 
+/**
+ * Registra uma transação financeira (receita ou despesa).
+ * @param client - Cliente de conexão com o banco.
+ * @param params - Dados da transação (tipo, categoria, descrição, valor, ID do pedido).
+ */
 export async function createTransaction(
   client: Database,
   { type, category, description, value, orderId }: { type: string; category: string; description: string; value: number; orderId: string }
@@ -165,6 +215,15 @@ export async function createTransaction(
   );
 }
 
+/**
+ * Restaura o estoque de múltiplos produtos em lote usando unnest().
+ * Também registra entradas no log de inventário.
+ * @param client - Cliente de conexão com o banco.
+ * @param productIds - Array de IDs dos produtos.
+ * @param quantities - Array de quantidades a serem restauradas (mesmo índice).
+ * @param names - Array de nomes dos produtos (para o log).
+ * @param reason - Motivo da restauração.
+ */
 export async function restoreProductStockBulk(
   client: Database,
   productIds: number[],
@@ -188,6 +247,13 @@ export async function restoreProductStockBulk(
   );
 }
 
+/**
+ * Busca produtos pelo array de IDs para validação de pedido.
+ * Retorna apenas produtos ativos e utiliza FOR UPDATE para lock transacional.
+ * @param client - Cliente de conexão com o banco.
+ * @param ids - Array de IDs dos produtos.
+ * @returns Produtos encontrados com id, name, sale_price, quantity.
+ */
 export async function findProductsByIds(client: Database, ids: number[]) {
   const { rows } = await client.query(
     `SELECT id, name, sale_price, quantity
@@ -199,6 +265,12 @@ export async function findProductsByIds(client: Database, ids: number[]) {
   return rows;
 }
 
+/**
+ * Cria um novo pedido no banco de dados.
+ * @param client - Cliente de conexão com o banco.
+ * @param data - Dados completos do pedido.
+ * @returns Pedido criado com os campos retornados pelo RETURNING.
+ */
 export async function createOrder(client: Database, data: OrderCreateData) {
   const { rows } = await client.query(
     `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, delivery_type, address, payment_method, notes)
@@ -222,6 +294,14 @@ export async function createOrder(client: Database, data: OrderCreateData) {
   return rows[0];
 }
 
+/**
+ * Atualiza o estoque subtraindo as quantidades vendidas.
+ * Retorna apenas produtos que tinham estoque suficiente (p.quantity >= u.qty).
+ * @param client - Cliente de conexão com o banco.
+ * @param productIds - Array de IDs dos produtos.
+ * @param quantities - Array de quantidades vendidas.
+ * @returns Produtos atualizados com novos valores de estoque e min_stock.
+ */
 export async function updateStock(client: Database, productIds: number[], quantities: number[]) {
   const { rows } = await client.query(
     `UPDATE products AS p
@@ -234,6 +314,14 @@ export async function updateStock(client: Database, productIds: number[], quanti
   return rows;
 }
 
+/**
+ * Registra saída de produtos no log de inventário em lote.
+ * @param client - Cliente de conexão com o banco.
+ * @param productIds - Array de IDs dos produtos.
+ * @param names - Array de nomes dos produtos.
+ * @param quantities - Array de quantidades retiradas.
+ * @param reason - Motivo da saída (ex: "Pedido #123").
+ */
 export async function logInventory(client: Database, productIds: number[], names: string[], quantities: number[], reason: string) {
   await client.query(
     `INSERT INTO inventory_log (product_id, product_name, type, quantity, reason, date)

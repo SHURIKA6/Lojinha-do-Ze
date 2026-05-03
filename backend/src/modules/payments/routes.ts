@@ -13,11 +13,38 @@ import { logSystemEvent } from '../system/logService';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+/**
+ * Factory function que cria uma instância do serviço Mercado Pago.
+ * 
+ * Esta função obtém o token de acesso das variáveis de ambiente e
+ * instancia o serviço MercadoPagoService configurado para o ambiente atual.
+ * 
+ * @param c - Contexto do Hono contendo as variáveis de ambiente
+ * 
+ * @returns Instância configurada de MercadoPagoService pronta para uso
+ */
 const getService = (c: any) => {
   const token = getRequiredEnv(c, 'MERCADO_PAGO_ACCESS_TOKEN');
   return new MercadoPagoService(token);
 };
 
+/**
+ * Verifica a assinatura de um webhook do Mercado Pago.
+ * 
+ * Esta função implementa a validação de segurança dos webhooks recebidos
+ * pelo Mercado Pago. A validação é feita através de HMAC-SHA256:
+ * 
+ * 1. Extrai o timestamp (ts) e a assinatura (v1) do header x-signature
+ * 2. Constrói o manifesto no formato: id:{dataId};request-id:{xRequestId};ts:{ts};
+ * 3. Gera o HMAC-SHA256 do manifesto usando o webhook secret
+ * 4. Compara a assinatura gerada com a recebida no header
+ * 
+ * @param c - Contexto do Hono contendo os headers da requisição
+ * @param dataId - ID do recurso (pagamento) que disparou o webhook
+ * 
+ * @returns {Promise<boolean>} true se a assinatura for válida, false caso contrário.
+ *                            Retorna false também se o webhook secret não estiver configurado.
+ */
 async function verifyWebhookSignature(c: any, dataId: string) {
   const webhookSecret = c.env?.MERCADO_PAGO_WEBHOOK_SECRET;
   if (!webhookSecret) {
@@ -60,6 +87,24 @@ async function verifyWebhookSignature(c: any, dataId: string) {
   return expected === v1;
 }
 
+/**
+ * Rota POST /pix
+ * 
+ * Cria um novo pagamento PIX para um pedido existente.
+ * 
+ * Fluxo:
+ * 1. Valida os dados de entrada usando o schema pixPaymentSchema
+ * 2. Verifica se o pedido existe e se não possui pagamento vinculado
+ * 3. Valida se o telefone do payload confere com o telefone do pedido
+ * 4. Cria o pagamento no Mercado Pago via serviço
+ * 5. Atualiza o pedido com o ID do pagamento e status inicial
+ * 6. Retorna os dados do pagamento (QR Code, etc.) para o cliente
+ * 
+ * Rate limiting: Esta rota possui limite de requisições via orderLimiter.
+ * 
+ * Body: { orderId, email, firstName, lastName, identificationNumber, phone }
+ * Response: { id, status, qr_code, qr_code_base64, ticket_url, ... }
+ */
 router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validationError), async (c) => {
   const db = c.get('db');
   const payload = c.req.valid('json') as any;
@@ -136,6 +181,22 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
   }
 });
 
+/**
+ * Rota GET /pix/:id
+ * 
+ * Consulta o status de um pagamento PIX específico.
+ * 
+ * Fluxo:
+ * 1. Valida se o paymentId e orderId são numéricos válidos
+ * 2. Verifica se o pedido existe
+ * 3. Valida se o telefone informado confere com o telefone do pedido
+ * 4. Consulta o status atual no Mercado Pago
+ * 5. Verifica se o pagamento pertence ao pedido informado (via external_reference)
+ * 6. Retorna o status e detalhes do pagamento
+ * 
+ * Query params: orderId (obrigatório), phone (obrigatório para validação)
+ * Response: { id, status, status_detail, external_reference }
+ */
 router.get('/pix/:id', async (c) => {
   const db = c.get('db');
   const paymentId = c.req.param('id');
@@ -200,6 +261,31 @@ router.get('/pix/:id', async (c) => {
   }
 });
 
+/**
+ * Rota POST /webhook
+ * 
+ * Recebe e processa notificações de webhook do Mercado Pago.
+ * 
+ * Este endpoint é chamado pelo Mercado Pago quando o status de um pagamento
+ * é alterado. O fluxo de processamento:
+ * 
+ * 1. Valida o tamanho do payload (máximo 64KB)
+ * 2. Verifica a assinatura do webhook para garantir autenticidade
+ * 3. Extrai o ID do pagamento e o tipo de notificação (topic)
+ * 4. Se for notificação de pagamento (topic = 'payment'):
+ *    a. Consulta os detalhes do pagamento no Mercado Pago
+ *    b. Identifica o pedido via external_reference
+ *    c. Atualiza o status do pagamento no banco de dados
+ *    d. Se aprovado: atualiza status do pedido para 'pago', cria transação financeira
+ *    e. Se cancelado/rejeitado: atualiza status do pedido para 'cancelado'
+ * 
+ * Segurança: Todas as notificações são validadas via assinatura HMAC-SHA256.
+ * Idempotência: Verifica se já existe transação para evitar duplicidade.
+ * 
+ * Headers esperados: x-signature, x-request-id
+ * Body: { data: { id }, topic, type, resource }
+ * Response: "OK" (200) sempre, mesmo em caso de erro interno (para evitar retry do MP)
+ */
 router.post('/webhook', async (c) => {
   const contentLength = parseInt(c.req.header('content-length') || '0', 10);
   if (contentLength > 65536) {

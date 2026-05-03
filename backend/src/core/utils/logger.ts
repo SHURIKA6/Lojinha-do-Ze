@@ -24,6 +24,12 @@ function maskValue(value: unknown): string {
   return `${value.slice(0, 2)}****${value.slice(-2)}`;
 }
 
+/**
+ * Sanitiza um objeto mascarando campos sensíveis como senhas, tokens e PII.
+ * Processa recursivamente objetos aninhados e arrays.
+ * @param obj - O objeto a ser sanitizado.
+ * @returns Um novo objeto com campos sensíveis mascarados, ou o valor original se não for um objeto.
+ */
 export function sanitizeObject(obj: unknown): unknown {
   if (!obj || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(sanitizeObject);
@@ -68,6 +74,11 @@ interface ErrorDetails {
   name: string;
 }
 
+/**
+ * Logger estruturado com mascaramento de dados sensíveis e filtro por nível de log.
+ * Suporta níveis de log debug, info, warn e error.
+ * Os logs são gerados como JSON com timestamps ISO 8601.
+ */
 export const logger = {
   debug: (message: string, context?: unknown) => {
     if (currentLevel <= LOG_LEVELS.debug) {

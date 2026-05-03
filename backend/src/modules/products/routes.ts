@@ -9,6 +9,11 @@ import * as productService from './service';
 import { Bindings, Variables } from '../../core/types';
 import { logSystemEvent } from '../system/logService';
 
+/**
+ * Roteador Hono para endpoints de gerenciamento de produtos.
+ * Todas as rotas requerem autenticação e privilégios de administrador.
+ * Fornece operações CRUD para produtos no sistema de inventário.
+ */
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 router.use('*', authMiddleware, adminOnly);
@@ -124,4 +129,13 @@ router.delete('/:id', async (c) => {
   }
 });
 
+/**
+ * Exportação padrão do roteador de gerenciamento de produtos.
+ * Endpoints:
+ * - GET / - Lista produtos com paginação (parâmetros de query limit, offset)
+ * - GET /:id - Obtém um único produto pelo ID
+ * - POST / - Cria novo produto (validado com productCreateSchema)
+ * - PUT /:id - Atualiza produto existente (validado com productUpdateSchema)
+ * - DELETE /:id - Exclui produto pelo ID
+ */
 export default router;
