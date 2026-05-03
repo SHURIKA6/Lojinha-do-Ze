@@ -1,3 +1,7 @@
+/**
+ * API: reports
+ */
+
 import { request } from './client';
 
 export interface DashboardData {
@@ -36,10 +40,11 @@ export interface DashboardData {
   }>;
 }
 
-export async function getDashboard(): Promise<DashboardData | null> {
-  const res = await request<any>('/dashboard');
+export async function getDashboard(range?: string): Promise<DashboardData | null> {
+  const query = range ? `?range=${range}` : '';
+  const res = await request<Record<string, unknown>>(`/dashboard${query}`);
   
-  const data = res?.data || res;
+  const data = res?.data && typeof res.data === 'object' ? res.data as Record<string, unknown> : res;
   
   if (!data || typeof data !== 'object') {
     return null;
@@ -61,7 +66,7 @@ export async function getDashboard(): Promise<DashboardData | null> {
   };
 }
 
-export async function getReport<T = any>(type: string): Promise<T | null> {
+export async function getReport<T>(type: string): Promise<T | null> {
   return request<T>(`/reports/${type}`);
 }
 

@@ -1,3 +1,10 @@
+/**
+ * Componente de Seleção de Endereço com Mapa
+ * 
+ * Usa Leaflet para permitir ao usuário selecionar
+ * o endereço de entrega via mapa interativo.
+ */
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';

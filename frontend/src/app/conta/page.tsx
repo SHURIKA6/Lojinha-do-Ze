@@ -11,6 +11,7 @@ import {
 import { CheckCircle, Clock, Package, Truck, Map } from 'lucide-react';
 import { Order } from '@/types';
 import DeliveryMap from '@/components/delivery/DeliveryMap';
+import './account.css';
 
 export default function ClienteDashboard() {
   const { user } = useAuth();
@@ -47,65 +48,85 @@ export default function ClienteDashboard() {
   const deliveringCount = validOrders.filter((order) => order.status === 'saiu_entrega').length;
 
   return (
-    <div className="animate-fadeIn">
+    <main className="animate-fadeIn" aria-labelledby="page-title">
       <div className="page-header">
         <div>
-          <span className="page-eyebrow">
-            <Package />
+          <span className="page-eyebrow" aria-hidden="true">
+            <Package size={16} />
             Minha conta
           </span>
-          <h1>Meus pedidos</h1>
+          <h1 id="page-title">Meus pedidos</h1>
           <p className="page-header__subtitle">
             Acompanhe status, histórico e pagamentos em uma leitura mais clara.
           </p>
         </div>
       </div>
 
-      <div className="status-summary">
-        <div className="metric-card" style={{ '--metric-color': 'var(--warning-500)' } as React.CSSProperties}>
-          <div className="metric-card__icon">
+      <section className="status-summary" aria-label="Resumo de status dos pedidos">
+        <div 
+          className="metric-card" 
+          style={{ '--metric-color': 'var(--warning-500)' } as React.CSSProperties}
+          role="status"
+          aria-labelledby="pending-label"
+        >
+          <div className="metric-card__icon" aria-hidden="true">
             <Clock />
           </div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Na fila</div>
+            <div id="pending-label" className="metric-card__label">Na fila</div>
             <div className="metric-card__value">{pendingCount}</div>
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--info-500)' } as React.CSSProperties}>
-          <div className="metric-card__icon">
+        <div 
+          className="metric-card" 
+          style={{ '--metric-color': 'var(--info-500)' } as React.CSSProperties}
+          role="status"
+          aria-labelledby="preparing-label"
+        >
+          <div className="metric-card__icon" aria-hidden="true">
             <Package />
           </div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Em preparo</div>
+            <div id="preparing-label" className="metric-card__label">Em preparo</div>
             <div className="metric-card__value">{preparingCount}</div>
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--primary-500)' } as React.CSSProperties}>
-          <div className="metric-card__icon">
+        <div 
+          className="metric-card" 
+          style={{ '--metric-color': 'var(--primary-500)' } as React.CSSProperties}
+          role="status"
+          aria-labelledby="shipping-label"
+        >
+          <div className="metric-card__icon" aria-hidden="true">
             <Truck />
           </div>
           <div className="metric-card__content">
-            <div className="metric-card__label">A caminho</div>
+            <div id="shipping-label" className="metric-card__label">A caminho</div>
             <div className="metric-card__value">{deliveringCount}</div>
           </div>
         </div>
 
-        <div className="metric-card" style={{ '--metric-color': 'var(--success-500)' } as React.CSSProperties}>
-          <div className="metric-card__icon">
+        <div 
+          className="metric-card" 
+          style={{ '--metric-color': 'var(--success-500)' } as React.CSSProperties}
+          role="status"
+          aria-labelledby="completed-label"
+        >
+          <div className="metric-card__icon" aria-hidden="true">
             <CheckCircle />
           </div>
           <div className="metric-card__content">
-            <div className="metric-card__label">Concluídos</div>
+            <div id="completed-label" className="metric-card__label">Concluídos</div>
             <div className="metric-card__value">{completedOrders.length}</div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="table-container">
+      <section className="table-container" aria-labelledby="history-title">
         <div className="table-header">
-          <h3 className="table-header__title">Histórico de pedidos</h3>
+          <h2 id="history-title" className="table-header__title">Histórico de pedidos</h2>
         </div>
 
         <div className="orders-timeline-list" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-4)' }}>
@@ -115,7 +136,7 @@ export default function ClienteDashboard() {
 
               try {
                 const items = typeof order.items === 'string' ? JSON.parse(order.items || '[]') : (order.items || []);
-                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => `${item.quantity}x`).join(', ');
+                itemsLabel = (Array.isArray(items) ? items : []).map((item: any) => `${item.quantity}x ${item.name || ''}`).join(', ');
               } catch (error) {
                 console.error(error);
               }
@@ -132,37 +153,52 @@ export default function ClienteDashboard() {
               if (order.status === 'cancelado') currentStepIndex = -1;
 
               return (
-                <div key={order.id} className="surface" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                <article 
+                  key={order.id} 
+                  className="surface order-item-card" 
+                  aria-labelledby={`order-heading-${order.id}`}
+                >
+                  <div className="order-item-header">
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '1.1rem' }}>Pedido #{order.id}</h4>
-                      <div style={{ color: 'var(--gray-500)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-                        {formatDate(order.created_at || '')} • {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
+                      <h3 id={`order-heading-${order.id}`}>Pedido #{order.id}</h3>
+                      <div className="order-item-meta">
+                        <time dateTime={order.created_at}>{formatDate(order.created_at || '')}</time>
+                        <span className="separator"> • </span>
+                        <span>{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}</span>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{formatCurrency(Number(order.total))}</div>
-                      <span className={`badge badge--${getStatusVariant(order.status || '')}`} style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+                    <div className="order-item-total">
+                      <div className="price">{formatCurrency(Number(order.total))}</div>
+                      <span 
+                        className={`badge badge--${getStatusVariant(order.status || '')}`}
+                        role="status"
+                      >
                         {getStatusLabel(order.status || '')}
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '1.5rem', fontSize: '0.95rem', color: 'var(--gray-700)' }}>
+                  <div className="order-item-details">
                     <strong>Itens:</strong> {itemsLabel || 'Itens indisponíveis'}
                   </div>
 
                   {order.status !== 'cancelado' ? (
-                    <div className="order-timeline" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
-                      <div style={{ position: 'absolute', top: '12px', left: '10%', right: '10%', height: '2px', background: 'var(--gray-200)', zIndex: 0 }} />
+                    <div 
+                      className="order-timeline" 
+                      role="progressbar" 
+                      aria-valuemin={0} 
+                      aria-valuemax={steps.length - 1} 
+                      aria-valuenow={currentStepIndex}
+                      aria-valuetext={`Status atual: ${getStatusLabel(order.status || '')}`}
+                    >
+                      <div className="timeline-track" aria-hidden="true" />
                       
                       {currentStepIndex > 0 && (
-                        <div style={{ 
-                          position: 'absolute', top: '12px', left: '10%', 
-                          width: `${(currentStepIndex / (steps.length - 1)) * 80}%`, 
-                          height: '2px', background: 'var(--primary-500)', zIndex: 1,
-                          transition: 'width 0.3s ease'
-                        }} />
+                        <div 
+                          className="timeline-progress"
+                          style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                          aria-hidden="true"
+                        />
                       )}
 
                       {steps.map((step, index) => {
@@ -170,18 +206,15 @@ export default function ClienteDashboard() {
                         const isCurrent = currentStepIndex === index;
                         
                         return (
-                          <div key={step.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, width: '20%' }}>
-                            <div style={{ 
-                              width: '24px', height: '24px', borderRadius: '50%', 
-                              background: isCompleted ? 'var(--primary-500)' : 'var(--gray-200)',
-                              border: isCurrent ? '4px solid var(--primary-100)' : '2px solid white',
-                              boxShadow: '0 0 0 1px var(--gray-200)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: 'white', fontSize: '12px'
-                            }}>
-                              {isCompleted && <CheckCircle size={14} />}
+                          <div 
+                            key={step.id} 
+                            className={`timeline-step ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}`}
+                            aria-current={isCurrent ? 'step' : undefined}
+                          >
+                            <div className="step-indicator">
+                              {isCompleted && <CheckCircle size={14} aria-hidden="true" />}
                             </div>
-                            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', fontWeight: isCurrent ? 600 : 400, color: isCompleted ? 'var(--gray-900)' : 'var(--gray-500)', textAlign: 'center' }}>
+                            <div className="step-label">
                               {step.label}
                             </div>
                           </div>
@@ -189,23 +222,24 @@ export default function ClienteDashboard() {
                       })}
                     </div>
                   ) : (
-                    <div style={{ padding: '1rem', background: 'var(--danger-50)', color: 'var(--danger-600)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+                    <div className="cancel-notice" role="alert">
                       Este pedido foi cancelado.
                     </div>
                   )}
 
                   {order.status === 'saiu_entrega' && order.delivery_type === 'entrega' && (
-                    <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                    <div className="delivery-tracking">
                       <button 
                         className="btn btn--outline"
                         onClick={() => setTrackingOrderId(trackingOrderId === String(order.id) ? null : String(order.id))}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 auto' }}
+                        aria-expanded={trackingOrderId === String(order.id)}
+                        aria-controls={`map-${order.id}`}
                       >
-                        <Map size={18} />
+                        <Map size={18} aria-hidden="true" />
                         {trackingOrderId === String(order.id) ? 'Fechar Mapa' : 'Localizar Entregador'}
                       </button>
                       {trackingOrderId === String(order.id) && (
-                        <div style={{ marginTop: '1rem' }}>
+                        <div id={`map-${order.id}`} className="map-container animate-slideDown">
                           <DeliveryMap orderId={String(order.id)} />
                         </div>
                       )}
@@ -213,27 +247,28 @@ export default function ClienteDashboard() {
                   )}
 
                   {order.tracking_code && (
-                    <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gray-200)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Truck style={{ color: 'var(--primary-500)' }} />
+                    <div className="tracking-code-banner">
+                      <Truck className="icon" aria-hidden="true" />
                       <div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>Código de Rastreio</div>
-                        <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '1.1rem' }}>{order.tracking_code}</div>
+                        <div className="label">Código de Rastreio</div>
+                        <div className="code">{order.tracking_code}</div>
                       </div>
                     </div>
                   )}
-                </div>
+                </article>
               );
             })
           ) : (
-            <div className="empty-state">
-              <div className="empty-state__icon">
+            <div className="empty-state" role="status">
+              <div className="empty-state__icon" aria-hidden="true">
                 <Package />
               </div>
               <p>Você ainda não fez nenhum pedido.</p>
             </div>
           )}
         </div>
-      </div>
+      </section>
+    </main>
     </div>
   );
 }

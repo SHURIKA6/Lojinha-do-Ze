@@ -1,3 +1,10 @@
+/**
+ * Contexto de Autenticação da Lojinha do Zé
+ * 
+ * Gerencia o estado do usuário (login/logout/refresh).
+ * Dispara evento 'auth:expired' quando a sessão expira.
+ */
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -7,10 +14,14 @@ import { User, AuthContextType } from '@/types';
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+/**
+ * Provedor de contexto de autenticação
+ */
+ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /** Busca dados do usuário logado na API */
   const refreshUser = async (): Promise<User | null> => {
     try {
       const userData = await getMe();

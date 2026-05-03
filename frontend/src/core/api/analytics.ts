@@ -1,3 +1,7 @@
+/**
+ * API: analytics
+ */
+
 import { request } from './client';
 
 export interface Forecast {

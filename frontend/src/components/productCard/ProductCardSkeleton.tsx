@@ -1,3 +1,7 @@
+/**
+ * Componente: ProductCardSkeleton
+ */
+
 import React from 'react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import styles from './ProductCard.module.css';

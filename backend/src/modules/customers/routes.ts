@@ -89,7 +89,7 @@ async function validatePrivilegedAction(c: any, service: CustomerService, passwo
 router.use('*', authMiddleware, adminOnly);
 
 router.get('/', async (c) => {
-  const service = new CustomerService(c.get('db'));
+  const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
   const limitQuery = c.req.query('limit');
   const offsetQuery = c.req.query('offset');
   const limit = Math.min(parseInt(limitQuery || '') || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
@@ -101,7 +101,7 @@ router.get('/', async (c) => {
 });
 
 router.get('/:id', async (c) => {
-  const service = new CustomerService(c.get('db'));
+  const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
   const id = c.req.param('id');
 
   if (!isValidId(id)) {
@@ -119,7 +119,7 @@ router.get('/:id', async (c) => {
 
 router.get('/:id/orders', async (c) => {
   try {
-    const service = new CustomerService(c.get('db'));
+    const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
     const id = c.req.param('id');
     if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
@@ -152,10 +152,10 @@ router.post(
   customerActionLimiter,
   zValidator('json', customerCreateSchema, validationError),
   async (c) => {
-    const service = new CustomerService(c.get('db'));
+    const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
     try {
       const payload = c.req.valid('json') as any;
-      const createdCustomer = await service.createCustomer(c, payload);
+      const createdCustomer = await service.createCustomer(payload);
       return c.json(createdCustomer, 201);
     } catch (error: any) {
       if (error.message === 'CPF_INVALID') {
@@ -185,7 +185,7 @@ router.put(
   zValidator('json', customerUpdateSchema, validationError),
   async (c) => {
     try {
-      const service = new CustomerService(c.get('db'));
+      const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
       const id = c.req.param('id');
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
@@ -219,21 +219,21 @@ router.put(
 );
 
 router.post('/:id/invite', async (c) => {
-  const service = new CustomerService(c.get('db'));
+  const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
   const id = c.req.param('id');
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-  const customer = await service.inviteCustomer(c, id);
+  const customer = await service.inviteCustomer(id);
   if (!customer) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para envio de convite.`);
   return c.json(customer);
 });
 
 router.patch('/:id/reset-password', async (c) => {
-  const service = new CustomerService(c.get('db'));
+  const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
   const id = c.req.param('id');
   if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
 
-  const customer = await service.inviteCustomer(c, id);
+  const customer = await service.inviteCustomer(id);
   if (!customer) return jsonError(c, 404, `Usuário com ID ${id} não encontrado para reset de senha.`);
   return c.json(customer);
 });
@@ -243,7 +243,7 @@ router.patch(
   zValidator('json', roleSchema, validationError),
   async (c) => {
     try {
-      const service = new CustomerService(c.get('db'));
+      const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
       const currentUser = c.get('user');
       const id = c.req.param('id');
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');
@@ -288,7 +288,7 @@ router.delete(
   '/:id',
   async (c) => {
     try {
-      const service = new CustomerService(c.get('db'));
+      const service = new CustomerService(c.get('db'), c.env, c.executionCtx);
       const currentUser = c.get('user');
       const id = c.req.param('id');
       if (!isValidId(id)) return jsonError(c, 400, 'ID inválido');

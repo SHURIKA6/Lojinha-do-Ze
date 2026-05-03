@@ -1,3 +1,7 @@
+/**
+ * API: index
+ */
+
 export * from './auth';
 export * from './catalog';
 export * from './customers';

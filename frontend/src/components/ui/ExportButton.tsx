@@ -1,3 +1,7 @@
+/**
+ * Componente: ExportButton
+ */
+
 'use client';
 
 import React, { useState } from 'react';

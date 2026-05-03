@@ -1,3 +1,7 @@
+/**
+ * Utilitário: validation
+ */
+
 export function isValidCpf(cpf: string | null | undefined): boolean {
   if (typeof cpf !== 'string') return false;
   const digits = cpf.replace(/\D/g, '');

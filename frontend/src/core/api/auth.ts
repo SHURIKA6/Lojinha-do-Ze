@@ -1,3 +1,10 @@
+/**
+ * API de Autenticação
+ * 
+ * Gerencia login, logout, refresh de token e dados do usuário.
+ * Dispara eventos customizados para controle de sessão.
+ */
+
 import { request } from './client';
 import { User, ApiResponse } from '@/types';
 

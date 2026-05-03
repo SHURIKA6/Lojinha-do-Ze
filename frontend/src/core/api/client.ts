@@ -1,7 +1,24 @@
+/**
+ * Cliente HTTP Centralizado da Lojinha do Zé
+ * 
+ * Gerencia todas as requisições para a API interna do Next.js (/api).
+ * Implementa:
+ * - CSRF Token automático para métodos mutantes
+ * - Renovação automática de sessão (refresh token)
+ * - Tratamento centralizado de erros
+ * - Dispatch de evento de sessão expirada
+ */
+
+// Métodos considerados seguros (não requerem CSRF token)
+// Métodos HTTP seguros (não alteram estado)
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+// Base URL para todas as requisições da API interna
 export const API_BASE = '/api';
 
+/**
+ * Erro customizado para falhas na API
+ */
 export class ApiError extends Error {
   status: number;
   payload: any;
@@ -14,6 +31,11 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Lê um cookie específico do navegador
+ * @param name - Nome do cookie a ser lido
+ * @returns Valor do cookie ou string vazia
+ */
 function readCookie(name: string): string {
   if (typeof document === 'undefined') return '';
 
@@ -25,14 +47,25 @@ function readCookie(name: string): string {
     ?.slice(prefix.length) || '';
 }
 
+/**
+ * Recupera o token CSRF armazenado no cookie lz_csrf
+ */
 export function getCsrfToken(): string {
   return readCookie('lz_csrf');
 }
 
+/**
+ * Constrói a URL completa do endpoint
+ * @param endpoint - Caminho relativo da API (ex: /auth/login)
+ */
 function buildUrl(endpoint: string): string {
   return `${API_BASE}${endpoint}`;
 }
 
+/**
+ * Processa a resposta da API, tratando JSON ou texto plano
+ * Dispara evento 'auth:expired' se receber 401 Unauthorized
+ */
 async function parseResponse(res: Response, fallbackMessage: string): Promise<any> {
   let data: any = null;
   const contentType = res.headers.get('content-type') || '';
@@ -61,6 +94,7 @@ async function parseResponse(res: Response, fallbackMessage: string): Promise<an
       data
     );
 
+    // Dispara evento customizado para sessão expirada
     if (res.status === 401 && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:expired'));
     }
@@ -75,11 +109,28 @@ export interface RequestOptions extends RequestInit {
   headers?: Record<string, string>;
 }
 
-export async function request<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+/**
+ * Função principal para fazer requisições à API
+ * 
+ * Funcionalidades:
+ * - Inclui CSRF token automaticamente para métodos não seguros
+ * - Define Content-Type como JSON (exceto FormData)
+ * - Tenta renovar sessão automaticamente em caso de 401
+ * - Trata erros de rede (TypeError)
+ * 
+ * @param endpoint - Caminho da API (ex: /products)
+ * @param options - Opções do fetch (method, body, headers, etc)
+ * @returns Promise com os dados da resposta
+ */
+/**
+ * Função principal para requisições à API
+ */
+ export async function request<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const method = String(options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
   const isFormData = options.body instanceof FormData;
 
+  // Adiciona CSRF token para métodos não seguros
   if (!SAFE_METHODS.has(method)) {
     const csrfToken = getCsrfToken();
     if (csrfToken) {
@@ -87,6 +138,7 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
     }
   }
 
+  // Define Content-Type padrão se não for FormData
   if (!isFormData && options.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
@@ -97,10 +149,11 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
       ...options,
       method,
       headers,
-      credentials: 'include',
-      cache: 'no-store',
+      credentials: 'include', // Envia cookies (necessário para sessão)
+      cache: 'no-store', // Evita cache da API
     });
   } catch (error: any) {
+    // Trata erros de rede (offline, bloqueio de adblocker, etc)
     if (error instanceof TypeError) {
       throw new ApiError(
         `Falha de rede (${endpoint}): ${error.message}. Verifique sua conexão ou se um adblocker está bloqueando a requisição.`,
@@ -112,10 +165,9 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
     throw error;
   }
 
-  // Se receber 401 e não for uma rota que já é de autenticação (evitar loop infinito)
+  // Tenta renovar sessão automaticamente se receber 401
   if (response.status === 401 && endpoint !== '/auth/refresh' && endpoint !== '/auth/login' && endpoint !== '/auth/logout') {
     try {
-      // Tenta renovar a sessão
       const refreshRes = await fetch(buildUrl('/auth/refresh'), {
         method: 'POST',
         headers: { 'X-CSRF-Token': getCsrfToken() },
@@ -123,8 +175,7 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
       });
 
       if (refreshRes.ok) {
-        // Se renovou com sucesso, repete a requisição original
-        // Importante: Recriamos as headers para pegar o novo CSRF token
+        // Recria headers com novo CSRF token após refresh
         const newHeaders = new Headers(options.headers || {});
         if (!SAFE_METHODS.has(method)) {
           const newCsrf = getCsrfToken();
@@ -134,6 +185,7 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
           newHeaders.set('Content-Type', 'application/json');
         }
 
+        // Refaz a requisição original com nova sessão
         const retryResponse = await fetch(buildUrl(endpoint), {
           ...options,
           method,
@@ -147,8 +199,6 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
     } catch (refreshError) {
       console.error('Erro ao tentar renovar sessão automaticamente', refreshError);
     }
-    
-    // Se falhar o refresh ou der erro, o parseResponse original vai disparar o evento auth:expired
   }
 
   return parseResponse(response, 'Erro na requisição');

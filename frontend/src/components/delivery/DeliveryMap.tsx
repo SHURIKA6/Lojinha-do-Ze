@@ -1,3 +1,7 @@
+/**
+ * Componente: DeliveryMap
+ */
+
 'use client';
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';

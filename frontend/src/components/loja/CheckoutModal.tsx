@@ -1,4 +1,11 @@
-﻿'use client';
+/**
+ * Modal de Checkout (Finalização de Pedido)
+ * 
+ * Gerencia endereço de entrega, pagamento
+ * e confirmação do pedido.
+ */
+
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';

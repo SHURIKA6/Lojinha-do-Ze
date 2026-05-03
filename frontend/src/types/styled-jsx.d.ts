@@ -1,3 +1,7 @@
+/**
+ * Definições de Tipos: styled-jsx.d
+ */
+
 import 'react';
 
 declare module 'react' {

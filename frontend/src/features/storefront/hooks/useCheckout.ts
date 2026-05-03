@@ -1,3 +1,7 @@
+/**
+ * Hook: useCheckout
+ */
+
 import { useEffect, useState } from 'react';
 import {
   createOrder,

@@ -1,3 +1,7 @@
+/**
+ * Componente: Skeleton
+ */
+
 import React from 'react';
 
 interface SkeletonProps {

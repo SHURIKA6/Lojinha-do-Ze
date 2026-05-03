@@ -1,3 +1,7 @@
+/**
+ * API: shipping
+ */
+
 import { request } from './index';
 
 export interface ShippingOption {

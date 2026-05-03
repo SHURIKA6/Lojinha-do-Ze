@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DTOs (Data Transfer Objects) para padronizar respostas da API
  * Garante consistência e tipagem nas respostas
  */
@@ -179,7 +179,6 @@ export class SuccessResponseDto<T = unknown> {
       if (meta) {
         this.meta = meta;
       }
-    }
   }
   
   /**
@@ -226,7 +225,6 @@ export class ErrorResponseDto {
       if (details) {
         this.details = details;
       }
-    }
   }
   
   /**

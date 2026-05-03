@@ -1,3 +1,10 @@
+/**
+ * Página Principal da Loja (Cliente)
+ * 
+ * Exibe o catálogo de produtos, carrinho e
+ * funcionalidades da loja para clientes.
+ */
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';

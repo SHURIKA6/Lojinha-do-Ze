@@ -92,7 +92,7 @@ export async function approveReview(db: Database, id: number): Promise<boolean> 
     'UPDATE product_reviews SET is_approved = true, updated_at = NOW() WHERE id = $1',
     [id]
   );
-  return rowCount > 0;
+  return (rowCount ?? 0) > 0;
 }
 
 /**
@@ -106,7 +106,7 @@ export async function deleteReview(db: Database, id: number): Promise<boolean> {
     'DELETE FROM product_reviews WHERE id = $1',
     [id]
   );
-  return rowCount > 0;
+  return (rowCount ?? 0) > 0;
 }
 
 /**

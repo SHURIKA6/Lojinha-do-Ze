@@ -1,3 +1,7 @@
+/**
+ * API: profile
+ */
+
 import { request } from './client';
 import { User } from '@/types';
 

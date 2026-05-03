@@ -1,3 +1,7 @@
+/**
+ * Componente: StorefrontNavbar.test
+ */
+
 import React from 'react';
 import { screen, fireEvent } from '@testing-library/react';
 import StorefrontNavbar from './StorefrontNavbar';

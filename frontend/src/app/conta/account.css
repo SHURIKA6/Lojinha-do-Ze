@@ -1,0 +1,218 @@
+/* 
+ * Account Page Styles
+ * Premium look for customer order history and tracking
+ */
+
+.order-item-card {
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  background: white;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: var(--space-4);
+}
+
+.order-item-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-200);
+}
+
+.order-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.order-item-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.order-item-meta {
+  color: var(--gray-500);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.order-item-meta .separator {
+  margin: 0 0.5rem;
+}
+
+.order-item-total {
+  text-align: right;
+}
+
+.order-item-total .price {
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--primary-700);
+}
+
+.order-item-details {
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  color: var(--gray-700);
+  padding: 0.75rem;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+}
+
+/* Timeline Styles */
+.order-timeline {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1.5rem;
+  padding: 0 5%;
+}
+
+.timeline-track {
+  position: absolute;
+  top: 12px;
+  left: 10%;
+  right: 10%;
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  z-index: 0;
+}
+
+.timeline-progress {
+  position: absolute;
+  top: 12px;
+  left: 10%;
+  height: 4px;
+  background: var(--primary-500);
+  border-radius: 2px;
+  z-index: 1;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+  width: 60px;
+  position: relative;
+}
+
+.step-indicator {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 0 4px white;
+}
+
+.timeline-step.completed .step-indicator {
+  background: var(--primary-500);
+  border-color: var(--primary-500);
+}
+
+.timeline-step.current .step-indicator {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 4px var(--primary-100);
+  transform: scale(1.1);
+}
+
+.step-label {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--gray-500);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timeline-step.completed .step-label {
+  color: var(--gray-900);
+  font-weight: 600;
+}
+
+.timeline-step.current .step-label {
+  color: var(--primary-600);
+  font-weight: 700;
+}
+
+/* Notices and Banners */
+.cancel-notice {
+  padding: 1rem;
+  background: var(--danger-50);
+  color: var(--danger-700);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid var(--danger-100);
+}
+
+.delivery-tracking {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--gray-100);
+  text-align: center;
+}
+
+.map-container {
+  margin-top: 1.5rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--gray-200);
+}
+
+.tracking-code-banner {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: var(--primary-50);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--primary-200);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tracking-code-banner .icon {
+  color: var(--primary-500);
+  width: 24px;
+  height: 24px;
+}
+
+.tracking-code-banner .label {
+  font-size: 0.8rem;
+  color: var(--primary-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.tracking-code-banner .code {
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  color: var(--primary-900);
+}
+
+/* Animations */
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

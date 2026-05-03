@@ -1,3 +1,14 @@
+/**
+ * Store do Carrinho (Zustand)
+ * 
+ * Gerencia o estado do carrinho com persistência no localStorage.
+ * 
+ * Funcionalidades:
+ * - Adicionar/remover/atualizar itens
+ * - Persistência automática (recarrega após fechar o navegador)
+ * - Validação de estoque ao adicionar itens
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -17,6 +28,10 @@ interface CartState {
   setCart: (cart: CartItem[]) => void;
 }
 
+/**
+ * Store do Zustand para o carrinho
+ * Persiste dados no localStorage
+ */
 export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
@@ -24,6 +39,7 @@ export const useCartStore = create<CartState>()(
       
       setCart: (cart) => set({ cart }),
 
+      /** Adiciona item ao carrinho ou incrementa quantidade se já existir */
       addToCart: (newItem, stock) =>
         set((state) => {
           const existingIndex = state.cart.findIndex((i) => i.productId === newItem.productId);

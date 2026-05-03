@@ -1,3 +1,7 @@
+/**
+ * Hook: useCart
+ */
+
 import { useEffect, useMemo } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Product } from '@/types';

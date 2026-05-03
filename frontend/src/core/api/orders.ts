@@ -1,3 +1,7 @@
+/**
+ * API: orders
+ */
+
 import { request } from './client';
 import { Order, OrderStatus, ApiResponse } from '@/types';
 

@@ -1,3 +1,7 @@
+/**
+ * Hook: useNotifications
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useAuth } from '@/core/contexts/AuthContext';

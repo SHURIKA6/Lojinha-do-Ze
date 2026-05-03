@@ -1,3 +1,7 @@
+/**
+ * Feature: AdminAssistant
+ */
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -66,7 +70,12 @@ export default function AdminAssistant() {
             <span className="admin-assistant__window-title">Guardião da Lojinha</span>
           </header>
 
-          <div className="admin-assistant__messages">
+          <div 
+            className="admin-assistant__messages" 
+            role="log" 
+            aria-live="polite"
+            aria-label="Mensagens do chat"
+          >
             {(Array.isArray(messages) ? messages : []).map((msg, idx) => (
               <div key={idx} className={`chat-msg chat-msg--${msg.role}`}>
                 {msg.content}
@@ -89,7 +98,11 @@ export default function AdminAssistant() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             />
-            <button className="admin-assistant__send-btn" onClick={handleSend}>
+            <button 
+              className="admin-assistant__send-btn" 
+              onClick={handleSend}
+              aria-label="Enviar mensagem"
+            >
               <FiSend size={14} />
             </button>
           </div>
@@ -99,6 +112,8 @@ export default function AdminAssistant() {
       <button 
         className={`admin-assistant__bubble ${isOpen ? 'admin-assistant__bubble--active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Fechar assistente" : "Abrir assistente do Guardião"}
+        aria-expanded={isOpen}
       >
         {isOpen ? <FiX /> : <FiMessageSquare />}
       </button>

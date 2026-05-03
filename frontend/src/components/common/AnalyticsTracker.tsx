@@ -1,3 +1,7 @@
+/**
+ * Componente: AnalyticsTracker
+ */
+
 'use client';
 
 import { useEffect, useRef } from 'react';

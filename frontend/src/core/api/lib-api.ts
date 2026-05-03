@@ -1,3 +1,7 @@
+/**
+ * API: lib-api
+ */
+
 export * from '../utils/formatting';
 export * from './auth';
 export * from './catalog';

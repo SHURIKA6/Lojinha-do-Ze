@@ -1,3 +1,7 @@
+/**
+ * Feature: HomePageClient
+ */
+
 'use client';
 
 import React from 'react';

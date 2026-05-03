@@ -1,3 +1,7 @@
+/**
+ * Componente: Modal
+ */
+
 'use client';
 
 import React, { useEffect, useId, useRef } from 'react';

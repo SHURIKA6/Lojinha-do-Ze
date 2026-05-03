@@ -1,4 +1,4 @@
-import { DurableObject } from 'hono/cloudflare-workers';
+import { Bindings } from '../../core/types';
 
 /**
  * Módulo de Entrega - Location Durable Object
@@ -24,7 +24,9 @@ export interface DeliveryLocationState {
  * conexões WebSocket para transmissão de localização em tempo real.
  */
 export class DeliveryLocationDO {
-  state: DeliveryLocationState;
+  ctx: DurableObjectState;
+  env: Bindings;
+  location: DeliveryLocationState;
   sessions: Set<WebSocket>;
 
 /**
@@ -33,12 +35,22 @@ export class DeliveryLocationDO {
  * @param {Bindings} env - Bindings de ambiente contendo configurações
  */
   constructor(state: DurableObjectState, env: Bindings) {
-    this.state = state.storage.get<DeliveryLocationState>('location') || {
+    this.ctx = state;
+    this.env = env;
+    this.location = {
       lat: null,
       lng: null,
       updatedAt: null,
     };
     this.sessions = new Set();
+
+    // Carregamento assíncrono do estado persistido
+    this.ctx.blockConcurrencyWhile(async () => {
+      const stored = await this.ctx.storage.get<DeliveryLocationState>('location');
+      if (stored) {
+        this.location = stored;
+      }
+    });
   }
 
 /**
@@ -52,28 +64,33 @@ export class DeliveryLocationDO {
     const url = new URL(request.url);
 
     if (url.pathname.endsWith('/update')) {
-      const { lat, lng } = await request.json();
-      this.state = { lat, lng, updatedAt: Date.now() };
-      await this.state.storage.put('location', this.state);
+      const body = await request.json() as { lat: number, lng: number };
+      const { lat, lng } = body;
+      
+      this.location = { lat, lng, updatedAt: Date.now() };
+      await this.ctx.storage.put('location', this.location);
       
       this.broadcast({
         type: 'location_update',
-        lat: this.state.lat,
-        lng: this.state.lng,
-        updatedAt: this.state.updatedAt,
+        lat: this.location.lat,
+        lng: this.location.lng,
+        updatedAt: this.location.updatedAt,
       });
 
       return new Response('Updated', { status: 200 });
     }
 
     if (url.pathname.endsWith('/location')) {
-      return new Response(JSON.stringify(this.state), {
+      return new Response(JSON.stringify(this.location), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
     if (request.headers.get('Upgrade') === 'websocket') {
-      const [client, server] = new WebSocketPair();
+      const pair = new WebSocketPair();
+      const client = pair[0];
+      const server = pair[1];
+      
       this.sessions.add(server);
 
       server.accept();
@@ -85,9 +102,9 @@ export class DeliveryLocationDO {
       // Send current location immediately upon connection
       server.send(JSON.stringify({
         type: 'location_update',
-        lat: this.state.lat,
-        lng: this.state.lng,
-        updatedAt: this.state.updatedAt,
+        lat: this.location.lat,
+        lng: this.location.lng,
+        updatedAt: this.location.updatedAt,
       }));
 
       return new Response(null, { status: 101, webSocket: client });

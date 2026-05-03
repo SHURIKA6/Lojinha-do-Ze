@@ -1,3 +1,7 @@
+/**
+ * API: transactions
+ */
+
 import { request } from './client';
 import { Transaction, ApiResponse } from '@/types';
 

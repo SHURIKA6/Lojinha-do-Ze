@@ -1,3 +1,7 @@
+/**
+ * API: images
+ */
+
 import { API_BASE } from './client';
 
 export function getImageUrl(path: string | null | undefined): string {

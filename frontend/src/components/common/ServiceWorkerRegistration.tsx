@@ -1,3 +1,7 @@
+/**
+ * Componente: ServiceWorkerRegistration
+ */
+
 'use client';
 
 import { useEffect } from 'react';

@@ -1,3 +1,7 @@
+/**
+ * API: payments
+ */
+
 import { request } from './client';
 import { ApiResponse } from '@/types';
 

@@ -1,3 +1,7 @@
+/**
+ * Componente: CartSidebar
+ */
+
 'use client';
 
 import React from 'react';

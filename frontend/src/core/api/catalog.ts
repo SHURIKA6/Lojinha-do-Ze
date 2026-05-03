@@ -1,3 +1,10 @@
+/**
+ * API do Catálogo de Produtos
+ * 
+ * Busca produtos, categorias e gerencia o catálogo da loja.
+ * Suporta paginação e filtros.
+ */
+
 import { request } from './client';
 import { Product } from '@/types';
 

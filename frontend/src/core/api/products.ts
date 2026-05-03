@@ -1,3 +1,7 @@
+/**
+ * API: products
+ */
+
 import { request } from './client';
 import { Product, ApiResponse } from '@/types';
 

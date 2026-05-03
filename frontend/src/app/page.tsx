@@ -1,3 +1,9 @@
+/**
+ * Página Inicial (Home)
+ * 
+ * Landing page da Lojinha do Zé.
+ */
+
 import StorefrontPageClient from '@/features/storefront/StorefrontPageClient';
 import { headers } from 'next/headers';
 import { Metadata } from 'next';

@@ -83,7 +83,7 @@ app.get('/api/health', async (c) => {
 
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
-  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(${prefix}/))) {
+  if (DBLESS_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     return await next();
   }
 

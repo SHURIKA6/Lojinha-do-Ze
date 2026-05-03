@@ -67,9 +67,42 @@ router.use('*', authMiddleware, adminOnly);
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
+    const range = c.req.query('range') || 'month';
+    const allowedRanges = ['7d', '30d', '90d', '1y', 'month'];
+    const validatedRange = allowedRanges.includes(range) ? range : 'month';
+    
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    let startDate: Date;
+    // Define endDate como o fim do dia atual para ranges relativos
+    let endDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    switch (validatedRange) {
+      case '7d':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case '30d':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case '90d':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 90);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case '1y':
+        startDate = new Date(now);
+        startDate.setFullYear(now.getFullYear() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'month':
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+    }
 
     // Merge all 9 queries into a single statement to minimize round-trips
     const dashboardQuery = `
@@ -138,7 +171,7 @@ router.get('/', async (c) => {
         (SELECT data FROM monthly_revenue_list) as monthly_revenue;
     `;
 
-    const res = await db.query(dashboardQuery, [monthStart, monthEnd]);
+    const res = await db.query(dashboardQuery, [startDate, endDate]);
     const row = res.rows[0] || {};
 
     const chartData: Record<string, { day: string; receita: number; despesa: number }> = {};

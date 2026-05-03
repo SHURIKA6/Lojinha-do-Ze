@@ -56,11 +56,12 @@ export default function ClientePerfilPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">
+            <label className="form-label" htmlFor="profile-name">
               <FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
               Nome
             </label>
             <input
+              id="profile-name"
               className="form-input"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -68,11 +69,12 @@ export default function ClientePerfilPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">
+            <label className="form-label" htmlFor="profile-email">
               <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
               E-mail
             </label>
             <input
+              id="profile-email"
               className="form-input"
               type="email"
               value={form.email}
@@ -81,11 +83,12 @@ export default function ClientePerfilPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">
+            <label className="form-label" htmlFor="profile-phone">
               <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
               Telefone
             </label>
             <input
+              id="profile-phone"
               className="form-input"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -93,11 +96,12 @@ export default function ClientePerfilPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">
+            <label className="form-label" htmlFor="profile-address">
               <FiMapPin style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} />
               Endereço
             </label>
             <input
+              id="profile-address"
               className="form-input"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}

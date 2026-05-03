@@ -1,3 +1,7 @@
+/**
+ * Componente: ToastProvider
+ */
+
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, ReactNode } from 'react';

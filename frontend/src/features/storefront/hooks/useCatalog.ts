@@ -1,3 +1,7 @@
+/**
+ * Hook: useCatalog
+ */
+
 import { useEffect, useMemo, useState } from 'react';
 import { getCatalog } from '@/core/api';
 import { useToast } from '@/components/ui/ToastProvider';

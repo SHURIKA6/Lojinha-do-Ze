@@ -1,3 +1,10 @@
+/**
+ * Dashboard Administrativo
+ * 
+ * Exibe gráficos, métricas e visão geral
+ * para administradores da Lojinha do Zé.
+ */
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +17,8 @@ import {
   FiBarChart2,
   FiPieChart,
   FiEye,
-  FiArrowLeft
+  FiArrowLeft,
+  FiRefreshCw
 } from 'react-icons/fi';
 import { 
   BarChart, 
@@ -39,6 +47,7 @@ export default function AdminDashboard() {
   
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
@@ -57,7 +66,11 @@ export default function AdminDashboard() {
       }
 
       try {
-        if (!data) setLoading(true); // Só mostra loader se não tiver cache
+        if (!data) {
+          setLoading(true);
+        } else {
+          setIsRevalidating(true);
+        }
         
         const result = await getDashboard();
         setData(result);
@@ -74,6 +87,7 @@ export default function AdminDashboard() {
         }
       } finally {
         setLoading(false);
+        setIsRevalidating(false);
       }
     }
 
@@ -200,7 +214,22 @@ export default function AdminDashboard() {
             Visão geral de vendas, pedidos e composição do catálogo em um painel mais legível.
           </p>
         </div>
-        <div className="page-header__actions">
+        <div className="page-header__actions" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          {isRevalidating && (
+            <div className="revalidating-indicator" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 'var(--space-2)',
+              fontSize: '0.75rem',
+              color: 'var(--text-muted)',
+              backgroundColor: 'rgba(0,0,0,0.05)',
+              padding: '2px 8px',
+              borderRadius: '999px'
+            }}>
+              <FiRefreshCw className="animate-spin" />
+              <span>Atualizando...</span>
+            </div>
+          )}
           <button 
             className="btn btn--secondary btn--sm"
             onClick={() => setIsPreviewMode(true)}

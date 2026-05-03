@@ -1,3 +1,7 @@
+/**
+ * Componente: AccessibilityStyles
+ */
+
 'use client';
 
 import React from 'react';
