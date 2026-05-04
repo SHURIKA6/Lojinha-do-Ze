@@ -66,8 +66,11 @@ export async function updateCustomer(id: string, data: UpdateCustomerData): Prom
   throw new Error((res as ApiResponse)?.message || 'Erro ao atualizar cliente');
 }
 
-export async function deleteCustomer(id: string): Promise<void> {
-  await request<ApiResponse<void>>(`/customers/${id}`, { method: 'DELETE' });
+export async function deleteCustomer(id: string, password?: string): Promise<void> {
+  await request<ApiResponse<void>>(`/customers/${id}`, { 
+    method: 'DELETE',
+    ...(password ? { body: JSON.stringify({ password }) } : {}),
+  });
 }
 
 export async function toggleCustomerStatus(id: string, isActive: boolean): Promise<User> {
@@ -80,3 +83,34 @@ export async function getCustomerOrders(id: string): Promise<Order[]> {
   if (res && 'data' in res && Array.isArray(res.data)) return res.data as Order[];
   return [];
 }
+
+// Alias para compatibilidade — getCustomer é sinônimo de getCustomerById
+export async function getCustomer(id: string): Promise<User> {
+  const result = await getCustomerById(id);
+  if (!result) throw new Error('Cliente não encontrado');
+  return result;
+}
+
+export async function sendCustomerInvite(id: string): Promise<User> {
+  const res = await request<ApiResponse<User> | User>(`/customers/${id}/invite`, {
+    method: 'POST',
+  });
+  if (res && typeof res === 'object' && 'id' in res) return res as User;
+  if (res && typeof res === 'object' && 'data' in res && res.data && typeof res.data === 'object' && 'id' in res.data) {
+    return res.data as User;
+  }
+  throw new Error((res as ApiResponse)?.message || 'Erro ao gerar convite');
+}
+
+export async function updateUserRole(id: string, role: string, password: string): Promise<User> {
+  const res = await request<ApiResponse<User> | User>(`/customers/${id}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role, password }),
+  });
+  if (res && typeof res === 'object' && 'id' in res) return res as User;
+  if (res && typeof res === 'object' && 'data' in res && res.data && typeof res.data === 'object' && 'id' in res.data) {
+    return res.data as User;
+  }
+  throw new Error((res as ApiResponse)?.message || 'Erro ao atualizar cargo');
+}
+

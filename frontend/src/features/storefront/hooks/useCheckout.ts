@@ -8,6 +8,7 @@ import {
   createPixPayment,
   getPixPaymentStatus,
 } from '@/core/api';
+import { createTransaction, Transaction } from '@/core/api/transactions';
 import { getLoyaltyBalance } from '@/core/api/profile';
 import { calculateShipping, ShippingOption } from '@/core/api/shipping';
 import { formatAddress } from '@/core/utils/formatting';
@@ -187,23 +188,42 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
 
     try {
       const orderItems = (Array.isArray(cart) ? cart : []).map((item) => ({
-        productId: item.productId,
-        productName: item.name,
+        product_id: item.productId,
+        name: item.name,
         quantity: item.quantity,
         price: item.price,
       }));
 
-      const result = await createOrder({
+      const orderData: Parameters<typeof createOrder>[0] = {
+        user_id: user?.id || undefined,
         customer_name: customerForm.name,
         customer_phone: customerForm.phone,
-        items: orderItems as any[], // Casting items as the backend handles enrichment
-        delivery_type: deliveryType as any,
+        customer_email: customerForm.email || undefined,
+        items: orderItems,
+        delivery_type: deliveryType as 'entrega' | 'retirada',
         delivery_fee: shippingFee,
-        points_to_redeem: usePoints ? pointsToRedeem : 0,
-        address: customerAddress as any,
+        address: customerAddress || undefined,
         payment_method: paymentMethod as any,
         notes: customerForm.notes,
-      });
+      };
+
+      const result = await createOrder(orderData);
+
+      // Auto create transaction if payment was manual (e.g. maquininha)
+      if (paymentMethod === 'maquininha') {
+        const transactionData: Partial<Transaction> = {
+          type: 'receita',
+          category: 'Vendas',
+          value: parseFloat(String(result.total || cartTotal + shippingFee)),
+          description: `Pagamento no cartão - Pedido #${result.id}`,
+          date: new Date().toISOString()
+        };
+        try {
+          await createTransaction(transactionData);
+        } catch (err) {
+          console.error('Failed to create manual transaction', err);
+        }
+      }
 
       if (typeof window !== 'undefined') {
         localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({

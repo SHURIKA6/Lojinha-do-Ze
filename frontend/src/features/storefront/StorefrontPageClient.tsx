@@ -181,7 +181,7 @@ export default function StorefrontPageClient({ initialCatalog = null }: Storefro
 
   const handleAddFromModal = () => {
     if (!productModal) return;
-    addToCart(productModal, Math.min(productQty, getAvailableStock(productModal.id)));
+    addToCart(productModal, Math.min(productQty, getAvailableStock(String(productModal.id))));
     setProductModal(null);
   };
 

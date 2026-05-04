@@ -4,13 +4,11 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useConfirm } from '@/components/ui/ConfirmDialogProvider';
 import { useToast } from '@/components/ui/ToastProvider';
 import {
-  deleteOrder,
   formatCurrency,
   formatDateTime,
-  getOrders,
-  updateOrderStatus,
   formatAddress
 } from '@/core/api';
+import { getOrders, updateOrderStatus, deleteOrder } from '@/core/api/orders';
 import {
   Clock,
   CreditCard,
@@ -62,7 +60,8 @@ export default function PedidosPage() {
 
   const loadData = async () => {
     try {
-      const data = await getOrders();
+      const res = await getOrders();
+      const data = Array.isArray(res) ? res : (res?.data || []);
       setOrders(data);
       const initialTracking: Record<string, string> = {};
       data.forEach(order => {
@@ -81,7 +80,7 @@ export default function PedidosPage() {
 
   const handleStatusChange = async (id: number | string, status: string, trackingCode?: string) => {
     try {
-      await updateOrderStatus(String(id), status as any, trackingCode);
+      await updateOrderStatus(String(id), { status: status as any, notes: trackingCode });
       toast.success('Status do pedido atualizado.');
       await loadData();
     } catch (err: any) {
@@ -357,7 +356,7 @@ export default function PedidosPage() {
                      ))}
                    </select>
 
-                   {order.status === 'saiu_entrega' && (
+                   {order.status === 'enviado' && (
                      <button 
                        className={`btn ${sharingLocation[String(order.id)] ? 'btn--danger' : 'btn--neutral'}`}
                        onClick={() => toggleLocationSharing(String(order.id))}

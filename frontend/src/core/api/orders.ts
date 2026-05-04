@@ -6,15 +6,20 @@ import { request } from './client';
 import { Order, OrderStatus, PaymentMethod, ApiResponse, PaginatedResponse } from '@/types';
 
 export interface CreateOrderData {
-  user_id: string;
+  user_id?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
   items: Array<{
     product_id: string | number;
     quantity: number;
     price: number;
+    name?: string;
   }>;
   payment_method: PaymentMethod;
-  delivery_type: 'pickup' | 'delivery';
+  delivery_type: 'retirada' | 'entrega';
   address?: string;
+  delivery_fee?: string | number;
   notes?: string;
 }
 
@@ -118,4 +123,8 @@ export async function updateOrderPayment(id: string | number, data: UpdatePaymen
     return res.data as Order;
   }
   throw new Error((res as ApiResponse)?.message || 'Erro ao atualizar pagamento do pedido');
+}
+
+export async function deleteOrder(id: string | number): Promise<void> {
+  await request<ApiResponse<void>>(`/orders/${id}`, { method: 'DELETE' });
 }

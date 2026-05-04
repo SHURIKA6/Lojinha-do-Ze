@@ -47,7 +47,7 @@ export default function ProductGrid({
       <div className={styles.grid}>
         {filteredProducts.map((product) => {
           const cartItem = cart.find((item) => item.productId === product.id);
-          const availableStock = getAvailableStock(product.id);
+          const availableStock = getAvailableStock(String(product.id));
 
           return (
             <ProductCard

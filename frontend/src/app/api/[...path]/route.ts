@@ -72,7 +72,7 @@ function buildProxyResponse(backendResponse: Response, body: any, isFileDownload
   for (let cookie of setCookies) {
     if (cookie) {
       // Remover flag Secure em desenvolvimento para permitir cookies em HTTP (localhost)
-      if (process.env.NODE_ENV !== 'production' && cookie.toLowerCase().includes('secure')) {
+      if ((process.env.NODE_ENV as string) !== 'production' && cookie.toLowerCase().includes('secure')) {
         cookie = cookie.replace(/;?\s?secure/gi, '');
       }
       response.headers.append('Set-Cookie', cookie);
@@ -166,7 +166,7 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
     const duration = Date.now() - startTime;
 
     // Log apenas em desenvolvimento
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) !== 'production') {
       console.log(`[Proxy] ${method} ${parsedPath} → ${response.status} (${duration}ms)`);
       
       const setCookieHeaders = (response.headers as any).getSetCookie?.() ?? [];
@@ -184,7 +184,7 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
     return buildProxyResponse(response, data, isFile);
   } catch (error: any) {
     // Log de erro apenas em desenvolvimento
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) !== 'production') {
       if (error.name === 'AbortError') {
         console.error(`[Proxy] Timeout na requisição (${method} ${backendUrl})`);
       } else {
@@ -193,18 +193,18 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
     }
     
     // Tentar porta alternativa em desenvolvimento se a primeira falhar
-    if (process.env.NODE_ENV !== 'production' && !process.env.BACKEND_URL) {
+    if ((process.env.NODE_ENV as string) !== 'production' && !process.env.BACKEND_URL) {
       const fallbackPort = '8788';
       const fallbackUrl = backendUrl.replace(':8787', `:${fallbackPort}`);
       try {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) !== 'production') {
           console.log(`Tentando porta fallback ${fallbackPort}...`);
         }
         const response = await fetch(fallbackUrl, fetchOptions);
         const { data, isFile } = await parseBackendResponse(response);
         return buildProxyResponse(response, data, isFile);
       } catch (fallbackError: any) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) !== 'production') {
           console.error(`Fallback error:`, fallbackError?.message || fallbackError);
         }
       }

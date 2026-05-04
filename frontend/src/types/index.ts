@@ -30,6 +30,9 @@ export interface CustomerInvite {
   token: string;
   expires_at: string;
   used: boolean;
+  setupUrl?: string;
+  setupCode?: string;
+  expiresAt?: string;
 }
 
 export interface User {
@@ -48,6 +51,17 @@ export interface User {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  logout: () => Promise<void>;
+  loading: boolean;
+  refreshUser: () => Promise<User | null>;
+  setUser: (user: User | null) => void;
+  isAdmin: boolean;
+  isCustomer: boolean;
 }
 
 // ============================================

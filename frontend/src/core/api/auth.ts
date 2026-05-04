@@ -14,8 +14,10 @@ export interface LoginResponse {
 }
 
 export interface SetupPasswordPayload {
-  token: string;
+  token?: string;
+  code?: string;
   password: string;
+  confirmPassword?: string;
 }
 
 export interface ChangePasswordPayload {

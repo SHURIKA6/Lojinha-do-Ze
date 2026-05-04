@@ -29,7 +29,7 @@ export default function ProductModal({
   setProductModal,
   setProductQty,
 }: ProductModalProps) {
-  const availableStock = productModal ? getAvailableStock(productModal.id) : 0;
+  const availableStock = productModal ? getAvailableStock(String(productModal.id)) : 0;
 
   return (
     <Modal

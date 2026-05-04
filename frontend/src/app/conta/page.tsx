@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/core/contexts/AuthContext';
 import {
@@ -41,11 +41,11 @@ export default function ClienteDashboard() {
 
   const validOrders = Array.isArray(orders) ? orders : [];
   const completedOrders = validOrders.filter((order) =>
-    ['concluido', 'cancelado'].includes(order.status || '')
+    ['entregue', 'cancelado'].includes(order.status || '')
   );
-  const pendingCount = validOrders.filter((order) => ['novo', 'recebido'].includes(order.status || '')).length;
-  const preparingCount = validOrders.filter((order) => order.status === 'em_preparo').length;
-  const deliveringCount = validOrders.filter((order) => order.status === 'saiu_entrega').length;
+  const pendingCount = validOrders.filter((order) => ['pendente'].includes(order.status || '')).length;
+  const preparingCount = validOrders.filter((order) => order.status === 'processando').length;
+  const deliveringCount = validOrders.filter((order) => order.status === 'enviado').length;
 
   return (
     <main className="animate-fadeIn" aria-labelledby="page-title">
@@ -142,11 +142,10 @@ export default function ClienteDashboard() {
               }
 
               const steps = [
-                { id: 'novo', label: 'Pedido' },
-                { id: 'recebido', label: 'Confirmado' },
-                { id: 'em_preparo', label: 'Preparando' },
-                { id: 'saiu_entrega', label: order.delivery_type === 'retirada' ? 'Aguardando Retirada' : 'Enviado' },
-                { id: 'concluido', label: 'Concluído' }
+                { id: 'pendente', label: 'Pedido' },
+                { id: 'processando', label: 'Preparando' },
+                { id: 'enviado', label: order.delivery_type === 'retirada' ? 'Aguardando Retirada' : 'Enviado' },
+                { id: 'entregue', label: 'Concluído' }
               ];
 
               let currentStepIndex = steps.findIndex(s => s.id === order.status);
@@ -227,7 +226,7 @@ export default function ClienteDashboard() {
                     </div>
                   )}
 
-                  {order.status === 'saiu_entrega' && order.delivery_type === 'entrega' && (
+                  {order.status === 'enviado' && order.delivery_type === 'entrega' && (
                     <div className="delivery-tracking">
                       <button 
                         className="btn btn--outline"

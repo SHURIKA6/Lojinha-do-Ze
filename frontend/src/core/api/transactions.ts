@@ -4,6 +4,7 @@
 
 import { request } from './client';
 import { Transaction, ApiResponse } from '@/types';
+export type { Transaction };
 
 export async function getTransactions(type?: string): Promise<Transaction[]> {
   const query = type ? `?type=${encodeURIComponent(type)}` : '';

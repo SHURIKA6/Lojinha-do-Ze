@@ -1,10 +1,11 @@
-﻿/**
+/**
  * API: payments
  */
 
 import { request } from './client';
 import { ApiResponse } from '@/types';
-import { PixPaymentResponse, PixStatusResponse } from './payments';
+
+
 
 export interface PixPaymentData {
   orderId: string | number;

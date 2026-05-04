@@ -2,7 +2,8 @@
  * API: reports
  */
 
-import { request, getCsrfToken } from './client';
+import { request } from './client';
+import { getCsrfToken } from '@/lib/csrf';
 
 export interface DashboardData {
   monthRevenue: number;

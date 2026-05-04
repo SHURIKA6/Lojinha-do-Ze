@@ -126,12 +126,12 @@ export default function EstoquePage() {
       description: product.description || '',
       photo: product.photo || '',
       category: product.category || 'Outros',
-      quantity: Number(product.quantity || product.stock) || 0,
+      quantity: Number(product.quantity) || 0,
       min_stock: Number(product.min_stock) || 0,
       cost_price: Number(product.cost_price) || 0,
-      sale_price: Number(product.sale_price || product.price) || 0,
+      sale_price: Number(product.sale_price) || 0,
       supplier: product.supplier || '',
-      is_active: Boolean(product.is_active ?? product.active),
+      is_active: Boolean(product.is_active),
     });
     setModalOpen(true);
   }, []);
