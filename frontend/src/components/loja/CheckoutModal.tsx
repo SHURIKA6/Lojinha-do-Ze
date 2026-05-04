@@ -445,11 +445,11 @@ export default function CheckoutModal({
               </div>
             )}
 
-            <div className="form-group">
-              <label htmlFor="checkout-name" className="form-label">
-                <FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                Nome completo *
-              </label>
+               <div className="form-group">
+               <label htmlFor="checkout-name" className="form-label">
+                 <FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
+                 Nome completo *
+               </label>
               <input
                 id="checkout-name"
                 className="form-input"
@@ -460,10 +460,10 @@ export default function CheckoutModal({
               />
             </div>
             <div className="form-group">
-              <label htmlFor="checkout-phone" className="form-label">
-                <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                Telefone / WhatsApp *
-              </label>
+               <label htmlFor="checkout-phone" className="form-label">
+                 <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
+                 Telefone / WhatsApp *
+               </label>
               <input
                 id="checkout-phone"
                 className="form-input"

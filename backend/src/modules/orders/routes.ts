@@ -80,8 +80,9 @@ router.patch(
     const { status, tracking_code } = c.req.valid('json');
     const db = c.get('db');
 
+    const user = c.get('user');
     try {
-      const result = await orderService.updateOrderStatus(db, id, status, c.env, c.executionCtx, tracking_code);
+      const result = await orderService.updateOrderStatus(db, id, status, c.env, c.executionCtx, tracking_code, user?.id);
 
       if (result.error) {
         return jsonError(c, result.error.code, result.error.message);

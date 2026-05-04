@@ -4,6 +4,7 @@ import { sendWhatsAppMessage } from '../notifications/whatsapp';
 import { logger } from '../../core/utils/logger';
 import { getRefreshTokenService } from '../auth/service';
 import { deleteExpiredSessions } from '../auth/repository';
+import * as orderService from '../orders/service';
 
 /**
  * Gerencia a execução de tarefas agendadas para a aplicação.
@@ -18,6 +19,7 @@ export async function handleScheduledTasks(env: Bindings) {
   try {
     await sendPaymentReminders(db, env);
     await cleanupAuthTokens(db, env);
+    await cleanupAbandonedOrders(db, env);
   } catch (error) {
     logger.error('Tarefas agendadas falharam', error as Error);
   } finally {
@@ -79,5 +81,35 @@ async function cleanupAuthTokens(db: Database, env: Bindings) {
     }
   } catch (error) {
     logger.error('Falha ao limpar tokens de autenticação', error as Error);
+  }
+}
+
+/**
+ * Cancela automaticamente pedidos pendentes por mais de 24 horas,
+ * restaurando o estoque e pontos utilizados.
+ * @param db - Instância do banco de dados
+ * @param env - Bindings do ambiente Cloudflare
+ */
+async function cleanupAbandonedOrders(db: Database, env: Bindings) {
+  // Busca pedidos pendentes há mais de 24 horas
+  const { rows: abandonedOrders } = await db.query(
+    `SELECT id FROM orders 
+     WHERE status = 'pendente' 
+     AND created_at < NOW() - INTERVAL '24 hours'`
+  );
+
+  if (abandonedOrders.length === 0) return;
+
+  logger.info(`Limpando ${abandonedOrders.length} pedidos abandonados`);
+
+  for (const order of abandonedOrders) {
+    try {
+      // Usamos o serviço para garantir que toda a lógica de restauração de estoque/pontos seja executada
+      // Passamos '0' ou similar para representar o sistema no histórico
+      await orderService.updateOrderStatus(db, order.id, 'cancelado', env, null, undefined, 0);
+      logger.info(`Pedido abandonado #${order.id} cancelado pelo sistema`);
+    } catch (error) {
+      logger.error(`Falha ao cancelar pedido abandonado #${order.id}`, error as Error);
+    }
   }
 }

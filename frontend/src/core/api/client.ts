@@ -21,11 +21,23 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
+
 export async function request<T = Record<string, unknown>>(
   endpoint: string,
   options: RequestInit & { signal?: AbortSignal } = {}
 ): Promise<T> {
   const { signal, ...fetchOptions } = options;
+  
+  // Create a timeout signal if no signal provided
+  let timeoutId: NodeJS.Timeout | undefined;
+  let timeoutSignal: AbortSignal | undefined;
+  
+  if (!signal) {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+    timeoutSignal = controller.signal;
+  }
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -41,11 +53,12 @@ export async function request<T = Record<string, unknown>>(
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
 
   try {
+    const effectiveSignal = signal || timeoutSignal;
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
       credentials: 'include',
-      signal,
+      signal: effectiveSignal,
     });
 
     // Atualiza CSRF token se fornecido no header

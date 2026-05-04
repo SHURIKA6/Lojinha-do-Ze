@@ -51,7 +51,7 @@ app.get('/api/health', async (c) => {
 
   const health: any = {
     status: 'ok',
-    message: 'Lojinha do Ze API',
+    message: 'Lojinha do Zé API',
     timestamp: new Date().toISOString(),
     checks: {}
   };

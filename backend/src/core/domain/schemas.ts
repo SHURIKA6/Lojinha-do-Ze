@@ -155,7 +155,7 @@ const customerBaseSchema = z
     email: z.preprocess(
       emptyToUndefined,
       z.string().trim().email('E-mail inválido').max(255, 'E-mail muito longo').optional()
-    ),
+    ).optional(),
     phone: optionalTrimmedString(30, 'Telefone'),
     cpf: optionalTrimmedString(20, 'CPF'),
     address: optionalTrimmedString(320, 'Endereço'),
@@ -239,7 +239,7 @@ export const profileUpdateSchema = z
     email: z.preprocess(
       emptyToUndefined,
       z.string().trim().email('E-mail inválido').max(255, 'E-mail muito longo').optional()
-    ),
+    ).optional(),
     phone: optionalTrimmedString(30, 'Telefone'),
     address: optionalTrimmedString(320, 'Endereço'),
   })

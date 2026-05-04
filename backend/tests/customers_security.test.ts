@@ -7,6 +7,9 @@ jest.unstable_mockModule('../src/core/utils/crypto', () => ({
   randomToken: (len = 32) => 'TESTTOKEN' + '0'.repeat(Math.max(0, len - 9)),
   sha256Hex: async (val: string) => 'hash:' + val,
   verifyPassword: verifyPasswordMock,
+  encryptPII: async (data: string) => `encrypted:${data}`,
+  decryptPII: async (data: string) => data.replace('encrypted:', ''),
+  getPIIKey: async () => ({}) as any,
 }));
 
 let Hono: any;
@@ -25,6 +28,10 @@ beforeAll(async () => {
 
 function buildDbMock(handlers: any = {}) {
   const query = jest.fn(async (text: string, params: any[]) => {
+    if (text.includes('INSERT INTO system_logs')) {
+      return { rowCount: 1, rows: [] };
+    }
+
     if (handlers.query) {
       return handlers.query(text, params);
     }
@@ -46,6 +53,20 @@ function buildApp(route: any, db: any) {
   const app = new Hono();
   app.use('*', async (c: any, next: any) => {
     c.set('db', db);
+    
+    // Mock executionCtx para evitar erro "This context has no ExecutionContext"
+    const executionCtx = {
+      waitUntil: (promise: Promise<any>) => {
+        // Em testes, podemos opcionalmente aguardar, mas aqui apenas ignoramos
+        // para manter o comportamento assíncrono simulado
+      },
+      passThroughOnException: () => {},
+    };
+    
+    Object.defineProperty(c, 'executionCtx', {
+      get: () => executionCtx,
+      configurable: true
+    });
 
     // Injetar sessão para testes para evitar 401 do authMiddleware
     const userId = c.req.header('x-test-user-id') || '1';

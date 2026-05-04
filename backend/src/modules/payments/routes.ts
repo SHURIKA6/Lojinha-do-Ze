@@ -109,11 +109,15 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
   const db = c.get('db');
   const payload = c.req.valid('json') as any;
   
+  const client = await db.connect();
   try {
-    const { rows: orderRows } = await db.query(
+    await client.query('BEGIN');
+
+    const { rows: orderRows } = await client.query(
       `SELECT id, total, customer_name, customer_id, customer_phone, payment_id
        FROM orders
-       WHERE id = $1`,
+       WHERE id = $1
+       FOR UPDATE`,
       [payload.orderId]
     );
 
@@ -124,17 +128,20 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
     const order = orderRows[0];
 
     if (order.payment_id) {
+      await client.query('ROLLBACK');
       return jsonError(c, 409, 'Já existe um pagamento vinculado a este pedido');
     }
 
     const user = c.get('user');
     if (user && order.customer_id && String(order.customer_id) !== String(user.id)) {
+      await client.query('ROLLBACK');
       return jsonError(c, 403, 'Acesso negado a este pedido');
     }
 
     const normalizedOrderPhone = normalizePhoneDigits(order.customer_phone || '');
     const normalizedPayloadPhone = normalizePhoneDigits(payload.phone);
     if (!normalizedOrderPhone || normalizedOrderPhone !== normalizedPayloadPhone) {
+      await client.query('ROLLBACK');
       return jsonError(c, 403, 'Os dados do pedido não conferem para criar o pagamento');
     }
 
@@ -151,13 +158,15 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
       idempotencyKey: `order-pix-${order.id}`,
     });
 
-    await db.query(
+    await client.query(
       'UPDATE orders SET payment_id = $1, payment_status = $2 WHERE id = $3',
       [payment.id, payment.status, order.id]
     );
 
+    await client.query('COMMIT');
     return c.json(payment, 201);
   } catch (error: any) {
+    await client.query('ROLLBACK').catch(() => {});
     const errorId = crypto.randomUUID().split('-')[0];
     const isConfigError = error.message?.includes('não definido');
     
@@ -178,6 +187,8 @@ router.post('/pix', orderLimiter, zValidator('json', pixPaymentSchema, validatio
     }
 
     return jsonError(c, 500, 'Erro ao criar pagamento no Mercado Pago', { errorId });
+  } finally {
+    if (client.release) client.release();
   }
 });
 

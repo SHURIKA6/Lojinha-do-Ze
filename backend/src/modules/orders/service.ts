@@ -276,7 +276,8 @@ export async function updateOrderStatus(
   status: string,
   env: any,
   ctx?: any,
-  trackingCode?: string
+  trackingCode?: string,
+  changedBy?: string | number
 ) {
   const client = await db.connect();
   let paymentIdToCancel: string | null = null;
@@ -321,17 +322,44 @@ export async function updateOrderStatus(
     }
 
     if (status === 'concluido' && currentOrder.status !== 'concluido') {
-      await orderRepository.createTransaction(client, {
-        type: 'receita',
-        category: 'Venda de produtos',
-        description: `Pedido #${id} - ${currentOrder.customer_name}`,
-        value: currentOrder.total,
-        orderId: id,
-      });
+      // Check if transaction already exists to avoid double accounting
+      const alreadyHasTransaction = await orderRepository.transactionExists(client, id);
+      
+      if (!alreadyHasTransaction) {
+        await orderRepository.createTransaction(client, {
+          type: 'receita',
+          category: 'Venda de produtos',
+          description: `Pedido #${id} - ${currentOrder.customer_name}`,
+          value: currentOrder.total,
+          orderId: id,
+        });
+      } else {
+        logger.info(`Transação já existe para o pedido #${id}, ignorando criação duplicada em 'concluido'`);
+      }
 
       if (currentOrder.customer_id) {
         await loyaltyService.awardPoints(client, parseInt(currentOrder.customer_id), parseInt(id), currentOrder.subtotal);
       }
+    }
+
+    // Log status change to history
+    if (status !== currentOrder.status || (trackingCode && trackingCode !== currentOrder.tracking_code)) {
+      let notes = '';
+      if (trackingCode && trackingCode !== currentOrder.tracking_code) {
+        notes = `Código de rastreio: ${trackingCode}`;
+      }
+      if (status === 'cancelado' && changedBy === 0) {
+        notes = notes ? `${notes} (Cancelado automaticamente por inatividade)` : 'Cancelado automaticamente por inatividade';
+      }
+
+      await orderRepository.logOrderStatusHistory(
+        client,
+        id,
+        currentOrder.status,
+        status,
+        changedBy,
+        notes
+      );
     }
 
     const updatedOrder = await orderRepository.updateOrderStatus(client, id, status, trackingCode);
@@ -460,6 +488,14 @@ export async function deleteOrder(db: Database, id: string, env: any, ctx?: any)
         }
       }
     }
+
+    // Log deletion to history before it's gone
+    await orderRepository.logOrderStatusHistory(
+      client,
+      id,
+      order.status,
+      'DELETADO'
+    );
 
 
 

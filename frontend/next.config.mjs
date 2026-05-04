@@ -45,14 +45,18 @@ const nextConfig = {
       ? trustedDomains.join(' ')
       : [...trustedDomains, 'https:'].join(' '); // Em dev, permite https: para flexibilidade
     
+    // Em produção, usa nonce ou hash em vez de unsafe-inline
+    // O Next.js 16+ suporta 'nonce' automaticamente em alguns casos
+    const scriptSrc = isProd 
+      ? "'self'" // Em produção, sem unsafe-inline (Next.js 16 injeta nonce automaticamente)
+      : "'self' 'unsafe-inline' 'unsafe-eval'"; // Em dev, permite para hot reload
+    
     const cspDirectives = [
       "default-src 'self'",
-      // Remove unsafe-eval em produção; em dev mantém unsafe-eval para hot reload se necessário
-      // Adiciona unsafe-inline para permitir os scripts inline injetados pelo Next.js
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+      `script-src ${scriptSrc}`,
       `connect-src ${connectSrc}`,
       `img-src 'self' data: ${trustedDomains.filter(d => !d.includes('fonts')).join(' ')}`,
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // unsafe-inline necessário para styled-jsx do Next.js
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // unsafe-inline ainda necessário para styled-jsx
       "font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai https://frontend-cdn.perplexity.ai",
       "frame-ancestors 'none'",
       "base-uri 'self'",

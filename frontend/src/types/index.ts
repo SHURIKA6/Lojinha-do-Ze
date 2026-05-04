@@ -90,12 +90,12 @@ export interface Product {
 }
 
 // ============================================
-// Order Types (valores em português, compatível com backend)
+// Order Types (valores em inglês, compatível com backend)
 // ============================================
 
-export type OrderStatus = 'pendente' | 'processando' | 'enviado' | 'entregue' | 'cancelado';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
-export type PaymentMethod = 'pix' | 'cartao_credito' | 'cartao_debito' | 'boleto' | 'dinheiro' | 'transferencia' | 'maquininha';
+export type PaymentMethod = 'pix' | 'credit_card' | 'debit_card' | 'boleto' | 'cash' | 'bank_transfer' | 'card_machine';
 
 export interface Order {
   id: string | number;
@@ -115,7 +115,7 @@ export interface Order {
   payment_method?: PaymentMethod;
   payment_id?: string;
   total: number;
-  delivery_type: 'retirada' | 'entrega';
+  delivery_type: 'pickup' | 'delivery';
   delivery_fee?: number;
   address?: string | Address;
   tracking_code?: string;
@@ -212,7 +212,7 @@ export interface ChartData {
 
 export interface Transaction {
   id: string;
-  type: 'entrada' | 'saida' | 'ajuste' | 'receita' | 'despesa';
+  type: 'income' | 'expense' | 'adjustment' | 'revenue' | 'expenditure';
   value: number;
   description: string;
   date: string;

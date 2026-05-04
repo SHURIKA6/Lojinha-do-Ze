@@ -25,6 +25,15 @@ beforeAll(async () => {
 
 function buildDbMock(handlers: any = {}) {
   const query = jest.fn(async (text: string, params: any[]) => {
+    // Tratamento genérico para comandos de transação e logs
+    const normalizedText = text.trim().toUpperCase();
+    if (normalizedText === 'BEGIN' || normalizedText === 'COMMIT' || normalizedText === 'ROLLBACK') {
+      return { rowCount: 0, rows: [] };
+    }
+    if (normalizedText.includes('INSERT INTO SYSTEM_LOGS')) {
+      return { rowCount: 1, rows: [] };
+    }
+
     if (handlers.query) {
       return handlers.query(text, params);
     }
@@ -218,6 +227,10 @@ describe('Payments Security', () => {
 
         if (text.includes('SELECT id, payment_id FROM orders WHERE id = $1')) {
           return { rows: [{ id: 12, payment_id: null }] };
+        }
+
+        if (text.includes('SELECT id FROM transactions WHERE order_id = $1')) {
+          return { rows: [] }; // Simula que não há transação ainda
         }
 
         throw new Error(`Query não tratada no teste: ${text}`);

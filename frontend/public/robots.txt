@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /conta/
+Disallow: /api/
+
+# Permitir acesso aos assets públicos
+Allow: /images/
+Allow: /favicon.ico
+Allow: /icon-*.png
+Allow: /manifest.json
+
+# Sitemap
+Sitemap: https://lojinha-do-ze.com/sitemap.xml

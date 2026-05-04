@@ -24,6 +24,7 @@ import * as migration012 from './012_add_analytics_events';
 import * as migration013 from './013_add_loyalty_system';
 import * as migration014 from './014_add_discount_to_orders';
 import * as migration015 from './015_add_product_reviews';
+import * as migration016 from './016_order_status_history';
 
 const migrations: Migration[] = [
   { id: migration001.id, up: migration001.up },
@@ -41,6 +42,7 @@ const migrations: Migration[] = [
   { id: migration013.id, up: migration013.up },
   { id: migration014.id, up: migration014.up },
   { id: migration015.id, up: migration015.up },
+  { id: migration016.id, up: migration016.up },
 ];
 
 /**

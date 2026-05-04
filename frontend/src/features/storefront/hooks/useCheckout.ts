@@ -212,8 +212,8 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
       // Auto create transaction if payment was manual (e.g. maquininha)
       if (paymentMethod === 'maquininha') {
         const transactionData: Partial<Transaction> = {
-          type: 'receita',
-          category: 'Vendas',
+          type: 'income',
+          category: 'Sales',
           value: parseFloat(String(result.total || cartTotal + shippingFee)),
           description: `Pagamento no cartão - Pedido #${result.id}`,
           date: new Date().toISOString()

@@ -272,6 +272,44 @@ export async function createTransaction(
 }
 
 /**
+ * Verifica se já existe uma transação vinculada a um pedido.
+ * @param client - Cliente de conexão com o banco.
+ * @param orderId - ID do pedido.
+ * @returns true se existir uma transação, false caso contrário.
+ */
+export async function transactionExists(client: Database, orderId: string): Promise<boolean> {
+  const { rows } = await client.query(
+    'SELECT id FROM transactions WHERE order_id = $1 LIMIT 1',
+    [orderId]
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Registra uma mudança de status no histórico do pedido.
+ * @param client - Cliente de conexão com o banco.
+ * @param orderId - ID do pedido.
+ * @param oldStatus - Status anterior.
+ * @param newStatus - Novo status.
+ * @param changedBy - ID do usuário que realizou a mudança (opcional).
+ * @param notes - Observações adicionais (opcional).
+ */
+export async function logOrderStatusHistory(
+  client: Database,
+  orderId: string,
+  oldStatus: string | null,
+  newStatus: string,
+  changedBy?: string | number,
+  notes?: string
+) {
+  await client.query(
+    `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, notes)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [orderId, oldStatus, newStatus, changedBy || null, notes || null]
+  );
+}
+
+/**
  * Restaura o estoque de múltiplos produtos em lote usando unnest().
  * Também registra entradas no log de inventário.
  * @param client - Cliente de conexão com o banco.
