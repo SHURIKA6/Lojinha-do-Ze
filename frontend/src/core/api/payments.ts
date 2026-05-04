@@ -1,9 +1,10 @@
-/**
+﻿/**
  * API: payments
  */
 
 import { request } from './client';
 import { ApiResponse } from '@/types';
+import { PixPaymentResponse, PixStatusResponse } from './payments';
 
 export interface PixPaymentData {
   orderId: string | number;
@@ -30,33 +31,35 @@ export interface PixStatusResponse {
   external_reference: string;
 }
 
-/**
- * Cria um pagamento via Pix
- */
-export async function createPixPayment(data: PixPaymentData): Promise<PixPaymentResponse> {
-  const res = await request<any>('/payments/pix', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-  if (res && res.id) return res;
-  if (res?.data) return res.data;
-  throw new Error(res?.message || 'Erro ao gerar Pix');
+export interface PaymentOptions {
+  signal?: AbortSignal;
 }
 
-/**
- * Consulta o status de um pagamento Pix
- */
+export async function createPixPayment(data: PixPaymentData, options?: PaymentOptions): Promise<PixPaymentResponse> {
+  const res = await request<PixPaymentResponse | ApiResponse<PixPaymentResponse>>('/payments/pix', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    ...options,
+  });
+  
+  if (res && (res as PixPaymentResponse).id) return res as PixPaymentResponse;
+  if (res && (res as ApiResponse<PixPaymentResponse>).data) return (res as ApiResponse<PixPaymentResponse>).data as PixPaymentResponse;
+  throw new Error((res as ApiResponse)?.message || 'Erro ao gerar Pix');
+}
+
 export async function getPixPaymentStatus(
   paymentId: string,
-  params: { orderId: string | number; phone?: string }
+  params: { orderId: string | number; phone?: string },
+  options?: PaymentOptions
 ): Promise<PixStatusResponse> {
   const query = new URLSearchParams({
     orderId: String(params.orderId),
     phone: String(params.phone || ''),
   });
 
-  const res = await request<any>(`/payments/pix/${paymentId}?${query.toString()}`);
-  if (res && res.status) return res;
-  if (res?.data) return res.data;
-  throw new Error(res?.message || 'Erro ao consultar status');
+  const res = await request<PixStatusResponse | ApiResponse<PixStatusResponse>>(`/payments/pix/${paymentId}?${query.toString()}`, options || {});
+  
+  if (res && (res as PixStatusResponse).status) return res as PixStatusResponse;
+  if (res && (res as ApiResponse<PixStatusResponse>).data) return (res as ApiResponse<PixStatusResponse>).data as PixStatusResponse;
+  throw new Error((res as ApiResponse)?.message || 'Erro ao consultar status');
 }

@@ -1,14 +1,8 @@
 /**
  * Service Worker para Lojinha do Zé
  * Implementa cache de assets e modo offline básico
+ * Versão JavaScript (JS) para compatibilidade de execução no navegador
  */
-
-/// <reference lib="webworker" />
-
-export {};
-
-// SEC-REF: Explicitly cast self to ServiceWorkerGlobalScope for TS safety
-const sw = (self as unknown) as ServiceWorkerGlobalScope;
 
 const CACHE_NAME = 'lojinha-do-ze-v2';
 const STATIC_CACHE = 'lojinha-static-v2';
@@ -25,7 +19,7 @@ const STATIC_ASSETS = [
 /**
  * Evento de instalação do Service Worker
  */
-sw.addEventListener('install', (event: ExtendableEvent) => {
+self.addEventListener('install', (event) => {
   console.log('[SW] Installing Service Worker');
   
   event.waitUntil(
@@ -36,7 +30,7 @@ sw.addEventListener('install', (event: ExtendableEvent) => {
       })
       .then(() => {
         console.log('[SW] Static assets cached');
-        return sw.skipWaiting();
+        return self.skipWaiting();
       })
       .catch((error) => {
         console.error('[SW] Error caching static assets:', error);
@@ -47,7 +41,7 @@ sw.addEventListener('install', (event: ExtendableEvent) => {
 /**
  * Evento de ativação do Service Worker
  */
-sw.addEventListener('activate', (event: ExtendableEvent) => {
+self.addEventListener('activate', (event) => {
   console.log('[SW] Activating Service Worker');
   
   event.waitUntil(
@@ -67,7 +61,7 @@ sw.addEventListener('activate', (event: ExtendableEvent) => {
       })
       .then(() => {
         console.log('[SW] Service Worker activated');
-        return sw.clients.claim();
+        return self.clients.claim();
       })
   );
 });
@@ -75,7 +69,7 @@ sw.addEventListener('activate', (event: ExtendableEvent) => {
 /**
  * Evento de fetch - intercepta todas as requisições
  */
-sw.addEventListener('fetch', (event: FetchEvent) => {
+self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   
@@ -85,7 +79,7 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
   }
   
   // Ignora requisições para outros domínios
-  if (url.origin !== sw.location.origin) {
+  if (url.origin !== self.location.origin) {
     return;
   }
   
@@ -106,7 +100,7 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
 /**
  * Verifica se é um asset estático
  */
-function isStaticAsset(request: Request): boolean {
+function isStaticAsset(request) {
   const url = new URL(request.url);
   return url.pathname.startsWith('/_next/') ||
          url.pathname.startsWith('/static/') ||
@@ -125,7 +119,7 @@ function isStaticAsset(request: Request): boolean {
 /**
  * Verifica se é uma requisição da API
  */
-function isApiRequest(request: Request): boolean {
+function isApiRequest(request) {
   const url = new URL(request.url);
   return url.pathname.startsWith('/api/');
 }
@@ -133,7 +127,7 @@ function isApiRequest(request: Request): boolean {
 /**
  * Estratégia Cache First
  */
-async function cacheFirst(request: Request): Promise<Response> {
+async function cacheFirst(request) {
   try {
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
@@ -158,7 +152,7 @@ async function cacheFirst(request: Request): Promise<Response> {
 /**
  * Estratégia Network First
  */
-async function networkFirst(request: Request): Promise<Response> {
+async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
     
@@ -201,7 +195,7 @@ async function networkFirst(request: Request): Promise<Response> {
 /**
  * Estratégia Stale While Revalidate
  */
-async function staleWhileRevalidate(request: Request): Promise<Response> {
+async function staleWhileRevalidate(request) {
   const cache = await caches.open(DYNAMIC_CACHE);
   const cachedResponse = await cache.match(request);
   
@@ -213,19 +207,19 @@ async function staleWhileRevalidate(request: Request): Promise<Response> {
       return networkResponse;
     })
     .catch(() => {
-      return cachedResponse as Response;
+      return cachedResponse;
     });
   
-  return (cachedResponse || fetchPromise) as Promise<Response>;
+  return (cachedResponse || fetchPromise);
 }
 
 /**
  * Evento de push para notificações
  */
-sw.addEventListener('push', (event: PushEvent) => {
+self.addEventListener('push', (event) => {
   console.log('[SW] Push received');
   
-  const options: NotificationOptions = {
+  const options = {
     body: event.data ? event.data.text() : 'Nova notificação da Lojinha do Zé',
     icon: '/icon-192x192.png',
     badge: '/badge-72x72.png',
@@ -233,8 +227,6 @@ sw.addEventListener('push', (event: PushEvent) => {
       dateOfArrival: Date.now(),
       primaryKey: 1,
     },
-    // vibrate is not always available in NotificationOptions in all environments
-    // @ts-ignore
     vibrate: [100, 50, 100],
     actions: [
       {
@@ -249,21 +241,21 @@ sw.addEventListener('push', (event: PushEvent) => {
   };
   
   event.waitUntil(
-    sw.registration.showNotification('Lojinha do Zé', options)
+    self.registration.showNotification('Lojinha do Zé', options)
   );
 });
 
 /**
  * Evento de clique na notificação
  */
-sw.addEventListener('notificationclick', (event: NotificationEvent) => {
+self.addEventListener('notificationclick', (event) => {
   console.log('[SW] Notification click:', event.action);
   
   event.notification.close();
   
   if (event.action === 'explore') {
     event.waitUntil(
-      sw.clients.openWindow('/')
+      self.clients.openWindow('/')
     );
   }
 });
@@ -271,11 +263,11 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 /**
  * Evento de mensagem do cliente
  */
-sw.addEventListener('message', (event: ExtendableMessageEvent) => {
+self.addEventListener('message', (event) => {
   console.log('[SW] Message received:', event.data);
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    sw.skipWaiting();
+    self.skipWaiting();
   }
   
   if (event.data && event.data.type === 'GET_VERSION') {

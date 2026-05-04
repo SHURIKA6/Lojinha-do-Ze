@@ -13,14 +13,30 @@ export interface LoginResponse {
   token?: string;
 }
 
+export interface SetupPasswordPayload {
+  token: string;
+  password: string;
+}
+
+export interface ChangePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  expiresIn?: number;
+}
+
 export async function login(identifier: string, password: string): Promise<LoginResponse> {
-  const res = await request<any>('/auth/login', {
+  const res = await request<LoginResponse | ApiResponse<LoginResponse>>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ identifier, password }),
   });
-  if (res && (res.user || res.token)) return res;
-  if (res?.data) return res.data;
-  throw new Error(res?.message || 'Erro ao fazer login');
+  
+  if (res && (res as LoginResponse).user) return res as LoginResponse;
+  if (res && (res as ApiResponse<LoginResponse>).data) return (res as ApiResponse<LoginResponse>).data as LoginResponse;
+  throw new Error((res as ApiResponse)?.message || 'Erro ao fazer login');
 }
 
 export async function logout(): Promise<void> {
@@ -28,29 +44,35 @@ export async function logout(): Promise<void> {
 }
 
 export async function getMe(): Promise<User> {
-  const res = await request<any>('/auth/me');
-  if (res?.user) return res.user;
-  if (res?.data?.user) return res.data.user;
-  throw new Error(res?.message || 'Sessão inválida');
+  const res = await request<User | ApiResponse<User>>('/auth/me');
+  
+  if (res && (res as User).id) return res as User;
+  if (res && (res as ApiResponse<User>).data) return (res as ApiResponse<User>).data as User;
+  throw new Error((res as ApiResponse)?.message || 'Sessão inválida');
 }
 
-export async function setupPassword(payload: any): Promise<any> {
-  const res = await request<any>('/auth/setup-password', {
+export async function setupPassword(payload: SetupPasswordPayload): Promise<ApiResponse<void>> {
+  const res = await request<ApiResponse<void>>('/auth/setup-password', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-  return res?.data !== undefined ? res.data : res;
+  
+  return res as ApiResponse<void>;
 }
 
-export async function changePassword(payload: any): Promise<any> {
-  const res = await request<any>('/auth/change-password', {
+export async function changePassword(payload: ChangePasswordPayload): Promise<ApiResponse<void>> {
+  const res = await request<ApiResponse<void>>('/auth/change-password', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-  return res?.data !== undefined ? res.data : res;
+  
+  return res as ApiResponse<void>;
 }
 
-export async function refreshToken(): Promise<any> {
-  const res = await request<any>('/auth/refresh', { method: 'POST' });
-  return res?.data !== undefined ? res.data : res;
+export async function refreshToken(): Promise<RefreshTokenResponse> {
+  const res = await request<RefreshTokenResponse | ApiResponse<RefreshTokenResponse>>('/auth/refresh', { method: 'POST' });
+  
+  if (res && (res as RefreshTokenResponse).token) return res as RefreshTokenResponse;
+  if (res && (res as ApiResponse<RefreshTokenResponse>).data) return (res as ApiResponse<RefreshTokenResponse>).data as RefreshTokenResponse;
+  throw new Error((res as ApiResponse)?.message || 'Erro ao renovar token');
 }

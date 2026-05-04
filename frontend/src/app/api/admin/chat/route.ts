@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
+    const cookieHeader = req.headers.get('cookie') || '';
+    const sessionCookie = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('lz_session='));
+    
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+    }
+
+    const sessionValue = sessionCookie.split('=')[1];
+    const sessionParts = sessionValue.split('|');
+    
+    if (sessionParts.length < 3) {
+      return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 });
+    }
+
+    const role = sessionParts[2];
+    
+    if (role !== 'admin') {
+      return NextResponse.json({ error: 'Acesso negado. Privilégios administrativos necessários.' }, { status: 403 });
+    }
+
     const { message } = await req.json();
     
     // URL do seu Back-end no Cloudflare

@@ -32,18 +32,41 @@ function buildProxyHeaders(request: NextRequest): Record<string, string> {
 
 /**
  * Cria uma resposta Next.js que repassa os Set-Cookie e demais headers do backend.
+ * Suporta tanto respostas JSON quanto downloads de arquivos (blob).
  */
-function buildProxyResponse(backendResponse: Response, body: any): NextResponse {
-  const response = new NextResponse(JSON.stringify(body), {
-    status: backendResponse.status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+function buildProxyResponse(backendResponse: Response, body: any, isFileDownload: boolean = false): NextResponse {
+  let response: NextResponse;
+  
+  if (isFileDownload) {
+    // Para downloads de arquivos, repassa o blob diretamente
+    response = new NextResponse(body, {
+      status: backendResponse.status,
+      headers: {},
+    });
+    
+    // Repassa headers importantes para downloads
+    const contentType = backendResponse.headers.get('content-type');
+    const contentDisposition = backendResponse.headers.get('content-disposition');
+    
+    if (contentType) {
+      response.headers.set('Content-Type', contentType);
+    }
+    if (contentDisposition) {
+      response.headers.set('Content-Disposition', contentDisposition);
+    }
+  } else {
+    // Para respostas JSON normais
+    response = new NextResponse(JSON.stringify(body), {
+      status: backendResponse.status,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
 
   // Repassar todos os Set-Cookie do backend para o browser
-  const setCookies = (backendResponse.headers as any).getSetCookie?.() 
-    ?? backendResponse.headers.get('set-cookie')?.split(/,(?=\s*\w+=)/) 
+  const setCookies = (backendResponse.headers as any).getSetCookie?.()
+    ?? backendResponse.headers.get('set-cookie')?.split(/,(?=\s*\w+=)/)
     ?? [];
 
   for (let cookie of setCookies) {
@@ -59,21 +82,41 @@ function buildProxyResponse(backendResponse: Response, body: any): NextResponse 
   return response;
 }
 
-async function parseBackendResponse(response: Response): Promise<any> {
+async function parseBackendResponse(response: Response): Promise<{ data: any; isFile: boolean }> {
   const contentType = response.headers.get('content-type') || '';
+  const contentDisposition = response.headers.get('content-disposition') || '';
+  
+  // Verifica se é um download de arquivo (CSV, PDF, etc)
+  const isFileDownload =
+    contentType.includes('text/csv') ||
+    contentType.includes('application/pdf') ||
+    contentType.includes('application/octet-stream') ||
+    contentDisposition.includes('attachment') ||
+    contentDisposition.includes('filename');
+  
+  if (isFileDownload) {
+    // Para arquivos, retorna o blob diretamente
+    try {
+      const blob = await response.blob();
+      return { data: blob, isFile: true };
+    } catch {
+      return { data: { error: 'Erro ao processar download do arquivo' }, isFile: false };
+    }
+  }
+  
   if (contentType.includes('application/json')) {
     try {
-      return await response.json();
+      return { data: await response.json(), isFile: false };
     } catch {
-      return { error: 'Resposta inválida do servidor' };
+      return { data: { error: 'Resposta inválida do servidor' }, isFile: false };
     }
   }
 
   try {
     const text = await response.text();
-    return { error: text || 'Erro desconhecido' };
+    return { data: { error: text || 'Erro desconhecido' }, isFile: false };
   } catch {
-    return { error: 'Erro ao ler resposta do servidor' };
+    return { data: { error: 'Erro ao ler resposta do servidor' }, isFile: false };
   }
 }
 
@@ -98,7 +141,7 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
   const fetchOptions: RequestInit = {
     method,
     headers,
-    // Retirado timeout fixo para deixar o Next.js gerenciar o limite da function
+    // Retirado timeout fixo para deixar o Next.js gerenciar o limite da função
     // signal: AbortSignal.timeout(10000),
   };
 
@@ -122,27 +165,31 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
     const response = await fetch(backendUrl, fetchOptions);
     const duration = Date.now() - startTime;
 
-    // Log consolidado para monitoramento de performance
-    console.log(`[Proxy] ${method} ${parsedPath} → ${response.status} (${duration}ms)`);
+    // Log apenas em desenvolvimento
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Proxy] ${method} ${parsedPath} → ${response.status} (${duration}ms)`);
+      
+      const setCookieHeaders = (response.headers as any).getSetCookie?.() ?? [];
+      if (setCookieHeaders.length > 0) {
+        console.log(`[Proxy]   Set-Cookie: ${setCookieHeaders.length} cookies relaying...`);
+      }
 
-    // Debug: log Set-Cookie relay
-    const setCookieHeaders = (response.headers as any).getSetCookie?.() ?? [];
-    if (setCookieHeaders.length > 0) {
-      console.log(`[Proxy]   Set-Cookie: ${setCookieHeaders.length} cookies relaying...`);
+      if (response.status === 401) {
+        const cookieHeader = headers['cookie'] || headers['Cookie'] || '';
+        console.log(`[Proxy]   401 detectado — cookie presente: ${cookieHeader.includes('lz_session')}`);
+      }
     }
 
-    if (response.status === 401) {
-      const cookieHeader = headers['cookie'] || headers['Cookie'] || '';
-      console.log(`[Proxy]   401 detectado — cookie presente: ${cookieHeader.includes('lz_session')}`);
-    }
-
-    const data = await parseBackendResponse(response);
-    return buildProxyResponse(response, data);
+    const { data, isFile } = await parseBackendResponse(response);
+    return buildProxyResponse(response, data, isFile);
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.error(`[Proxy] Timeout na requisição (${method} ${backendUrl})`);
-    } else {
-      console.error(`[Proxy] Erro na requisição (${method} ${backendUrl}):`, error.message);
+    // Log de erro apenas em desenvolvimento
+    if (process.env.NODE_ENV !== 'production') {
+      if (error.name === 'AbortError') {
+        console.error(`[Proxy] Timeout na requisição (${method} ${backendUrl})`);
+      } else {
+        console.error(`[Proxy] Erro na requisição (${method} ${backendUrl}):`, error.message);
+      }
     }
     
     // Tentar porta alternativa em desenvolvimento se a primeira falhar
@@ -150,12 +197,16 @@ async function proxyRequest(request: NextRequest, params: any, method: string): 
       const fallbackPort = '8788';
       const fallbackUrl = backendUrl.replace(':8787', `:${fallbackPort}`);
       try {
-        console.log(`Tentando porta fallback ${fallbackPort}...`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`Tentando porta fallback ${fallbackPort}...`);
+        }
         const response = await fetch(fallbackUrl, fetchOptions);
-        const data = await parseBackendResponse(response);
-        return buildProxyResponse(response, data);
+        const { data, isFile } = await parseBackendResponse(response);
+        return buildProxyResponse(response, data, isFile);
       } catch (fallbackError: any) {
-        console.error(`Fallback error:`, fallbackError?.message || fallbackError);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(`Fallback error:`, fallbackError?.message || fallbackError);
+        }
       }
     }
 

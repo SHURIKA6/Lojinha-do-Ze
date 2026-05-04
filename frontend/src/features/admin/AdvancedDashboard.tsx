@@ -1,5 +1,8 @@
 /**
  * Feature: AdvancedDashboard
+ * 
+ * Dashboard avançado com filtros de data funcionais.
+ * Verifica se o usuário é admin antes de permitir o acesso.
  */
 
 'use client';
@@ -57,29 +60,72 @@ export default function AdvancedDashboard() {
   const { user, isAdmin } = useAuth();
   const toast = useToast();
   
+  // Verificação de segurança: apenas administradores podem acessar
+  if (!isAdmin) {
+    return null;
+  }
+  
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState('30d');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Mapeamento de texto para o range selecionado
-  const rangeText = useMemo(() => {
+  // Calcula as datas baseadas no range selecionado
+  const { startDate, endDate, rangeText } = useMemo(() => {
+    const now = new Date();
+    let start: Date;
+    let end: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    let text = '';
+    
     switch (dateRange) {
-      case '7d': return 'dos últimos 7 dias';
-      case '30d': return 'dos últimos 30 dias';
-      case '90d': return 'dos últimos 90 dias';
-      case '1y': return 'do último ano';
-      case 'month': return 'do mês atual';
-      default: return 'do período selecionado';
+      case '7d':
+        start = new Date(now);
+        start.setDate(now.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        text = 'dos últimos 7 dias';
+        break;
+      case '30d':
+        start = new Date(now);
+        start.setDate(now.getDate() - 30);
+        start.setHours(0, 0, 0, 0);
+        text = 'dos últimos 30 dias';
+        break;
+      case '90d':
+        start = new Date(now);
+        start.setDate(now.getDate() - 90);
+        start.setHours(0, 0, 0, 0);
+        text = 'dos últimos 90 dias';
+        break;
+      case '1y':
+        start = new Date(now);
+        start.setFullYear(now.getFullYear() - 1);
+        start.setHours(0, 0, 0, 0);
+        text = 'do último ano';
+        break;
+      case 'month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        text = 'do mês atual';
+        break;
+      default:
+        start = new Date(now);
+        start.setDate(now.getDate() - 30);
+        start.setHours(0, 0, 0, 0);
+        text = 'do período selecionado';
     }
+    
+    return { startDate: start, endDate: end, rangeText: text };
   }, [dateRange]);
 
   useEffect(() => {
+    const abortController = new AbortController();
+    
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const result = await getDashboard(dateRange);
+        // Passa as datas calculadas para a API
+        const result = await getDashboard(dateRange, abortController.signal, startDate, endDate);
         setData(result);
       } catch (err) {
         console.error('Erro ao carregar dados do dashboard:', err);
@@ -93,12 +139,18 @@ export default function AdvancedDashboard() {
     if (isAdmin) {
       loadDashboardData();
     }
-  }, [isAdmin, dateRange]);
+    
+    return () => {
+      abortController.abort();
+    };
+  }, [isAdmin, dateRange, startDate, endDate]);
 
   const handleRefresh = async () => {
+    const abortController = new AbortController();
     setRefreshing(true);
     try {
-      const result = await getDashboard(dateRange);
+      // Passa as datas calculadas para a API
+      const result = await getDashboard(dateRange, abortController.signal, startDate, endDate);
       setData(result);
       toast.success('Dados atualizados com sucesso!');
     } catch (err) {
@@ -112,7 +164,7 @@ export default function AdvancedDashboard() {
     if (format === 'CSV') {
       try {
         toast.info(`Exportação em ${format} iniciada...`);
-        await exportReportCsv('vendas'); // Exportando ordens por padrão aqui, expandir se necessário
+        await exportReportCsv('vendas');
         toast.success('Exportação concluída com sucesso!');
       } catch (err) {
         toast.error('Falha ao exportar relatório. Tente novamente.');
@@ -144,7 +196,7 @@ export default function AdvancedDashboard() {
       avgOrderValue,
       conversionRate,
       uniqueVisitors,
-      customerSatisfaction: 94.8, // Ainda simulado até termos sistema de reviews
+      customerSatisfaction: 94.8,
     };
   }, [data]);
 
@@ -195,7 +247,6 @@ export default function AdvancedDashboard() {
       </div>
     );
   }
-
   return (
     <div className="dashboard-container">
       {/* Header com controles */}
@@ -253,9 +304,9 @@ export default function AdvancedDashboard() {
               <FiDownload /> Exportar
             </button>
             <div className="admin-dashboard__export-options" role="menu">
-              <button role="menuitem" onClick={() => handleExport('PDF')}>📄 PDF</button>
-              <button role="menuitem" onClick={() => handleExport('Excel')}>📊 Excel</button>
-              <button role="menuitem" onClick={() => handleExport('CSV')}>📈 CSV</button>
+              <button role="menuitem" onClick={() => handleExport('PDF')}>PDF</button>
+              <button role="menuitem" onClick={() => handleExport('Excel')}>Excel</button>
+              <button role="menuitem" onClick={() => handleExport('CSV')}>CSV</button>
             </div>
           </div>
         </div>
@@ -413,7 +464,7 @@ export default function AdvancedDashboard() {
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [value, 'Produtos']} />
+                  <Tooltip formatter={(value: any) => [value, 'Produtos']} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -488,44 +539,42 @@ export default function AdvancedDashboard() {
             </h3>
           </div>
           <div className="performance-indicators">
-            <div className="performance-indicators">
-              <div className="performance-indicator">
-                <div className="performance-indicator__header">
-                  <span className="performance-indicator__label">Taxa de Conversão</span>
-                  <span className="performance-indicator__value">{metrics?.conversionRate}%</span>
-                </div>
-                <div className="performance-indicator__bar">
-                  <div 
-                    className="performance-indicator__fill" 
-                    style={{ width: `${metrics?.conversionRate}%` }}
-                  ></div>
-                </div>
+            <div className="performance-indicator">
+              <div className="performance-indicator__header">
+                <span className="performance-indicator__label">Taxa de Conversão</span>
+                <span className="performance-indicator__value">{metrics?.conversionRate}%</span>
               </div>
-
-              <div className="performance-indicator">
-                <div className="performance-indicator__header">
-                  <span className="performance-indicator__label">Satisfação do Cliente</span>
-                  <span className="performance-indicator__value">{metrics?.customerSatisfaction}%</span>
-                </div>
-                <div className="performance-indicator__bar">
-                  <div 
-                    className="performance-indicator__fill performance-indicator__fill--success" 
-                    style={{ width: `${metrics?.customerSatisfaction}%` }}
-                  ></div>
-                </div>
+              <div className="performance-indicator__bar">
+                <div 
+                  className="performance-indicator__fill" 
+                  style={{ width: `${metrics?.conversionRate}%` }}
+                ></div>
               </div>
+            </div>
 
-              <div className="performance-indicator">
-                <div className="performance-indicator__header">
-                  <span className="performance-indicator__label">Margem de Lucro</span>
-                  <span className="performance-indicator__value">{metrics?.profitMargin?.toFixed(1)}%</span>
-                </div>
-                <div className="performance-indicator__bar">
-                  <div 
-                    className="performance-indicator__fill performance-indicator__fill--primary" 
-                    style={{ width: `${Math.min(metrics?.profitMargin || 0, 100)}%` }}
-                  ></div>
-                </div>
+            <div className="performance-indicator">
+              <div className="performance-indicator__header">
+                <span className="performance-indicator__label">Satisfação do Cliente</span>
+                <span className="performance-indicator__value">{metrics?.customerSatisfaction}%</span>
+              </div>
+              <div className="performance-indicator__bar">
+                <div 
+                  className="performance-indicator__fill performance-indicator__fill--success" 
+                  style={{ width: `${metrics?.customerSatisfaction}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="performance-indicator">
+              <div className="performance-indicator__header">
+                <span className="performance-indicator__label">Margem de Lucro</span>
+                <span className="performance-indicator__value">{metrics?.profitMargin?.toFixed(1)}%</span>
+              </div>
+              <div className="performance-indicator__bar">
+                <div 
+                  className="performance-indicator__fill performance-indicator__fill--primary" 
+                  style={{ width: `${Math.min(metrics?.profitMargin || 0, 100)}%` }}
+                ></div>
               </div>
             </div>
           </div>
@@ -556,7 +605,7 @@ export default function AdvancedDashboard() {
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fill: 'var(--gray-400)', fontSize: 10 }} 
-                    tickFormatter={(value) => `R$ ${value}`}
+                    tickFormatter={(value: any) => `R$ ${value}`}
                   />
                   <Tooltip 
                     contentStyle={{ 

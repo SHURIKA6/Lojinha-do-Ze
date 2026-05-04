@@ -16,6 +16,7 @@ export interface CatalogParams {
   minPrice?: number;
   maxPrice?: number;
   sortBy?: string;
+  signal?: AbortSignal;
 }
 
 export interface CatalogCategory {
@@ -41,5 +42,6 @@ export function getCatalog(params: CatalogParams = {}): Promise<CatalogResponse>
   if (params.sortBy) query.set('sortBy', params.sortBy);
 
   const queryString = query.toString();
-  return request<CatalogResponse>(`/catalog${queryString ? `?${queryString}` : ''}`);
+  const options: RequestInit = params.signal ? { signal: params.signal } : {};
+  return request<CatalogResponse>(`/catalog${queryString ? `?${queryString}` : ''}`, options);
 }

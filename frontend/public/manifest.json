@@ -9,6 +9,14 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "pt-BR",
+  "user_preferences": {
+    "color_scheme": {
+      "dark": {
+        "theme_color": "#1a202c",
+        "background_color": "#1a202c"
+      }
+    }
+  },
   "categories": ["shopping", "health"],
   "icons": [
     {

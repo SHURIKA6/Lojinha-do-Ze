@@ -39,7 +39,7 @@ export interface TrackEventData {
   eventType: string;
   sessionId: string;
   pageUrl: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
 export async function trackEvent(data: TrackEventData): Promise<void> {

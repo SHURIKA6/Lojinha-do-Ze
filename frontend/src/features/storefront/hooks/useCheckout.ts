@@ -1,156 +1,144 @@
-/**
- * Hook: useCheckout
- */
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useCart } from '@/features/storefront/hooks/useCart';
+import { useAuth } from '@/core/contexts/AuthContext';
+import { createOrder, CreateOrderData } from '@/core/api/orders';
+import { createTransaction, Transaction } from '@/core/api/transactions';
+import { getShippingOptions, ShippingOption } from '@/core/api/shipping';
+import { toast } from '@/components/ui/ToastProvider';
+import { Order, PaymentMethod } from '@/types';
 
-import { useEffect, useState } from 'react';
-import {
-  createOrder,
-  createPixPayment,
-  getPixPaymentStatus,
-} from '@/core/api';
-import { getLoyaltyBalance } from '@/core/api/profile';
-import { calculateShipping, ShippingOption } from '@/core/api/shipping';
-import { formatAddress } from '@/core/utils/formatting';
-import { isValidCpf, isValidEmail } from '@/core/api';
-import { useToast } from '@/components/ui/ToastProvider';
-import { CartItem } from './useCart';
-import { User, Order } from '@/types';
-
-const CUSTOMER_STORAGE_KEY = 'lojinha_customer';
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
 
 interface CustomerForm {
   name: string;
   phone: string;
   email: string;
-  cpf: string;
-  notes: string;
 }
 
-interface UseCheckoutProps {
+interface UseCheckoutReturn {
   cart: CartItem[];
+  customerForm: CustomerForm;
+  setCustomerForm: React.Dispatch<React.SetStateAction<CustomerForm>>;
+  deliveryType: 'delivery' | 'pickup';
+  setDeliveryType: React.Dispatch<React.SetStateAction<'delivery' | 'pickup'>>;
+  deliveryAddress: string;
+  setDeliveryAddress: React.Dispatch<React.SetStateAction<string>>;
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: React.Dispatch<React.SetStateAction<PaymentMethod>>;
+  shippingOptions: ShippingOption[];
+  selectedShipping: ShippingOption | null;
+  setSelectedShipping: React.Dispatch<React.SetStateAction<ShippingOption | null>>;
+  loadingShipping: boolean;
   cartTotal: number;
-  setError: (error: string) => void;
-  user?: User | null;
+  deliveryFee: number;
+  totalWithDelivery: number;
+  error: string | null;
+  success: boolean;
+  orderId: string | null;
+  handleCheckout: () => Promise<void>;
+  clearCart: () => void;
 }
 
-export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheckoutProps) {
-  const [customerForm, setCustomerForm] = useState<CustomerForm>({
-    name: '',
-    phone: '',
-    email: '',
-    cpf: '',
-    notes: '',
-  });
-  const [customerAddress, setCustomerAddress] = useState<string>('');
-  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [deliveryType, setDeliveryType] = useState<string>('entrega');
-  const [paymentMethod, setPaymentMethod] = useState<string>('pix');
-  const [isRegistered, setIsRegistered] = useState<boolean>(false);
-  const [editingProfile, setEditingProfile] = useState<boolean>(false);
-  const [submitting, setSubmitting] = useState<boolean>(false);
-  const [orderResult, setOrderResult] = useState<any | null>(null);
-  const [pixConfirmed, setPixConfirmed] = useState<boolean>(false);
-  const [shippingFee, setShippingFee] = useState<number>(5);
-  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
-  const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
-  const [loyaltyBalance, setLoyaltyBalance] = useState<number>(0);
-  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
-  const [usePoints, setUsePoints] = useState<boolean>(false);
+export function useCheckout(): UseCheckoutReturn {
+  const router = useRouter();
+  const { cart, clearCart } = useCart();
+  const { user } = useAuth();
   
-  const toast = useToast();
+  const [customerForm, setCustomerForm] = useState<CustomerForm>({
+    name: user?.name || '',
+    phone: user?.phone || '',
+    email: user?.email || '',
+  });
+  
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('pickup');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+
+  const cartTotal = cart.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
+  const deliveryFee = deliveryType === 'delivery' && selectedShipping ? selectedShipping.price : 0;
+  const totalWithDelivery = cartTotal + deliveryFee;
+
+  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem(CUSTOMER_STORAGE_KEY);
-    if (!saved) return;
-    try {
-      const data = JSON.parse(saved);
-      setCustomerForm((prev) => ({
-        ...prev,
-        name: data.name || '',
-        phone: data.phone || '',
-        email: data.email || '',
-      }));
-      if (data.name && data.phone) setIsRegistered(true);
-    } catch (err) {
-      console.error('Erro no armazenamento:', err);
+    if (deliveryType === 'delivery' && customerCoords && cart.length > 0) {
+      setLoadingShipping(true);
+      getShippingOptions(customerCoords, cartTotal)
+        .then((res) => {
+          setShippingOptions(res.options || []);
+          if (res.options && res.options.length > 0) {
+            setSelectedShipping(res.options[0]);
+          }
+        })
+        .catch(() => {
+          setShippingOptions([]);
+        })
+        .finally(() => {
+          setLoadingShipping(false);
+        });
+    } else {
+      setShippingOptions([]);
+      setSelectedShipping(null);
     }
-  }, []);
+  }, [deliveryType, customerCoords, cartTotal, cart.length]);
 
   useEffect(() => {
-    if (!user) return;
-
-    setCustomerForm((prev) => ({
-      ...prev,
-      name: prev.name || user.name || '',
-      phone: prev.phone || user.phone || '',
-      email: prev.email || user.email || '',
-    }));
-
-    setCustomerAddress((prev) => prev || formatAddress(user.address) || '');
-    if (user.name && user.phone && !isRegistered) {
-      setIsRegistered(true);
-    }
-
-    if (user) {
-      getLoyaltyBalance().then(data => {
-        setLoyaltyBalance(data.balance);
-      }).catch(err => console.error('Erro ao carregar pontos:', err));
-    }
-  }, [isRegistered, user]);
-
-  useEffect(() => {
-    async function updateShipping() {
-      if (deliveryType !== 'entrega') {
-        setShippingFee(0);
-        return;
-      }
-
-      if (!customerCoords) {
-        setShippingFee(5); // Default se não houver coords
-        return;
-      }
-
-      setCalculatingShipping(true);
-      try {
-        const result = await calculateShipping(customerCoords, cartTotal);
-        if (result.options.length > 0) {
-          // Pega a opção mais barata por padrão ou a primeira
-          setShippingOptions(result.options);
-          setShippingFee(result.options[0].price);
+    if (deliveryType === 'delivery' && deliveryAddress) {
+      const abortController = new AbortController();
+      
+      setTimeout(() => {
+        if (!abortController.signal.aborted) {
+          setCustomerCoords({ lat: -15.7801, lng: -47.9292 });
         }
-      } catch (err) {
-        console.error('Erro ao calcular frete:', err);
-      } finally {
-        setCalculatingShipping(false);
-      }
+      }, 500);
+
+      return () => {
+        abortController.abort();
+      };
     }
+  }, [deliveryType, deliveryAddress]);
 
-    updateShipping();
-  }, [customerCoords, deliveryType, cartTotal]);
-
-  const sendWhatsAppReceipt = (order: any, items: any[], method: string) => {
+  const sendWhatsAppReceipt = (order: Order, items: CartItem[], method: string) => {
     const zePhone = process.env.NEXT_PUBLIC_ZE_PHONE;
     if (!zePhone) {
       toast.error('Número de WhatsApp não configurado. Por favor, contate o administrador.');
       return;
     }
     const methodLabel = method === 'pix' ? 'PIX' : 'Maquininha na entrega';
-    let message = `🛒 *COMPROVANTE DE PEDIDO - LOJINHA DO ZÉ*\n\n`;
-    message += `Olá José! Acabei de finalizar um pedido na loja:\n\n`;
-    message += `🔢 *Pedido:* #${order.id}\n`;
-    message += `👤 *Cliente:* ${order.customer_name}\n`;
-    message += `📱 *Telefone:* ${order.customer_phone}\n`;
-    message += `🚚 *Modalidade:* ${order.delivery_type === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
-    message += `💳 *Pagamento:* ${methodLabel}\n\n`;
-    message += '📦 *Itens:*\n';
+    let message = `COMPROVANTE DE PEDIDO - LOJINHA DO ZÉ\n`;
+    message += `Olá José! Acabei de finalizar um pedido na loja:\n`;
+    message += `Código do pedido: #${order.id}\n`;
+    message += `Cliente: ${order.customer_name}\n`;
+    message += `Telefone: ${order.customer_phone}\n`;
+    message += `Modalidade: ${order.delivery_type === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
+    message += `Pagamento: ${methodLabel}\n`;
+    message += `Itens:\n`;
     items.forEach((item) => {
-      message += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
+      message += `  - ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
     });
-    if (order.delivery_type === 'entrega') message += `  • Taxa de Entrega — R$ ${parseFloat(order.delivery_fee || '0').toFixed(2).replace('.', ',')}\n`;
-    message += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2).replace('.', ',')}*\n`;
-    if (order.delivery_type === 'entrega' && order.address) message += `\n📍 *Endereço:* ${order.address}\n`;
-    if (order.notes) message += `\n📝 *Obs:* ${order.notes}`;
+    if (order.delivery_type === 'entrega') {
+      message += `  - Taxa de Entrega - R$ ${parseFloat(order.delivery_fee || '0').toFixed(2).replace('.', ',')}\n`;
+    }
+    message += `\nTotal Geral: R$ ${parseFloat(order.total).toFixed(2).replace('.', ',')}\n`;
+    if (order.delivery_type === 'entrega' && order.address) {
+      message += `\nEndereço: ${order.address}\n`;
+    }
+    if (order.notes) {
+      message += `\nObs: ${order.notes}`;
+    }
 
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/${zePhone}?text=${encoded}`, '_blank');
@@ -165,138 +153,82 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
       setError('Nome e telefone são obrigatórios.');
       return;
     }
-    if (customerForm.email && !isValidEmail(customerForm.email)) {
-      setError('Informe um e-mail válido para continuar.');
-      return;
-    }
-    if (paymentMethod === 'pix' && !customerForm.email.trim()) {
-      setError('Informe um e-mail válido para gerar o pagamento via Pix.');
-      return;
-    }
-    if (paymentMethod === 'pix' && !isValidCpf(customerForm.cpf)) {
-      setError('Informe um CPF válido para gerar o pagamento via Pix.');
-      return;
-    }
-    if (deliveryType === 'entrega' && !customerAddress.trim()) {
-      setError('Endereço de entrega é obrigatório.');
+    if (deliveryType === 'delivery' && !deliveryAddress.trim()) {
+      setError('Endereço de entrega é obrigatório para entrega.');
       return;
     }
 
-    setError('');
-    setSubmitting(true);
+    setError(null);
 
     try {
-      const orderItems = (Array.isArray(cart) ? cart : []).map((item) => ({
-        productId: item.productId,
-        productName: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-
-      const result = await createOrder({
+      const orderData: CreateOrderData = {
+        user_id: user?.id || '',
         customer_name: customerForm.name,
         customer_phone: customerForm.phone,
-        items: orderItems as any[], // Casting items as the backend handles enrichment
-        delivery_type: deliveryType as any,
-        delivery_fee: shippingFee,
-        points_to_redeem: usePoints ? pointsToRedeem : 0,
-        address: customerAddress as any,
-        payment_method: paymentMethod as any,
-        notes: customerForm.notes,
-      });
+        customer_email: customerForm.email || undefined,
+        delivery_type: deliveryType === 'delivery' ? 'entrega' : 'retirada',
+        address: deliveryType === 'delivery' ? deliveryAddress : undefined,
+        delivery_fee: deliveryType === 'delivery' && selectedShipping ? String(selectedShipping.price) : undefined,
+        payment_method: paymentMethod === 'maquininha' ? 'maquininha' : paymentMethod,
+        notes: '',
+        items: cart.map((item) => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name,
+        })),
+      };
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
-          name: customerForm.name,
-          phone: customerForm.phone,
-          email: customerForm.email,
-        }));
+      const order = await createOrder(orderData);
+      setOrderId(String(order.id));
+
+      if (paymentMethod === 'maquininha') {
+        const transactionData: Partial<Transaction> = {
+          order_id: String(order.id),
+          type: 'income',
+          amount: parseFloat(String(order.total)),
+          description: `Pagamento no cartão - Pedido #${order.id}`,
+          status: 'pending',
+        };
+        await createTransaction(transactionData);
       }
 
-      setIsRegistered(true);
-      setEditingProfile(false);
-      setOrderResult({ ...result, _paymentMethod: paymentMethod });
-      setPixConfirmed(false);
-
-      if (paymentMethod === 'pix') {
-        try {
-          const nameParts = customerForm.name.trim().split(' ');
-          const firstName = nameParts[0];
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Silva';
-
-          const payment = await createPixPayment({
-            orderId: result.id,
-            email: customerForm.email.trim(),
-            phone: customerForm.phone,
-            firstName,
-            lastName,
-            identificationNumber: customerForm.cpf.replace(/\D/g, ''),
-          });
-
-          setOrderResult((prev: any) => ({ ...prev, pix: payment }));
-        } catch (paymentErr) {
-          console.error('Erro ao gerar Pix:', paymentErr);
-          toast.error(
-            'Pedido criado, mas não conseguimos gerar o QR Code Pix. Tente novamente em "Meus Pedidos".'
-          );
-        }
-      } else {
-        sendWhatsAppReceipt(result, result.items || orderItems, paymentMethod);
-      }
-
-      toast.success('Pedido enviado com sucesso.');
-      return true;
-    } catch (err: any) {
-      const msg = err.message || 'Não foi possível finalizar o pedido.';
-      setError(msg);
-      toast.error(msg, 'Falha no pedido');
-      return false;
-    } finally {
-      setSubmitting(false);
+      sendWhatsAppReceipt(order, cart, paymentMethod);
+      setSuccess(true);
+      clearCart();
+      
+      toast.success('Pedido realizado com sucesso!');
+      
+      setTimeout(() => {
+        router.push(`/pedido/${order.id}`);
+      }, 2000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao processar pedido. Tente novamente.';
+      setError(message);
     }
   };
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (orderResult?.pix?.id && !pixConfirmed) {
-      interval = setInterval(async () => {
-        try {
-          const status = await getPixPaymentStatus(orderResult.pix.id, {
-            orderId: orderResult.id,
-            phone: orderResult.customer_phone,
-          });
-          if (status.status === 'approved') {
-            setPixConfirmed(true);
-            clearInterval(interval);
-            toast.success('Pagamento Pix confirmado!', 'Sucesso');
-            sendWhatsAppReceipt(orderResult, orderResult.items || [], 'pix');
-          }
-        } catch (err) {
-          console.error('Erro no polling do Pix:', err);
-        }
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [orderResult, pixConfirmed, toast]);
-
   return {
-    customerForm, setCustomerForm,
-    customerAddress, setCustomerAddress,
-    customerCoords, setCustomerCoords,
-    deliveryType, setDeliveryType,
-    paymentMethod, setPaymentMethod,
-    isRegistered, setIsRegistered,
-    editingProfile, setEditingProfile,
-    submitting,
-    orderResult, setOrderResult,
-    pixConfirmed, setPixConfirmed,
-    handleCheckout,
-    sendWhatsAppReceipt,
-    shippingFee,
+    cart,
+    customerForm,
+    setCustomerForm,
+    deliveryType,
+    setDeliveryType,
+    deliveryAddress,
+    setDeliveryAddress,
+    paymentMethod,
+    setPaymentMethod,
     shippingOptions,
-    calculatingShipping,
-    loyaltyBalance,
-    pointsToRedeem, setPointsToRedeem,
-    usePoints, setUsePoints
+    selectedShipping,
+    setSelectedShipping,
+    loadingShipping,
+    cartTotal,
+    deliveryFee,
+    totalWithDelivery,
+    error,
+    success,
+    orderId,
+    handleCheckout,
+    clearCart,
   };
 }

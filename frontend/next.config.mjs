@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   poweredByHeader: false,
   
   // PWA Configuration
@@ -13,14 +14,47 @@ const nextConfig = {
   // Headers de segurança
   async headers() {
     const isDev = process.env.NODE_ENV === 'development';
+    const isProd = process.env.NODE_ENV === 'production';
+    
+    // Define domínios confiáveis para conexões e imagens
+    const backendUrl = process.env.BACKEND_URL || '';
+    const trustedDomains = [
+      "'self'",
+      'https://fonts.googleapis.com',
+      'https://fonts.gstatic.com',
+      'https://r2cdn.perplexity.ai',
+    ];
+    
+    // Adiciona o domínio do backend se configurado
+    if (backendUrl) {
+      try {
+        const url = new URL(backendUrl);
+        trustedDomains.push(url.origin);
+      } catch {
+        // Ignora se a URL for inválida
+      }
+    }
+    
+    // Em desenvolvimento, permite localhost para conexões
+    if (isDev) {
+      trustedDomains.push('http://localhost:*', 'https://localhost:*');
+    }
+    
+    const connectSrc = isProd
+      ? trustedDomains.join(' ')
+      : [...trustedDomains, 'https:'].join(' '); // Em dev, permite https: para flexibilidade
+    
     const cspDirectives = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-      "connect-src 'self' https:",
-      "img-src 'self' data: https:",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      // Remove unsafe-inline e unsafe-eval em produção; em dev mantém unsafe-eval para hot reload se necessário
+      `script-src 'self'${isDev ? " 'unsafe-eval'" : ''}`,
+      `connect-src ${connectSrc}`,
+      `img-src 'self' data: ${trustedDomains.filter(d => !d.includes('fonts')).join(' ')}`,
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // unsafe-inline necessário para styled-jsx do Next.js
       "font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai",
       "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
     ].join('; ');
     
     return [

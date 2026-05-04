@@ -51,7 +51,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
     window.addEventListener('auth:expired', handleExpiredSession);
     return () => window.removeEventListener('auth:expired', handleExpiredSession);
-  }, [user, toast]);
+  }, [user]);
 
   const login = async (identifier: string, password: string) => {
     try {

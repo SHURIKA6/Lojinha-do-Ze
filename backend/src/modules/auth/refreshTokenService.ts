@@ -1,6 +1,10 @@
 /**
  * Serviço de Refresh Tokens para autenticação JWT
  * Permite renovação de sessão sem re-login
+ *
+ * SEGURANÇA: Refresh tokens são armazenados apenas como hash SHA-256 no banco de dados.
+ * O token bruto nunca é persistido, apenas retornado no momento da criação para o cliente.
+ * Isso previne roubo de sessões caso o banco de dados seja comprometido.
  */
 
 import { randomToken, sha256Hex } from '../../core/utils/crypto';
@@ -77,12 +81,13 @@ export class RefreshTokenService {
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
 
     // Armazena no banco de dados (background task se ctx disponível)
+    // IMPORTANTE: tokenHash é usado como id, nunca armazenar o tokenId (token bruto) no banco
     const dbTask = this.db.query(
       `INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, ip_address, user_agent, expires_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [tokenId, userId, sessionId, tokenHash, ipAddress, userAgent, expiresAt]
+      [tokenHash, userId, sessionId, tokenHash, ipAddress, userAgent, expiresAt]
     ).catch((err: any) => {
-      logger.error('Erro ao persistir refresh token no banco', err, { userId, tokenId });
+      logger.error('Erro ao persistir refresh token no banco', err, { userId, tokenHash });
     });
 
     if (ctx?.waitUntil) {
@@ -100,7 +105,7 @@ export class RefreshTokenService {
       ctx
     );
 
-    logger.info('Refresh token criado', { userId, sessionId, tokenId });
+    logger.info('Refresh token criado', { userId, sessionId });
     return tokenId;
   }
 

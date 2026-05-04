@@ -15,6 +15,5 @@ export * from './payments';
 export * from './analytics';
 export * from './client';
 
-// Re-export utilities used by pages that still expect them in the API index
 export * from '../utils/formatting';
 export * from '../utils/validation';

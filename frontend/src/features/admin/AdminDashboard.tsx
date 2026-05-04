@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Dashboard Administrativo
  * 
  * Exibe gráficos, métricas e visão geral
@@ -52,6 +52,8 @@ export default function AdminDashboard() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
+    const abortController = new AbortController();
+    
     async function loadDashboardData() {
       // 1. Tentar carregar do cache para renderização imediata (SWR)
       const cached = localStorage.getItem('lz_dashboard_cache');
@@ -94,11 +96,14 @@ export default function AdminDashboard() {
     if (isAdmin) {
       loadDashboardData();
     }
-  }, [isAdmin, toast]); // Removi 'data' da dependência para evitar loop se fosse o caso, mas 'isAdmin' e 'toast' são estáveis.
+    
+    return () => {
+      abortController.abort();
+    };
+  }, [isAdmin, toast]);
 
   if (isPreviewMode) {
-    return (
-      <div className="admin-preview-wrapper" style={{ 
+    return (      <div className="admin-preview-wrapper" style={{ 
         position: 'fixed', 
         inset: 0, 
         zIndex: 2000, 
@@ -172,9 +177,7 @@ export default function AdminDashboard() {
         </div>
       </div>
     );
-  }
-
-  const metrics = [
+  }  const metrics = [
     {
       label: 'Receita do mês',
       value: data ? formatCurrency(data.monthRevenue) : '—',

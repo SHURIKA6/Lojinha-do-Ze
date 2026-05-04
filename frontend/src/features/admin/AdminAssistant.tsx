@@ -1,10 +1,14 @@
 /**
  * Feature: AdminAssistant
+ * 
+ * Chat assistente exclusivo para administradores.
+ * Verifica se o usuário é admin antes de permitir o acesso.
  */
 
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@/core/contexts/AuthContext';
 import { FiMessageSquare, FiX, FiSend, FiStar } from 'react-icons/fi';
 
 interface Message {
@@ -13,6 +17,7 @@ interface Message {
 }
 
 export default function AdminAssistant() {
+  const { isAdmin, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'bot', content: 'Olá! Sou o Guardião da Lojinha. Como posso te ajudar com os negócios hoje?' }
@@ -20,6 +25,11 @@ export default function AdminAssistant() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Verificação de segurança: apenas administradores podem usar o chat
+  if (!isAdmin) {
+    return null;
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,7 +53,7 @@ export default function AdminAssistant() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ message: userMsg, userRole: user?.role }),
       });
 
       const data = await response.json();

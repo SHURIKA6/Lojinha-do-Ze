@@ -1,12 +1,30 @@
 import { Database, CustomerCreateData, CustomerUpdateData } from '../../core/types';
+import { encryptPII, decryptPII, getPIIKey } from '../../core/utils/crypto';
+
+// Chave de criptografia PII carregada uma única vez e reutilizada
+// Isso evita gerar/importar a chave em cada operação
+let piiKey: CryptoKey | null = null;
+
+/**
+ * Obtém a chave de criptografia PII, carregando-a se necessário.
+ * A chave é armazenada em cache após a primeira obtenção.
+ * @returns CryptoKey para criptografia/descriptografia PII.
+ */
+async function getEncryptionKey(): Promise<CryptoKey> {
+  if (!piiKey) {
+    piiKey = await getPIIKey();
+  }
+  return piiKey;
+}
 
 /**
  * Lista todos os clientes (usuários cadastrados + convidados que fizeram pedidos).
  * Utiliza UNION ALL para combinar dados de users e orders (para guests).
+ * Os campos PII (email, phone, cpf, address) são descriptografados após a leitura.
  * @param db - Conexão com o banco de dados.
  * @param limit - Limite de resultados.
  * @param offset - Deslocamento para paginação.
- * @returns Lista combinada de clientes.
+ * @returns Lista combinada de clientes com PII descriptografada.
  */
 export async function findAllCustomers(db: Database, limit: number, offset: number) {
   const { rows } = await db.query(
@@ -26,14 +44,28 @@ export async function findAllCustomers(db: Database, limit: number, offset: numb
      LIMIT $1 OFFSET $2`,
     [limit, offset]
   );
-  return rows;
+  
+  // Descriptografa os campos PII para cada cliente
+  const key = await getEncryptionKey();
+  const decryptedRows = await Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      email: row.email ? await decryptPII(row.email, key) : null,
+      phone: row.phone ? await decryptPII(row.phone, key) : null,
+      cpf: row.cpf ? await decryptPII(row.cpf, key) : null,
+      address: row.address ? await decryptPII(row.address, key) : null,
+    }))
+  );
+  
+  return decryptedRows;
 }
 
 /**
  * Busca um cliente pelo ID, verificando primeiro na tabela users e depois em orders (para guests).
+ * Os campos PII são descriptografados após a leitura.
  * @param db - Conexão com o banco de dados.
  * @param id - ID do cliente (pode ser UUID de user ou ID de pedido para guests).
- * @returns Dados do cliente ou null se não encontrado.
+ * @returns Dados do cliente com PII descriptografada ou null se não encontrado.
  */
 export async function findCustomerById(db: Database, id: string) {
   const { rows: userRows } = await db.query(
@@ -42,7 +74,16 @@ export async function findCustomerById(db: Database, id: string) {
   );
 
   if (userRows.length) {
-    return userRows[0];
+    // Descriptografa os campos PII
+    const key = await getEncryptionKey();
+    const row = userRows[0];
+    return {
+      ...row,
+      email: row.email ? await decryptPII(row.email, key) : null,
+      phone: row.phone ? await decryptPII(row.phone, key) : null,
+      cpf: row.cpf ? await decryptPII(row.cpf, key) : null,
+      address: row.address ? await decryptPII(row.address, key) : null,
+    };
   }
 
   const { rows: guestRows } = await db.query(
@@ -55,7 +96,18 @@ export async function findCustomerById(db: Database, id: string) {
     [id]
   );
 
-  return guestRows.length ? guestRows[0] : null;
+  if (guestRows.length) {
+    // Descriptografa os campos PII para convidados
+    const key = await getEncryptionKey();
+    const row = guestRows[0];
+    return {
+      ...row,
+      phone: row.phone ? await decryptPII(row.phone, key) : null,
+      address: row.address ? await decryptPII(row.address, key) : null,
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -77,7 +129,7 @@ export async function findOrdersByCustomer(db: Database, id: string, normalizedP
 }
 
 /**
- * Calcula estatísticas de um cliente: total gastado e quantidade de pedidos concluídos.
+ * Calcula estatísticas de um cliente: total gasto e quantidade de pedidos concluídos.
  * @param db - Conexão com o banco de dados.
  * @param id - ID do cliente.
  * @param normalizedPhone - Telefone normalizado para convidados.
@@ -96,29 +148,56 @@ export async function getCustomerStats(db: Database, id: string, normalizedPhone
 
 /**
  * Cria um novo cliente na tabela users.
+ * Os campos PII (email, phone, cpf, address) são criptografados antes de salvar no banco.
  * @param db - Cliente de conexão (pode ser transação).
  * @param data - Dados do cliente a ser criado.
- * @returns Cliente criado com campos retornados.
+ * @returns Cliente criado com campos PII descriptografados para retorno.
  */
 export async function createCustomer(db: Database, data: CustomerCreateData) {
+  const key = await getEncryptionKey();
+  
+  // Criptografa os campos PII antes de salvar
+  const encryptedEmail = data.email ? await encryptPII(data.email, key) : null;
+  const encryptedPhone = data.phone ? await encryptPII(data.phone, key) : null;
+  const encryptedCpf = data.cpf ? await encryptPII(data.cpf, key) : null;
+  const encryptedAddress = data.address ? await encryptPII(data.address, key) : null;
+  
   const { rows } = await db.query(
     `INSERT INTO users (name, email, password, is_temporary_password, role, phone, cpf, address, notes, avatar)
      VALUES ($1, $2, NULL, false, 'customer', $3, $4, $5, $6, $7)
      RETURNING id, name, email, phone, cpf, address, notes, avatar, role, created_at`,
-    [data.name, data.email, data.phone, data.cpf, data.address, data.notes, data.avatar]
+    [data.name, encryptedEmail, encryptedPhone, encryptedCpf, encryptedAddress, data.notes, data.avatar]
   );
-  return rows[0];
+  
+  // Descriptografa os campos para retorno (para manter consistência na API)
+  const row = rows[0];
+  return {
+    ...row,
+    email: row.email ? await decryptPII(row.email, key) : null,
+    phone: row.phone ? await decryptPII(row.phone, key) : null,
+    cpf: row.cpf ? await decryptPII(row.cpf, key) : null,
+    address: row.address ? await decryptPII(row.address, key) : null,
+  };
 }
 
 /**
  * Atualiza os dados de um cliente existente.
  * Apenas os campos fornecidos (não nulos) serão atualizados.
+ * Os campos PII são criptografados antes de salvar e descriptografados após o retorno.
  * @param db - Conexão com o banco de dados.
  * @param id - ID do cliente.
  * @param data - Novos dados do cliente.
- * @returns Cliente atualizado.
+ * @returns Cliente atualizado com PII descriptografada.
  */
 export async function updateCustomer(db: Database, id: string, data: CustomerUpdateData) {
+  const key = await getEncryptionKey();
+  
+  // Criptografa os campos PII se fornecidos
+  const encryptedEmail = data.email ? await encryptPII(data.email, key) : undefined;
+  const encryptedPhone = data.phone ? await encryptPII(data.phone, key) : undefined;
+  const encryptedCpf = data.cpf ? await encryptPII(data.cpf, key) : undefined;
+  const encryptedAddress = data.address ? await encryptPII(data.address, key) : undefined;
+  
   const { rows } = await db.query(
     `UPDATE users SET
        name = COALESCE($1, name),
@@ -131,9 +210,18 @@ export async function updateCustomer(db: Database, id: string, data: CustomerUpd
        updated_at = NOW()
      WHERE id = $8
      RETURNING id, name, email, phone, cpf, address, notes, avatar, role, created_at`,
-    [data.name, data.email, data.phone, data.cpf, data.address, data.notes, data.avatar, id]
+    [data.name, encryptedEmail, encryptedPhone, encryptedCpf, encryptedAddress, data.notes, data.avatar, id]
   );
-  return rows[0];
+  
+  // Descriptografa os campos para retorno
+  const row = rows[0];
+  return {
+    ...row,
+    email: row.email ? await decryptPII(row.email, key) : null,
+    phone: row.phone ? await decryptPII(row.phone, key) : null,
+    cpf: row.cpf ? await decryptPII(row.cpf, key) : null,
+    address: row.address ? await decryptPII(row.address, key) : null,
+  };
 }
 
 /**

@@ -4,9 +4,6 @@
  * Suporta Cloudflare KV para persistência e escalabilidade.
  */
 
-// Debug: check if module is loaded multiple times
-console.log('cacheService module loaded:', Math.random().toFixed(10));
-
 /**
  * Representa uma entrada de cache com seu valor e timestamp de expiração.
  */
@@ -67,15 +64,13 @@ export const cacheService = {
    * @returns O valor em cache ou null se não encontrado/expirado
    */
   get: async (key: string, kv?: KVNamespace, ctx?: ExecutionContext) => {
-    console.log('getSession called:', key, 'sessionCache.size before:', sessionCache.size);
-    const entry = sessionCache.get(key);
+    const entry = cache.get(key);
     if (entry) {
       if (Date.now() > entry.expiry) {
-        sessionCache.delete(key);
+        cache.delete(key);
         metrics.misses++;
       } else {
         metrics.hits++;
-        console.log('getSession found in cache:', key, 'value:', entry.value);
         return entry.value;
       }
     }
@@ -86,8 +81,7 @@ export const cacheService = {
         if (value) {
           metrics.hits++;
           // Populate L1 (1 min TTL)
-          sessionCache.set(key, { value, expiry: Date.now() + 60000 });
-          console.log('getSession found in KV:', key, 'value:', value);
+          cache.set(key, { value, expiry: Date.now() + 60000 });
           return value;
         }
       } catch (e) {
@@ -96,7 +90,6 @@ export const cacheService = {
     }
 
     metrics.misses++;
-    console.log('getSession not found:', key);
     return null;
   },
 
@@ -260,7 +253,6 @@ export const cacheService = {
    * @param ctx - Contexto de execução opcional
    */
   setSession: async (sessionId: string, sessionData: any, ttlSeconds = 3600, kv?: KVNamespace, ctx?: ExecutionContext) => {
-    console.log('setSession called:', sessionId, 'sessionCache.size before:', sessionCache.size);
     if (sessionCache.size >= MAX_SESSION_CACHE_SIZE && !sessionCache.has(sessionId)) {
       const now = Date.now();
       for (const [k, v] of sessionCache.entries()) {
@@ -277,7 +269,6 @@ export const cacheService = {
       value: sessionData,
       expiry: Date.now() + ttlSeconds * 1000,
     });
-    console.log('setSession after set:', sessionId, 'sessionCache.size after:', sessionCache.size);
 
     if (kv) {
       const putOp = async () => {

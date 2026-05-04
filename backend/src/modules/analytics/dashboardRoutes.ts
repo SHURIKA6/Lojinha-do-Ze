@@ -67,41 +67,55 @@ router.use('*', authMiddleware, adminOnly);
 router.get('/', async (c) => {
   try {
     const db = c.get('db');
-    const range = c.req.query('range') || 'month';
-    const allowedRanges = ['7d', '30d', '90d', '1y', 'month'];
-    const validatedRange = allowedRanges.includes(range) ? range : 'month';
     
-    const now = new Date();
+    // Verifica se datas explícitas foram enviadas (prioritário)
+    const startDateParam = c.req.query('startDate');
+    const endDateParam = c.req.query('endDate');
+    
     let startDate: Date;
-    // Define endDate como o fim do dia atual para ranges relativos
-    let endDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    let endDate: Date;
+    
+    if (startDateParam && endDateParam) {
+      // Usa as datas explícitas enviadas pelo frontend
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+    } else {
+      // Fallback para o range (compatibilidade retroativa)
+      const range = c.req.query('range') || 'month';
+      const allowedRanges = ['7d', '30d', '90d', '1y', 'month'];
+      const validatedRange = allowedRanges.includes(range) ? range : 'month';
+      
+      const now = new Date();
+      // Define endDate como o fim do dia atual para ranges relativos
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    switch (validatedRange) {
-      case '7d':
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 7);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case '30d':
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 30);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case '90d':
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 90);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case '1y':
-        startDate = new Date(now);
-        startDate.setFullYear(now.getFullYear() - 1);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case 'month':
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        break;
+      switch (validatedRange) {
+        case '7d':
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 7);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case '30d':
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 30);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case '90d':
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 90);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case '1y':
+          startDate = new Date(now);
+          startDate.setFullYear(now.getFullYear() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'month':
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+          break;
+      }
     }
 
     // Merge all 9 queries into a single statement to minimize round-trips
@@ -120,7 +134,7 @@ router.get('/', async (c) => {
       ),
       total_sales AS (
         SELECT COUNT(*) AS count FROM orders 
-        WHERE status = 'concluido'
+        WHERE status = 'concluido' AND created_at BETWEEN $1 AND $2
       ),
       low_stock_list AS (
         SELECT COALESCE(json_agg(t), '[]'::json) as data FROM (
@@ -131,6 +145,7 @@ router.get('/', async (c) => {
       recent_orders_list AS (
         SELECT COALESCE(json_agg(t), '[]'::json) as data FROM (
           SELECT id, customer_name, delivery_type, status, total FROM orders 
+          WHERE created_at BETWEEN $1 AND $2
           ORDER BY created_at DESC LIMIT 5
         ) t
       ),

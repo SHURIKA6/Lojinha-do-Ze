@@ -1,14 +1,36 @@
 /**
- * Definições de Tipos: index
+ * Definições de Tipos Centralizadas - Lojinha do Zé
+ * 
+ * Este arquivo contém todas as definições de tipos TypeScript utilizadas no frontend.
+ * Segue as regras: código em inglês, comentários em português.
+ * Remove usos de `any` e garante consistência entre frontend e backend.
  */
 
+import React from 'react';
+
 // ============================================
-// Frontend Types - Lojinha do Zé
+// Address Type
 // ============================================
+export interface Address {
+  street: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country?: string;
+}
 
 // ============================================
 // User & Auth Types
 // ============================================
+
+export interface CustomerInvite {
+  token: string;
+  expires_at: string;
+  used: boolean;
+}
 
 export interface User {
   id: string;
@@ -20,7 +42,7 @@ export interface User {
   address?: string | Address;
   avatar?: string;
   notes?: string;
-  total_spent?: number | string;
+  total_spent?: number;
   order_count?: number;
   invite?: CustomerInvite;
   is_active?: boolean;
@@ -28,139 +50,68 @@ export interface User {
   updated_at?: string;
 }
 
-export interface CustomerInvite {
-  setupUrl: string;
-  setupCode: string;
-  expiresAt: string;
-}
-
-export interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  isAdmin: boolean;
-  isCustomer: boolean;
-  login: (identifier: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<User | null>;
-  setUser: (user: User | null) => void;
-}
-
 // ============================================
-// Address Types
-// ============================================
-
-export interface Address {
-  street: string;
-  number: string;
-  complement?: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zipCode: string;
-}
-
-// ============================================
-// Product Types
+// Product Types (compatível com backend)
 // ============================================
 
 export interface Product {
-  id: string;
+  id: string | number;
   code?: string;
   name: string;
   description?: string;
   photo?: string;
-  images?: string[];
-  category: string;
+  category?: string;
   quantity?: number;
-  stock?: number;
   min_stock?: number;
   cost_price?: number;
   sale_price: number;
-  price?: number;
   supplier?: string;
   is_active?: boolean;
-  active?: boolean;
-  in_stock?: boolean;
+  weight?: number;
+  width?: number;
+  height?: number;
+  length?: number;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface ProductCategory {
-  id: string;
-  name: string;
-  slug: string;
-  count?: number;
-}
-
 // ============================================
-// Order Types
+// Order Types (valores em português, compatível com backend)
 // ============================================
 
-export interface OrderItem {
-  productId: string;
-  productName: string;
-  quantity: number;
-  price: number;
-  photo?: string;
-}
+export type OrderStatus = 'pendente' | 'processando' | 'enviado' | 'entregue' | 'cancelado';
+
+export type PaymentMethod = 'pix' | 'cartao_credito' | 'cartao_debito' | 'boleto' | 'dinheiro' | 'transferencia' | 'maquininha';
 
 export interface Order {
-  id: string;
-  customer_id?: string;
-  userId?: string;
+  id: string | number;
+  user_id: string;
   customer_name?: string;
   customer_phone?: string;
-  items: OrderItem[];
-  subtotal?: number;
-  delivery_fee?: number;
-  points_to_redeem?: number;
-  total: number;
+  customer_email?: string;
+  customer?: User;
+  items: Array<{
+    product_id: string | number;
+    product?: Product;
+    quantity: number;
+    price: number;
+    subtotal: number;
+  }>;
   status: OrderStatus;
-  tracking_code?: string;
-  delivery_type?: 'entrega' | 'retirada';
-  address?: Address;
-  shippingAddress?: Address;
   payment_method?: PaymentMethod;
   payment_id?: string;
-  payment_status?: PaymentStatus;
+  total: number;
+  delivery_type: 'retirada' | 'entrega';
+  delivery_fee?: number;
+  address?: string | Address;
+  tracking_code?: string;
   notes?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-export type OrderStatus = 
-  | 'novo' 
-  | 'recebido' 
-  | 'em_preparo' 
-  | 'saiu_entrega' 
-  | 'concluido' 
-  | 'cancelado';
-
-export type PaymentMethod = 'pix' | 'maquininha' | 'credit_card' | 'bank_slip';
-
-export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'refunded';
-
 // ============================================
-// Cart Types
-// ============================================
-
-export interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-export interface CartContextType {
-  items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  total: number;
-  itemCount: number;
-}
-
-// ============================================
-// API Response Types
+// API Response Types (sem any)
 // ============================================
 
 export interface ApiResponse<T = unknown> {

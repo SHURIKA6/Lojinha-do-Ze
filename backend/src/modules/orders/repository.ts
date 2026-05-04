@@ -1,5 +1,21 @@
 import { Database } from '../../core/types';
 import { logger } from '../../core/utils/logger';
+import { encryptPII, decryptPII, getPIIKey } from '../../core/utils/crypto';
+
+// Chave de criptografia PII carregada uma única vez e reutilizada
+let piiKey: CryptoKey | null = null;
+
+/**
+ * Obtém a chave de criptografia PII, carregando-a se necessário.
+ * A chave é armazenada em cache após a primeira obtenção.
+ * @returns CryptoKey para criptografia/descriptografia PII.
+ */
+async function getEncryptionKey(): Promise<CryptoKey> {
+  if (!piiKey) {
+    piiKey = await getPIIKey();
+  }
+  return piiKey;
+}
 
 /**
  * Representa um pedido completo com todos os campos do banco de dados.
@@ -64,9 +80,10 @@ export interface OrderCreateData {
 
 /**
  * Lista pedidos com filtros opcionais de usuário e status.
+ * Os campos PII (customer_phone, address) são descriptografados após a leitura.
  * @param client - Cliente de conexão com o banco (pode ser transação).
  * @param params - Filtros opcionais (userId, status) e paginação (limit, offset).
- * @returns Lista de pedidos com valores numéricos convertidos.
+ * @returns Lista de pedidos com valores numéricos convertidos e PII descriptografada.
  */
 export async function findOrders(
   client: Database,
@@ -82,13 +99,22 @@ export async function findOrders(
          LIMIT $2 OFFSET $3`,
         [userId, limit, offset]
       );
-      return rows.map((row: any) => ({
-        ...row,
-        subtotal: parseFloat(row.subtotal) || 0,
-        delivery_fee: parseFloat(row.delivery_fee) || 0,
-        discount: parseFloat(row.discount) || 0,
-        total: parseFloat(row.total) || 0,
-      }));
+      
+      // Descriptografa os campos PII
+      const key = await getEncryptionKey();
+      const decryptedRows = await Promise.all(
+        rows.map(async (row: any) => ({
+          ...row,
+          customer_phone: row.customer_phone ? await decryptPII(row.customer_phone, key) : null,
+          address: row.address ? await decryptPII(row.address, key) : null,
+          subtotal: parseFloat(row.subtotal) || 0,
+          delivery_fee: parseFloat(row.delivery_fee) || 0,
+          discount: parseFloat(row.discount) || 0,
+          total: parseFloat(row.total) || 0,
+        }))
+      );
+      
+      return decryptedRows;
     } catch (error) {
       logger.error('Erro na query findOrders (user)', error as Error, { userId, limit, offset });
       throw error;
@@ -108,13 +134,22 @@ export async function findOrders(
 
   try {
     const { rows } = await client.query(query, [...params, limit, offset]);
-    return rows.map((row: any) => ({
-      ...row,
-      subtotal: parseFloat(row.subtotal) || 0,
-      delivery_fee: parseFloat(row.delivery_fee) || 0,
-      discount: parseFloat(row.discount) || 0,
-      total: parseFloat(row.total) || 0,
-    }));
+    
+    // Descriptografa os campos PII
+    const key = await getEncryptionKey();
+    const decryptedRows = await Promise.all(
+      rows.map(async (row: any) => ({
+        ...row,
+        customer_phone: row.customer_phone ? await decryptPII(row.customer_phone, key) : null,
+        address: row.address ? await decryptPII(row.address, key) : null,
+        subtotal: parseFloat(row.subtotal) || 0,
+        delivery_fee: parseFloat(row.delivery_fee) || 0,
+        discount: parseFloat(row.discount) || 0,
+        total: parseFloat(row.total) || 0,
+      }))
+    );
+    
+    return decryptedRows;
   } catch (error) {
     logger.error('Erro na query findOrders', error as Error, { query, params: [...params, limit, offset] });
     throw error;
@@ -123,9 +158,10 @@ export async function findOrders(
 
 /**
  * Busca um pedido pelo ID com lock FOR UPDATE para transações.
+ * Os campos PII são descriptografados após a leitura.
  * @param client - Cliente de conexão com o banco.
  * @param id - ID do pedido.
- * @returns Pedido encontrado ou null.
+ * @returns Pedido encontrado com PII descriptografada ou null.
  */
 export async function findOrderByIdForUpdate(client: Database, id: string) {
   const { rows } = await client.query(
@@ -135,7 +171,17 @@ export async function findOrderByIdForUpdate(client: Database, id: string) {
      FOR UPDATE`,
     [id]
   );
-  return rows[0] || null;
+  
+  if (!rows[0]) return null;
+  
+  // Descriptografa os campos PII
+  const key = await getEncryptionKey();
+  const row = rows[0];
+  return {
+    ...row,
+    customer_phone: row.customer_phone ? await decryptPII(row.customer_phone, key) : null,
+    address: row.address ? await decryptPII(row.address, key) : null,
+  };
 }
 
 /**
@@ -158,7 +204,17 @@ export async function updateOrderStatus(client: Database, id: string, status: st
   query += ` WHERE id = $2 RETURNING id, customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, status, tracking_code, delivery_type, address, payment_method, notes, created_at, updated_at`;
 
   const { rows } = await client.query(query, params);
-  return rows[0] || null;
+  
+  if (!rows[0]) return null;
+  
+  // Descriptografa os campos PII
+  const key = await getEncryptionKey();
+  const row = rows[0];
+  return {
+    ...row,
+    customer_phone: row.customer_phone ? await decryptPII(row.customer_phone, key) : null,
+    address: row.address ? await decryptPII(row.address, key) : null,
+  };
 }
 
 /**
@@ -267,11 +323,18 @@ export async function findProductsByIds(client: Database, ids: number[]) {
 
 /**
  * Cria um novo pedido no banco de dados.
+ * Os campos PII (customer_phone, address) são criptografados antes de salvar.
  * @param client - Cliente de conexão com o banco.
  * @param data - Dados completos do pedido.
- * @returns Pedido criado com os campos retornados pelo RETURNING.
+ * @returns Pedido criado com os campos retornados pelo RETURNING e PII descriptografada.
  */
 export async function createOrder(client: Database, data: OrderCreateData) {
+  const key = await getEncryptionKey();
+  
+  // Criptografa os campos PII antes de salvar
+  const encryptedPhone = data.customerPhone ? await encryptPII(data.customerPhone, key) : null;
+  const encryptedAddress = data.address ? await encryptPII(data.address, key) : null;
+  
   const { rows } = await client.query(
     `INSERT INTO orders (customer_id, customer_name, customer_phone, items, subtotal, delivery_fee, discount, total, delivery_type, address, payment_method, notes)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -279,19 +342,26 @@ export async function createOrder(client: Database, data: OrderCreateData) {
     [
       data.customerId,
       data.customerName,
-      data.customerPhone,
+      encryptedPhone,
       JSON.stringify(data.items),
       data.subtotal,
       data.deliveryFee,
       data.discount,
       data.total,
       data.deliveryType,
-      data.address,
+      encryptedAddress,
       data.paymentMethod,
       data.notes,
     ]
   );
-  return rows[0];
+  
+  // Descriptografa os campos para retorno (para manter consistência na API)
+  const row = rows[0];
+  return {
+    ...row,
+    customer_phone: row.customer_phone ? await decryptPII(row.customer_phone, key) : null,
+    address: row.address ? await decryptPII(row.address, key) : null,
+  };
 }
 
 /**

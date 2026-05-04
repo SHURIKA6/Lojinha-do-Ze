@@ -2,7 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'https://lojinha-do-ze-api.fernandoriaddasilvaribeiro.workers.dev';
 
+/**
+ * Verifica se o usuário é administrador através do cookie de sessão.
+ * Retorna null se for admin, ou uma NextResponse de erro se não for.
+ */
+function checkAdminAuth(request: NextRequest): NextResponse | null {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const sessionCookie = cookieHeader
+    .split(';')
+    .map(c => c.trim())
+    .find(c => c.startsWith('lz_session='));
+
+  if (!sessionCookie) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  }
+
+  const sessionValue = sessionCookie.split('=')[1];
+  if (!sessionValue) {
+    return NextResponse.json({ error: 'Cookie de sessão inválido.' }, { status: 401 });
+  }
+
+  const sessionParts = sessionValue.split('|');
+  if (sessionParts.length < 3) {
+    return NextResponse.json({ error: 'Formato de cookie de sessão inválido.' }, { status: 401 });
+  }
+
+  const role = sessionParts[2].trim();
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Acesso negado. Privilégios administrativos necessários.' }, { status: 403 });
+  }
+
+  return null; // Usuário é admin
+}
+
 export async function GET(request: NextRequest) {
+  // Proteção: desabilita rota de debug em produção
+  if (process.env.NODE_ENV === 'production') {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+  
+  // Verificação de autenticação e autorização
+  const authError = checkAdminAuth(request);
+  if (authError) {
+    return authError;
+  }
+
   const url = new URL(request.url);
   const targetPath = url.searchParams.get('path') || 'health';
 
