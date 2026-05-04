@@ -46,8 +46,9 @@ const nextConfig = {
     
     const cspDirectives = [
       "default-src 'self'",
-      // Remove unsafe-inline e unsafe-eval em produção; em dev mantém unsafe-eval para hot reload se necessário
-      `script-src 'self'${isDev ? " 'unsafe-eval'" : ''}`,
+      // Remove unsafe-eval em produção; em dev mantém unsafe-eval para hot reload se necessário
+      // Adiciona unsafe-inline para permitir os scripts inline injetados pelo Next.js
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
       `connect-src ${connectSrc}`,
       `img-src 'self' data: ${trustedDomains.filter(d => !d.includes('fonts')).join(' ')}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // unsafe-inline necessário para styled-jsx do Next.js
