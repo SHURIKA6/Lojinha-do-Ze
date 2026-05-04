@@ -26,9 +26,9 @@ import {
 import styles from './CheckoutModal.module.css';
 import { CartItem } from '@/features/storefront/hooks/useCart';
 
-const AddressPicker = dynamic(() => import('@/components/AddressPicker'), {
-  loading: () => <div className={styles.profileCardNote}>Carregando mapa...</div>,
-});
+// Importar os novos componentes refatorados
+import OrderConfirmation from './checkout-sections/OrderConfirmation';
+import CustomerForm from './checkout-sections/CustomerForm';
 
 interface ChoiceCardProps {
   active: boolean;
@@ -178,149 +178,13 @@ export default function CheckoutModal({
         }}
         title={isPix && !pixConfirmed ? 'Aguardando Pagamento' : 'Pedido confirmado'}
       >
-        <div className={styles.confirmation}>
-          <div className={styles.confirmationIcon}>
-            <FiCheckCircle style={isPix && !pixConfirmed ? { color: 'var(--info-500)' } : {}} />
-          </div>
-          <h2>Pedido #{orderResult.id}</h2>
-          
-          <div className={styles.confirmationCard}>
-            <div className={styles.confirmationMeta}>
-              <div>
-                <span>Total</span>
-                <div className={styles.confirmationAmount}>
-                  {formatCurrency(orderResult.total)}
-                </div>
-              </div>
-
-              <div>
-                <span>Pagamento</span>
-                <div style={{ fontWeight: 800 }}>
-                  {isPix ? 'PIX' : 'Maquininha'}
-                </div>
-              </div>
-            </div>
-
-            {isPix && !pixConfirmed ? (
-              <div style={{ marginTop: 'var(--space-6)', textAlign: 'center' }}>
-                <p style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-600)', marginBottom: 'var(--space-4)' }}>
-                  Aponte o celular para o QR Code abaixo ou utilize o botão "Copia e Cola":
-                </p>
-                
-                {orderResult.pix ? (
-                  <>
-                    <div style={{ 
-                      background: 'white', 
-                      padding: 'var(--space-4)', 
-                      borderRadius: 'var(--radius-md)',
-                      marginBottom: 'var(--space-4)',
-                      display: 'inline-block',
-                      border: '1px solid var(--gray-200)'
-                    }}>
-                      {orderResult.pix.qr_code_base64 ? (
-                        <img 
-                          src={`data:image/jpeg;base64,${orderResult.pix.qr_code_base64}`} 
-                          alt="QR Code Pix" 
-                          style={{ width: '200px', height: '200px' }}
-                        />
-                      ) : qrCodeGenerating ? (
-                        <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--gray-500)' }}>Gerando QR Code...</span>
-                        </div>
-                      ) : generatedQrCode ? (
-                        <img 
-                          src={generatedQrCode} 
-                          alt="QR Code Pix" 
-                          style={{ width: '200px', height: '200px' }}
-                        />
-                      ) : (
-                        <div style={{ width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--error-500)' }}>QR Code indisponível</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button 
-                      type="button" 
-                      className="btn btn--outline btn--full" 
-                      onClick={() => {
-                        navigator.clipboard.writeText(orderResult.pix.qr_code);
-                        alert('Código Pix Copia e Cola copiado!');
-                      }}
-                      style={{ marginBottom: 'var(--space-3)' }}
-                    >
-                      Copiar Código Pix (Copia e Cola)
-                    </button>
-                    
-                    <div className={styles.pollingStatus}>
-                      <span className={styles.spinner}></span>
-                      Aguardando confirmação automática...
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ padding: 'var(--space-10)', color: 'var(--gray-500)' }}>
-                    Gerando seu código Pix...
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-sm)', color: 'var(--gray-600)' }}>
-                Seu pedido foi realizado com sucesso! Para agilizar seu atendimento, envie o comprovante via WhatsApp.
-              </p>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gap: 'var(--space-3)', marginTop: 'var(--space-6)' }}>
-            {isPix && !pixConfirmed ? (
-              <button 
-                type="button" 
-                className="btn btn--primary btn--full btn--lg" 
-                disabled={orderResult?._checkingPayment}
-                onClick={async () => {
-                  if (!orderResult?.pix?.id) return;
-                  setOrderResult((prev: any) => ({ ...prev, _checkingPayment: true }));
-                  try {
-                    const { getPixPaymentStatus } = await import('@/core/api');
-                    const status = await getPixPaymentStatus(orderResult.pix.id, {
-                      orderId: orderResult.id,
-                      phone: orderResult.customer_phone,
-                    });
-                    if (status.status === 'approved') {
-                      setPixConfirmed(true);
-                    } else {
-                      alert('Pagamento ainda não confirmado. Complete o Pix e tente novamente.');
-                    }
-                  } catch {
-                    alert('Erro ao verificar pagamento. Tente novamente.');
-                  } finally {
-                    setOrderResult((prev: any) => ({ ...prev, _checkingPayment: false }));
-                  }
-                }}
-              >
-                {orderResult?._checkingPayment ? 'Verificando...' : 'Já realizei o pagamento'}
-              </button>
-            ) : (
-              <button 
-                type="button" 
-                className="btn btn--primary btn--full btn--lg" 
-                onClick={onSendWhatsApp}
-                style={{ background: '#25D366', borderColor: '#25D366' }}
-              >
-                Enviar para o WhatsApp
-              </button>
-            )}
-            <button 
-              type="button" 
-              className="btn btn--secondary btn--full" 
-              onClick={() => {
-                setOrderResult(null);
-                setPixConfirmed(false);
-              }}
-            >
-              Voltar para a loja
-            </button>
-          </div>
-        </div>
+        <OrderConfirmation
+          orderResult={orderResult}
+          pixConfirmed={pixConfirmed}
+          setPixConfirmed={setPixConfirmed}
+          setOrderResult={setOrderResult}
+          onSendWhatsApp={onSendWhatsApp}
+        />
       </Modal>
     );
   }
@@ -402,212 +266,29 @@ export default function CheckoutModal({
           </div>
         </div>
 
-        {isRegistered && !editingProfile ? (
-          <div className={styles.profileCard}>
-            <div className={styles.profileCardHeader}>
-              <h4 className={styles.profileCardTitle}>Seus dados</h4>
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setEditingProfile(true)}>
-                <FiEdit3 />
-                Editar
-              </button>
-            </div>
-
-            <div className={styles.profileCardList}>
-              <div className={styles.profileCardItem}>
-                <FiUser />
-                <strong>{customerForm.name}</strong>
-              </div>
-              {customerForm.email ? (
-                <div className={styles.profileCardItem}>
-                  <FiMail />
-                  <span>{customerForm.email}</span>
-                </div>
-              ) : null}
-              <div className={styles.profileCardItem}>
-                <FiPhone />
-                <span>{customerForm.phone}</span>
-              </div>
-              {customerAddress && (
-                <div className={styles.profileCardItem}>
-                  <FiMapPin />
-                  <span>{customerAddress}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.profileCard}>
-            {isRegistered ? (
-              <div className={styles.profileCardNote}>Você está editando seus dados salvos.</div>
-            ) : (
-              <div className={styles.profileCardNote}>
-                Primeira compra? Preencha seus dados uma vez e reaproveite nas próximas.
-              </div>
-            )}
-
-               <div className="form-group">
-               <label htmlFor="checkout-name" className="form-label">
-                 <FiUser style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                 Nome completo *
-               </label>
-              <input
-                id="checkout-name"
-                className="form-input"
-                value={customerForm.name}
-                onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
-                placeholder="Seu nome completo"
-                aria-required="true"
-              />
-            </div>
-            <div className="form-group">
-               <label htmlFor="checkout-phone" className="form-label">
-                 <FiPhone style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                 Telefone / WhatsApp *
-               </label>
-              <input
-                id="checkout-phone"
-                className="form-input"
-                type="tel"
-                value={customerForm.phone}
-                onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
-                placeholder="(00) 00000-0000"
-                aria-required="true"
-              />
-              {customerForm.phone && customerForm.phone.replace(/\D/g, '').length < 10 && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem', display: 'block' }}>
-                  Digite o DDD e o número (mínimo 10 dígitos)
-                </span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="checkout-email" className="form-label">
-                <FiMail style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                E-mail {paymentMethod === 'pix' ? '*' : ''}
-              </label>
-              <input
-                id="checkout-email"
-                className="form-input"
-                type="email"
-                value={customerForm.email}
-                onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                placeholder="voce@email.com"
-                aria-required={paymentMethod === 'pix'}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="checkout-cpf" className="form-label">
-                <FiCreditCard style={{ marginRight: '0.375rem', verticalAlign: 'middle' }} aria-hidden="true" />
-                CPF {paymentMethod === 'pix' ? '(obrigatório para Pix) *' : '(opcional)'}
-              </label>
-              <input
-                id="checkout-cpf"
-                className="form-input"
-                value={customerForm.cpf}
-                onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
-                placeholder="000.000.000-00"
-                aria-required={paymentMethod === 'pix'}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Como deseja receber?</label>
-              <div className={styles.choiceGrid}>
-                <ChoiceCard
-                  active={deliveryType === 'entrega'}
-                  icon={<FiTruck />}
-                  label="Entrega"
-                  meta={calculatingShipping ? '...' : shippingFee > 0 ? `+ ${formatCurrency(shippingFee)}` : 'Grátis'}
-                  onClick={() => setDeliveryType('entrega')}
-                />
-                <ChoiceCard
-                  active={deliveryType === 'retirada'}
-                  icon={<FiShoppingBag />}
-                  label="Retirada"
-                  meta="Sem taxa"
-                  onClick={() => setDeliveryType('retirada')}
-                />
-              </div>
-            </div>
-
-            {deliveryType === 'entrega' && (
-              <AddressPicker
-                address={customerAddress}
-                onAddressChange={setCustomerAddress}
-                coordinates={customerCoords}
-                onCoordinatesChange={setCustomerCoords}
-              />
-            )}
-
-            {/* Fidelidade */}
-            {loyaltyBalance > 0 && !isRegistered && (
-              <div className={styles.loyaltySection}>
-                <div className={styles.loyaltyHeader}>
-                  <FiGift className={styles.loyaltyIcon} />
-                  <div>
-                    <h4 className={styles.loyaltyTitle}>Você tem {loyaltyBalance} pontos!</h4>
-                    <p className={styles.loyaltyText}>Deseja usar seus pontos para ganhar um desconto?</p>
-                  </div>
-                </div>
-                
-                <div className={styles.loyaltyAction}>
-                  <input
-                    type="range"
-                    min="0"
-                    max={loyaltyBalance}
-                    step="10"
-                    value={pointsToRedeem}
-                    onChange={(e) => {
-                      setPointsToRedeem(Number(e.target.value));
-                      setUsePoints(Number(e.target.value) > 0);
-                    }}
-                    className={styles.loyaltyRange}
-                  />
-                  <div className={styles.loyaltyValues}>
-                    <span>0</span>
-                    <span>{pointsToRedeem} pts = {formatCurrency(pointsToRedeem * 0.05)} de desconto</span>
-                    <span>{loyaltyBalance}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className={styles.profileCard}>
-          <div className="form-group">
-            <label className="form-label">Forma de pagamento</label>
-            <div className={styles.choiceGrid}>
-              <ChoiceCard
-                active={paymentMethod === 'pix'}
-                icon={<FiCheckCircle />}
-                label="PIX"
-                meta="Transferência"
-                onClick={() => setPaymentMethod('pix')}
-              />
-              <ChoiceCard
-                active={paymentMethod === 'maquininha'}
-                icon={<FiCreditCard />}
-                label="Maquininha"
-                meta="Na entrega"
-                onClick={() => setPaymentMethod('maquininha')}
-              />
-            </div>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="checkout-notes" className="form-label">Observações</label>
-            <textarea
-              id="checkout-notes"
-              className="form-input"
-              rows={3}
-              value={customerForm.notes}
-              onChange={(e) => setCustomerForm({ ...customerForm, notes: e.target.value })}
-              placeholder="Algum detalhe sobre o pedido?"
-            />
-          </div>
-        </div>
+        <CustomerForm
+          customerForm={customerForm}
+          customerAddress={customerAddress}
+          customerCoords={customerCoords}
+          deliveryType={deliveryType}
+          editingProfile={editingProfile}
+          isRegistered={isRegistered}
+          paymentMethod={paymentMethod}
+          loyaltyBalance={loyaltyBalance}
+          pointsToRedeem={pointsToRedeem}
+          setCustomerForm={setCustomerForm}
+          setCustomerAddress={setCustomerAddress}
+          setCustomerCoords={setCustomerCoords}
+          setDeliveryType={setDeliveryType}
+          setEditingProfile={setEditingProfile}
+          setPointsToRedeem={setPointsToRedeem}
+          setUsePoints={setUsePoints}
+          usePoints={usePoints}
+          calculatingShipping={calculatingShipping}
+          shippingFee={shippingFee}
+          setPaymentMethod={setPaymentMethod}
+          onSendWhatsApp={onSendWhatsApp}
+        />
       </div>
     </Modal>
   );

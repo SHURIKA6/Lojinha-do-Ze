@@ -41,11 +41,11 @@ export default function ClienteDashboard() {
 
   const validOrders = Array.isArray(orders) ? orders : [];
   const completedOrders = validOrders.filter((order) =>
-    ['entregue', 'cancelado'].includes(order.status || '')
+    ['concluido', 'cancelado'].includes(order.status || '')
   );
-  const pendingCount = validOrders.filter((order) => ['pendente'].includes(order.status || '')).length;
-  const preparingCount = validOrders.filter((order) => order.status === 'processando').length;
-  const deliveringCount = validOrders.filter((order) => order.status === 'enviado').length;
+  const pendingCount = validOrders.filter((order) => ['novo', 'recebido'].includes(order.status || '')).length;
+  const preparingCount = validOrders.filter((order) => order.status === 'em_preparo').length;
+  const deliveringCount = validOrders.filter((order) => order.status === 'saiu_entrega').length;
 
   return (
     <main className="animate-fadeIn" aria-labelledby="page-title">
@@ -144,7 +144,7 @@ export default function ClienteDashboard() {
               const steps = [
                 { id: 'pendente', label: 'Pedido' },
                 { id: 'processando', label: 'Preparando' },
-                { id: 'enviado', label: order.delivery_type === 'retirada' ? 'Aguardando Retirada' : 'Enviado' },
+                { id: 'enviado', label: order.delivery_type === 'pickup' ? 'Aguardando Retirada' : 'Enviado' },
                 { id: 'entregue', label: 'Concluído' }
               ];
 
@@ -163,7 +163,7 @@ export default function ClienteDashboard() {
                       <div className="order-item-meta">
                         <time dateTime={order.created_at}>{formatDate(order.created_at || '')}</time>
                         <span className="separator"> • </span>
-                        <span>{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}</span>
+                        <span>{order.delivery_type === 'pickup' ? 'Retirada' : 'Entrega'}</span>
                       </div>
                     </div>
                     <div className="order-item-total">
@@ -226,7 +226,7 @@ export default function ClienteDashboard() {
                     </div>
                   )}
 
-                  {order.status === 'enviado' && order.delivery_type === 'entrega' && (
+                  {order.status === 'saiu_entrega' && order.delivery_type === 'delivery' && (
                     <div className="delivery-tracking">
                       <button 
                         className="btn btn--outline"

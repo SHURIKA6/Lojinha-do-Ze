@@ -93,7 +93,7 @@ export interface Product {
 // Order Types (valores em inglês, compatível com backend)
 // ============================================
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'novo' | 'recebido' | 'em_preparo' | 'saiu_entrega' | 'concluido' | 'cancelado';
 
 export type PaymentMethod = 'pix' | 'credit_card' | 'debit_card' | 'boleto' | 'cash' | 'bank_transfer' | 'card_machine';
 
@@ -212,7 +212,7 @@ export interface ChartData {
 
 export interface Transaction {
   id: string;
-  type: 'income' | 'expense' | 'adjustment' | 'revenue' | 'expenditure';
+  type: 'receita' | 'despesa' | 'adjustment';
   value: number;
   description: string;
   date: string;

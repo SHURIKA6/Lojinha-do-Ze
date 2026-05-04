@@ -44,7 +44,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
   });
   const [customerAddress, setCustomerAddress] = useState<string>('');
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [deliveryType, setDeliveryType] = useState<string>('entrega');
+  const [deliveryType, setDeliveryType] = useState<string>('delivery');
   const [paymentMethod, setPaymentMethod] = useState<string>('pix');
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [editingProfile, setEditingProfile] = useState<boolean>(false);
@@ -102,7 +102,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
 
   useEffect(() => {
     async function updateShipping() {
-      if (deliveryType !== 'entrega') {
+      if (deliveryType !== 'delivery') {
         setShippingFee(0);
         return;
       }
@@ -142,15 +142,15 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     message += `🔢 *Pedido:* #${order.id}\n`;
     message += `👤 *Cliente:* ${order.customer_name}\n`;
     message += `📱 *Telefone:* ${order.customer_phone}\n`;
-    message += `🚚 *Modalidade:* ${order.delivery_type === 'entrega' ? 'Entrega' : 'Retirada no Balcão'}\n`;
+    message += `🚚 *Modalidade:* ${order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada no Balcão'}\n`;
     message += `💳 *Pagamento:* ${methodLabel}\n\n`;
     message += '📦 *Itens:*\n';
     items.forEach((item) => {
       message += `  • ${item.quantity}× ${item.name} — R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
     });
-    if (order.delivery_type === 'entrega') message += `  • Taxa de Entrega — R$ ${parseFloat(order.delivery_fee || '0').toFixed(2).replace('.', ',')}\n`;
+    if (order.delivery_type === 'delivery') message += `  • Taxa de Entrega — R$ ${parseFloat(order.delivery_fee || '0').toFixed(2).replace('.', ',')}\n`;
     message += `\n💰 *Total Geral: R$ ${parseFloat(order.total).toFixed(2).replace('.', ',')}*\n`;
-    if (order.delivery_type === 'entrega' && order.address) message += `\n📍 *Endereço:* ${order.address}\n`;
+    if (order.delivery_type === 'delivery' && order.address) message += `\n📍 *Endereço:* ${order.address}\n`;
     if (order.notes) message += `\n📝 *Obs:* ${order.notes}`;
 
     const encoded = encodeURIComponent(message);
@@ -178,7 +178,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
       setError('Informe um CPF válido para gerar o pagamento via Pix.');
       return;
     }
-    if (deliveryType === 'entrega' && !customerAddress.trim()) {
+    if (deliveryType === 'delivery' && !customerAddress.trim()) {
       setError('Endereço de entrega é obrigatório.');
       return;
     }
@@ -200,7 +200,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
         customer_phone: customerForm.phone,
         customer_email: customerForm.email || undefined,
         items: orderItems,
-        delivery_type: deliveryType as 'entrega' | 'retirada',
+        delivery_type: deliveryType as 'delivery' | 'pickup',
         delivery_fee: shippingFee,
         address: customerAddress || undefined,
         payment_method: paymentMethod as any,
@@ -212,8 +212,8 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
       // Auto create transaction if payment was manual (e.g. maquininha)
       if (paymentMethod === 'maquininha') {
         const transactionData: Partial<Transaction> = {
-          type: 'income',
-          category: 'Sales',
+          type: 'receita',
+          category: 'Vendas',
           value: parseFloat(String(result.total || cartTotal + shippingFee)),
           description: `Pagamento no cartão - Pedido #${result.id}`,
           date: new Date().toISOString()

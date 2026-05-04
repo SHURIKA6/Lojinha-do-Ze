@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dashboard Administrativo
  * 
  * Exibe gráficos, métricas e visão geral
@@ -365,7 +365,7 @@ export default function AdminDashboard() {
                   data.recentOrders.map((order) => (
                     <tr key={order.id}>
                       <td>{order.customer_name || 'Cliente avulso'}</td>
-                      <td>{order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}</td>
+                      <td>{order.delivery_type === 'pickup' ? 'Retirada' : 'Entrega'}</td>
                       <td>
                         <span className={`badge badge--${getStatusVariant(order.status)}`}>
                           {getStatusLabel(order.status)}

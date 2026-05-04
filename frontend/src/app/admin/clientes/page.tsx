@@ -607,7 +607,7 @@ export default function ClientesPage() {
                         </td>
                         <td>
                           <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>
-                            {order.delivery_type === 'retirada' ? 'Retirada' : 'Entrega'}
+                            {order.delivery_type === 'pickup' ? 'Retirada' : 'Entrega'}
                           </div>
                           {order.items && (
                             <div style={{ fontSize: 'var(--font-xs)', color: 'var(--gray-600)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

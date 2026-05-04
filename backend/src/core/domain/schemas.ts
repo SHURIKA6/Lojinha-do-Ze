@@ -296,7 +296,7 @@ export const orderCreateSchema = z
       .min(8, 'Telefone inválido')
       .max(30, 'Telefone deve ter no máximo 30 caracteres'),
     notes: optionalTrimmedString(800, 'Observações'),
-    delivery_type: z.enum(DELIVERY_TYPE_VALUES).default('entrega'),
+    delivery_type: z.enum(DELIVERY_TYPE_VALUES).default('delivery'),
     address: optionalTrimmedString(320, 'Endereço'),
     payment_method: z.enum(PAYMENT_METHOD_VALUES).default('pix'),
     delivery_fee: z.coerce.number().min(0).optional(),
@@ -304,7 +304,7 @@ export const orderCreateSchema = z
     items: z.array(orderItemSchema).min(1, 'Pedido deve conter ao menos 1 item'),
   })
   .superRefine((data, ctx) => {
-    if (data.delivery_type === 'entrega' && !data.address) {
+    if (data.delivery_type === 'delivery' && !data.address) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Endereço de entrega é obrigatório',

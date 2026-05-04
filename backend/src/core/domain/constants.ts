@@ -12,7 +12,7 @@ export type Role = typeof ROLE_VALUES[number];
  * Opções válidas de tipos de entrega para pedidos.
  * Usado para validar seleções de método de entrega durante o checkout e processamento de pedidos.
  */
-export const DELIVERY_TYPE_VALUES = ['entrega', 'retirada'] as const;
+export const DELIVERY_TYPE_VALUES = ['delivery', 'pickup'] as const;
 /**
  * Tipo que representa tipos de entrega válidos, derivado de {@link DELIVERY_TYPE_VALUES}.
  */

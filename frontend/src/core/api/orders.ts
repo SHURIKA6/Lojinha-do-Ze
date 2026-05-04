@@ -17,7 +17,7 @@ export interface CreateOrderData {
     name?: string;
   }>;
   payment_method: PaymentMethod;
-  delivery_type: 'retirada' | 'entrega';
+  delivery_type: 'pickup' | 'delivery';
   address?: string;
   delivery_fee?: string | number;
   notes?: string;

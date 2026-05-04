@@ -31,15 +31,16 @@ export function formatDateTime(dateStr: string | Date | null | undefined): strin
   }).format(new Date(dateStr));
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'novo' | 'recebido' | 'em_preparo' | 'saiu_entrega' | 'concluido' | 'cancelado';
 
 export function getStatusLabel(status: OrderStatus | string): string {
   const labels: Record<string, string> = {
-    pending: 'Pendente',
-    processing: 'Em Preparo',
-    shipped: 'Enviado',
-    delivered: 'Entregue',
-    cancelled: 'Cancelado',
+    novo: 'Novo',
+    recebido: 'Recebido',
+    em_preparo: 'Em Preparo',
+    saiu_entrega: 'Saiu para entrega',
+    concluido: 'Concluído',
+    cancelado: 'Cancelado',
   };
 
   return labels[status] || status;
@@ -47,11 +48,12 @@ export function getStatusLabel(status: OrderStatus | string): string {
 
 export function getStatusVariant(status: OrderStatus | string): string {
   const variants: Record<string, string> = {
-    pending: 'info',
-    processing: 'info',
-    shipped: 'warning',
-    delivered: 'success',
-    cancelled: 'danger',
+    novo: 'info',
+    recebido: 'neutral',
+    em_preparo: 'warning',
+    saiu_entrega: 'primary',
+    concluido: 'success',
+    cancelado: 'danger',
   };
 
   return variants[status] || 'neutral';

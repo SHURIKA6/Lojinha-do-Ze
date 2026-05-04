@@ -134,7 +134,7 @@ export default function PedidosPage() {
     if (currentStatus === 'novo' || currentStatus === 'recebido') {
       next = 'em_preparo';
     } else if (currentStatus === 'em_preparo') {
-      next = deliveryType === 'retirada' ? 'concluido' : 'saiu_entrega';
+      next = deliveryType === 'pickup' ? 'concluido' : 'saiu_entrega';
     } else if (currentStatus === 'saiu_entrega') {
       next = 'concluido';
     }
@@ -201,7 +201,7 @@ export default function PedidosPage() {
     }
 
     if (status === 'em_preparo') {
-      return deliveryType === 'retirada' ? 'Finalizar retirada' : 'Saiu para entrega';
+      return deliveryType === 'pickup' ? 'Finalizar retirada' : 'Saiu para entrega';
     }
 
     if (status === 'saiu_entrega') {
@@ -312,10 +312,10 @@ export default function PedidosPage() {
                 <div>
                   <div className="ops-order-card__label">Entrega e pagamento</div>
                   <div className="ops-order-card__line">
-                    {order.delivery_type === 'retirada' ? <Package /> : <Truck />}
-                    {order.delivery_type === 'retirada' ? 'Retirada no local' : 'Entrega local'}
+                    {order.delivery_type === 'pickup' ? <Package /> : <Truck />}
+                    {order.delivery_type === 'pickup' ? 'Retirada no local' : 'Entrega local'}
                   </div>
-                  {order.delivery_type === 'entrega' && order.address && (
+                  {order.delivery_type === 'delivery' && order.address && (
                     <div className="ops-order-card__line">
                       <MapPin />
                       {formatAddress(order.address)}
@@ -356,7 +356,7 @@ export default function PedidosPage() {
                      ))}
                    </select>
 
-                   {order.status === 'enviado' && (
+                   {order.status === 'saiu_entrega' && (
                      <button 
                        className={`btn ${sharingLocation[String(order.id)] ? 'btn--danger' : 'btn--neutral'}`}
                        onClick={() => toggleLocationSharing(String(order.id))}

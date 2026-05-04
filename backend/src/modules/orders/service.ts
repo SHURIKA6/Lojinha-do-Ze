@@ -97,7 +97,7 @@ export async function createOrder(db: Database, payload: CreateOrderPayload, aut
     const normalizedRequestPhone = normalizePhoneDigits(payload.customer_phone);
     const mergedItems = mergeOrderItems(payload.items);
     const deliveryFeeValue = parseFloat(env?.DELIVERY_FEE || '5');
-    const deliveryFee = payload.delivery_type === 'entrega' ? (payload.delivery_fee ?? deliveryFeeValue) : 0;
+    const deliveryFee = payload.delivery_type === 'delivery' ? (payload.delivery_fee ?? deliveryFeeValue) : 0;
 
     let subtotal = 0;
     const enrichedItems: orderRepository.EnrichedOrderItem[] = [];
