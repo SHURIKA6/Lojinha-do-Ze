@@ -23,6 +23,7 @@ const nextConfig = {
       'https://fonts.googleapis.com',
       'https://fonts.gstatic.com',
       'https://r2cdn.perplexity.ai',
+      'https://frontend-cdn.perplexity.ai',
     ];
     
     // Adiciona o domínio do backend se configurado
@@ -52,7 +53,7 @@ const nextConfig = {
       `connect-src ${connectSrc}`,
       `img-src 'self' data: ${trustedDomains.filter(d => !d.includes('fonts')).join(' ')}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // unsafe-inline necessário para styled-jsx do Next.js
-      "font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai",
+      "font-src 'self' data: https://fonts.gstatic.com https://r2cdn.perplexity.ai https://frontend-cdn.perplexity.ai",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
