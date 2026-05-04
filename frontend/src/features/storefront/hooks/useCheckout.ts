@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   createOrder,
   createPixPayment,
@@ -48,7 +49,6 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
   const [paymentMethod, setPaymentMethod] = useState<string>('pix');
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [editingProfile, setEditingProfile] = useState<boolean>(false);
-  const [submitting, setSubmitting] = useState<boolean>(false);
   const [orderResult, setOrderResult] = useState<any | null>(null);
   const [pixConfirmed, setPixConfirmed] = useState<boolean>(false);
   const [shippingFee, setShippingFee] = useState<number>(5);
@@ -157,36 +157,8 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     window.open(`https://wa.me/${zePhone}?text=${encoded}`, '_blank');
   };
 
-  const handleCheckout = async () => {
-    if (cart.length === 0) {
-      setError('Adicione ao menos um item ao carrinho.');
-      return;
-    }
-    if (!customerForm.name.trim() || !customerForm.phone.trim()) {
-      setError('Nome e telefone são obrigatórios.');
-      return;
-    }
-    if (customerForm.email && !isValidEmail(customerForm.email)) {
-      setError('Informe um e-mail válido para continuar.');
-      return;
-    }
-    if (paymentMethod === 'pix' && !customerForm.email.trim()) {
-      setError('Informe um e-mail válido para gerar o pagamento via Pix.');
-      return;
-    }
-    if (paymentMethod === 'pix' && !isValidCpf(customerForm.cpf)) {
-      setError('Informe um CPF válido para gerar o pagamento via Pix.');
-      return;
-    }
-    if (deliveryType === 'delivery' && !customerAddress.trim()) {
-      setError('Endereço de entrega é obrigatório.');
-      return;
-    }
-
-    setError('');
-    setSubmitting(true);
-
-    try {
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
       const orderItems = (Array.isArray(cart) ? cart : []).map((item) => ({
         product_id: item.productId,
         name: item.name,
@@ -225,6 +197,9 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
         }
       }
 
+      return { result, orderItems };
+    },
+    onSuccess: ({ result, orderItems }) => {
       if (typeof window !== 'undefined') {
         localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
           name: customerForm.name,
@@ -239,41 +214,69 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
       setPixConfirmed(false);
 
       if (paymentMethod === 'pix') {
-        try {
-          const nameParts = customerForm.name.trim().split(' ');
-          const firstName = nameParts[0];
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Silva';
+        const nameParts = customerForm.name.trim().split(' ');
+        const firstName = nameParts[0];
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Silva';
 
-          const payment = await createPixPayment({
-            orderId: result.id,
-            email: customerForm.email.trim(),
-            phone: customerForm.phone,
-            firstName,
-            lastName,
-            identificationNumber: customerForm.cpf.replace(/\D/g, ''),
+        createPixPayment({
+          orderId: result.id,
+          email: customerForm.email.trim(),
+          phone: customerForm.phone,
+          firstName,
+          lastName,
+          identificationNumber: customerForm.cpf.replace(/\D/g, ''),
+        })
+          .then((payment) => {
+            setOrderResult((prev: any) => ({ ...prev, pix: payment }));
+          })
+          .catch((paymentErr) => {
+            console.error('Erro ao gerar Pix:', paymentErr);
+            toast.error(
+              'Pedido criado, mas não conseguimos gerar o QR Code Pix. Tente novamente em "Meus Pedidos".'
+            );
           });
-
-          setOrderResult((prev: any) => ({ ...prev, pix: payment }));
-        } catch (paymentErr) {
-          console.error('Erro ao gerar Pix:', paymentErr);
-          toast.error(
-            'Pedido criado, mas não conseguimos gerar o QR Code Pix. Tente novamente em "Meus Pedidos".'
-          );
-        }
       } else {
         sendWhatsAppReceipt(result, result.items || orderItems, paymentMethod);
       }
 
       toast.success('Pedido enviado com sucesso.');
-      return true;
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       const msg = err.message || 'Não foi possível finalizar o pedido.';
       setError(msg);
       toast.error(msg, 'Falha no pedido');
-      return false;
-    } finally {
-      setSubmitting(false);
     }
+  });
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      setError('Adicione ao menos um item ao carrinho.');
+      return;
+    }
+    if (!customerForm.name.trim() || !customerForm.phone.trim()) {
+      setError('Nome e telefone são obrigatórios.');
+      return;
+    }
+    if (customerForm.email && !isValidEmail(customerForm.email)) {
+      setError('Informe um e-mail válido para continuar.');
+      return;
+    }
+    if (paymentMethod === 'pix' && !customerForm.email.trim()) {
+      setError('Informe um e-mail válido para gerar o pagamento via Pix.');
+      return;
+    }
+    if (paymentMethod === 'pix' && !isValidCpf(customerForm.cpf)) {
+      setError('Informe um CPF válido para gerar o pagamento via Pix.');
+      return;
+    }
+    if (deliveryType === 'delivery' && !customerAddress.trim()) {
+      setError('Endereço de entrega é obrigatório.');
+      return;
+    }
+
+    setError('');
+    await checkoutMutation.mutateAsync();
+    return true;
   };
 
   useEffect(() => {
@@ -307,7 +310,7 @@ export function useCheckout({ cart, cartTotal, setError, user = null }: UseCheck
     paymentMethod, setPaymentMethod,
     isRegistered, setIsRegistered,
     editingProfile, setEditingProfile,
-    submitting,
+    submitting: checkoutMutation.isPending,
     orderResult, setOrderResult,
     pixConfirmed, setPixConfirmed,
     handleCheckout,

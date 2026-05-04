@@ -4,6 +4,7 @@ import './storefront.css';
 
 import React from 'react';
 import { AuthProvider } from '@/core/contexts/AuthContext';
+import { ReactQueryProvider } from '@/core/providers/ReactQueryProvider';
 import { ConfirmDialogProvider } from '@/components/ui/ConfirmDialogProvider';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { Fraunces, Manrope } from 'next/font/google';
@@ -118,11 +119,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="color-scheme" content="light" />
       </head>
       <body>
-        <ToastProvider>
-          <ErrorBoundary>
-            <ConfirmDialogProvider>
-              <AuthProvider>
-                <ServiceWorkerRegistration />
+        <ReactQueryProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <ConfirmDialogProvider>
+                <AuthProvider>
+                  <ServiceWorkerRegistration />
                 <Suspense fallback={null}>
                   <AnalyticsTracker />
                 </Suspense>
@@ -131,10 +133,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <main id="main-content">
                   {children}
                 </main>
-              </AuthProvider>
-            </ConfirmDialogProvider>
-          </ErrorBoundary>
-        </ToastProvider>
+                </AuthProvider>
+              </ConfirmDialogProvider>
+            </ErrorBoundary>
+          </ToastProvider>
+        </ReactQueryProvider>
         
         <AccessibilityStyles />
       </body>

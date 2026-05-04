@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getCatalog, CatalogResponse } from '@/core/api/catalog';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Product } from '@/types';
@@ -23,102 +24,59 @@ export interface CategoryTab {
 }
 
 export function useCatalog(initialCatalog: CatalogData | null = null) {
-  const hasInitialCatalog = Boolean(initialCatalog?.categories);
-  const [catalogData, setCatalogData] = useState<CatalogData>(() => initialCatalog || { categories: [], total: 0 });
-  const [categoryTabs, setCategoryTabs] = useState<CategoryTab[]>(() => {
-    return Array.isArray(initialCatalog?.categories)
-      ? initialCatalog.categories.map(c => ({ name: c.name, count: Array.isArray(c.products) ? c.products.length : 0 }))
-      : [];
-  });
   const [activeCategory, setActiveCategory] = useState<string>(() => initialCatalog?.categories?.[0]?.name || '');
   const [search, setSearch] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('relevance');
   const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
   const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
-  
-  const [loading, setLoading] = useState<boolean>(() => !hasInitialCatalog);
-  const [error, setError] = useState<string>('');
-  const toast = useToast();
-
   const [page, setPage] = useState<number>(1);
   const itemsPerPage = 50;
+  
+  const toast = useToast();
+
+  const { data: catalogDataRaw, isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['catalog', { search, activeCategory, sortBy, minPrice, maxPrice, page }],
+    queryFn: ({ signal }) => getCatalog({
+      search,
+      category: activeCategory,
+      sortBy,
+      minPrice,
+      maxPrice,
+      limit: itemsPerPage * page,
+      offset: 0,
+      signal
+    }),
+    initialData: (page === 1 && initialCatalog) ? initialCatalog : undefined,
+  });
+
+  const catalogData = useMemo(() => catalogDataRaw || { categories: [], total: 0 }, [catalogDataRaw]);
+
+  const [categoryTabs, setCategoryTabs] = useState<CategoryTab[]>(() => {
+    return Array.isArray(initialCatalog?.categories)
+      ? initialCatalog.categories.map(c => ({ name: c.name, count: Array.isArray(c.products) ? c.products.length : 0 }))
+      : [];
+  });
+
+  useEffect(() => {
+    if (catalogData && catalogData.categories.length > 0 && !activeCategory && !search) {
+      setCategoryTabs(catalogData.categories.map(c => ({
+        name: c.name,
+        count: Array.isArray(c.products) ? c.products.length : 0
+      })));
+    }
+  }, [catalogData, activeCategory, search]);
+
+  useEffect(() => {
+    if (!activeCategory && catalogData && catalogData.categories.length > 0) {
+      setActiveCategory(catalogData.categories[0].name);
+    }
+  }, [catalogData, activeCategory]);
 
   useEffect(() => {
     setPage(1);
   }, [search, activeCategory, sortBy, minPrice, maxPrice]);
 
-  useEffect(() => {
-    let active = true;
-    const abortController = new AbortController();
-    if (!hasInitialCatalog && page === 1) {
-      setLoading(true);
-    }
-
-    const offset = (page - 1) * itemsPerPage;
-    const timer = setTimeout(() => {
-      getCatalog({ 
-        search, 
-        category: activeCategory, 
-        sortBy,
-        minPrice,
-        maxPrice,
-        limit: itemsPerPage, 
-        offset,
-        signal: abortController.signal
-      })
-        .then((data: CatalogResponse) => {
-          if (!active) return;
-          
-          if (page === 1) {
-            setCatalogData(data || { categories: [], total: 0 });
-            if (!activeCategory && !search) {
-              setCategoryTabs((data?.categories || []).map((c: CatalogCategory) => ({ 
-                name: c.name, 
-                count: Array.isArray(c.products) ? c.products.length : 0 
-              })));
-            }
-          } else {
-            setCatalogData(prev => {
-              const newCategories = [...(prev?.categories || [])];
-              (data?.categories || []).forEach((cat: CatalogCategory) => {
-                const existing = newCategories.find(c => c.name === cat.name);
-                if (existing) {
-                  existing.products = [...existing.products, ...cat.products];
-                } else {
-                  newCategories.push(cat);
-                }
-              });
-              return { ...prev, categories: newCategories, total: data.total };
-            });
-          }
-
-          if (!activeCategory && data?.categories?.length > 0 && page === 1) {
-            setActiveCategory(data.categories[0].name);
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          const nextError = 'Não foi possível carregar o catálogo.';
-          if (page === 1) {
-            setError(nextError);
-            toast.error(nextError, 'Erro no catálogo');
-          }
-        })
-        .finally(() => {
-          if (active) {
-            setLoading(false);
-          }
-        });
-    }, search ? 500 : 0);
-
-    return () => {
-      active = false;
-      abortController.abort();
-      clearTimeout(timer);
-    };
-  }, [hasInitialCatalog, toast, search, activeCategory, page, sortBy, minPrice, maxPrice]);
-
-  const hasMore = catalogData.total > (page * itemsPerPage);
+  const hasMore = (catalogData?.total || 0) > (page * itemsPerPage);
 
   const loadMore = () => {
     if (hasMore && !loading) {
@@ -151,8 +109,8 @@ export function useCatalog(initialCatalog: CatalogData | null = null) {
     filteredProducts,
     allProducts,
     loading,
-    error,
-    setError,
+    error: queryError ? 'Não foi possível carregar o catálogo.' : '',
+    setError: () => {},
     hasMore,
     loadMore
   };
