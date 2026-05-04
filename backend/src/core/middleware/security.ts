@@ -208,6 +208,13 @@ export function isAllowedOrigin(origin: string | undefined, c: Context<any>): bo
     return true;
   }
 
+  // Allow if the browser explicitly marks it as same-origin or same-site
+  // The Next.js proxy forwards this header from the actual browser request
+  const fetchSite = String(c.req.header('sec-fetch-site') || '').toLowerCase();
+  if (fetchSite === 'same-origin' || fetchSite === 'same-site') {
+    return true;
+  }
+
   // SEC: Só confiar em headers de forwarding se TRUST_PROXY estiver habilitado
   // Headers como x-forwarded-host são spoofáveis pelo cliente
   const trustProxy = c.env?.TRUST_PROXY === 'true';
